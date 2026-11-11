@@ -22,6 +22,17 @@
  *
  * For convenience the proxy also accepts `?host=&port=&proto=` and falls
  * back to UDP when no proto is given.  A TCP relay is kept for testing.
+ * Two more things make the server browser work, both of which the browser
+ * cannot do by itself:
+ *   * `target=<name>:<port>` - the client has no resolver, so a hostname is
+ *     carried through to here and resolved by this process.
+ *   * `target=255.255.255.255:<port>` - the LAN sweep.  This process broadcasts
+ *     on the client's behalf and relays every answer back.  Such a session has
+ *     no single peer, so each relayed datagram is prefixed with its sender
+ *     (4 byte IPv4 + 2 byte port, network order); the client strips the prefix
+ *     and uses it as the source address of the answer.
+ * LAN_EXTRA="host[:port],..." replays every client datagram to extra targets
+ * (a subnet broadcast address, or a server the sweep cannot reach).
  */
 'use strict';
 const WebSocket = require('ws');
@@ -33,6 +44,15 @@ const PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 809
 // the GitHub Pages deployment; browsers block ws:// there as mixed content).
 const TLS_CERT = process.env.TLS_CERT;
 const TLS_KEY = process.env.TLS_KEY;
+// Extra LAN-sweep targets, e.g. LAN_EXTRA=192.168.1.255:4534,gamehost:4534
+const LAN_EXTRA = (process.env.LAN_EXTRA || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map((s) => {
+    const i = s.lastIndexOf(':');
+    return i < 0 ? { host: s, port: 0 } : { host: s.slice(0, i), port: parseInt(s.slice(i + 1), 10) };
+  });
 
 function log(...a) {
   console.log(new Date().toISOString().slice(11, 23), ...a);
@@ -68,11 +88,13 @@ function parseTarget(u) {
   let proto = u.searchParams.get('proto');
   const target = u.searchParams.get('target');
   if (target) {
-    const m = /^([\d.]+):(\d+)$/.exec(target);
+    // <ip>:<port> or <name>:<port>: names are resolved here, not by the client
+    const m = /^([0-9A-Za-z.\-_]+):(\d+)$/.exec(target);
     if (m) { host = m[1]; port = m[2]; }
   }
   if (!host) return null;
   port = parseInt(port || '4534', 10);
+  if (!(port > 0 && port < 65536)) return null;   // 0.0.0.0:0: nothing to bridge
   // Armagetron is UDP; default to udp unless explicitly told otherwise.
   proto = (proto || 'udp').toLowerCase();
   return { host, port, proto };
@@ -116,6 +138,15 @@ function bridgeUdp(ws, host, port) {
   const sock = dgram.createSocket('udp4');
   let closed = false;
   let remote = { address: host, port: port };
+  const sweep = host === '255.255.255.255' || host === 'broadcast';
+  // Node needs a bound dgram handle before setBroadcast, and a broadcast can
+  // only leave through a socket bound to the wildcard address.  A failure here
+  // is logged, not fatal: the LAN_EXTRA unicast replays still reach the peers.
+  sock.bind(0, '0.0.0.0');
+  sock.on('listening', () => {
+    if (!sweep) return;
+    try { sock.setBroadcast(true); } catch (e) { log('setBroadcast failed', e.message); }
+  });
   const close = () => {
     if (closed) return;
     closed = true;
@@ -124,24 +155,43 @@ function bridgeUdp(ws, host, port) {
   };
   // Each received UDP datagram is sent as exactly one WS binary message
   // (1:1 with the C client, which treats one WS message = one datagram).
-  // Replies also fix where follow-up datagrams go: a server may answer from
-  // the socket it received on rather than the address in the URL.
+  // Unicast replies also fix where follow-up datagrams go: a server may answer
+  // from the socket it received on rather than the address in the URL.  A
+  // sweep has no such single peer, so its answers keep their sender instead.
   sock.on('message', (msg, rinfo) => {
-    remote = { address: rinfo.address, port: rinfo.port };
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(msg, (e) => { if (e) log('ws send err', e.message); });
+    if (!sweep) remote = { address: rinfo.address, port: rinfo.port };
+    if (ws.readyState !== WebSocket.OPEN) return;
+    let out = msg;
+    if (sweep) {
+      log('sweep reply', rinfo.address + ':' + rinfo.port, msg.length);
+      const a = rinfo.address.split('.').map((n) => parseInt(n, 10));
+      if (a.length !== 4 || a.some((n) => isNaN(n))) return;
+      out = Buffer.concat([
+        Buffer.from([a[0], a[1], a[2], a[3], (rinfo.port >> 8) & 255, rinfo.port & 255]),
+        msg,
+      ]);
     }
+    ws.send(out, (e) => { if (e) log('ws send err', e.message); });
   });
   sock.on('error', (e) => { log('udp error', host + ':' + port, e.message); close(); });
   sock.on('close', () => { log('udp closed', host + ':' + port); close(); });
   // Each WS binary message is exactly one Armagetron datagram; forward it
   // as a single UDP datagram (no length prefix -- the C client does not
   // frame its messages).
+  const send = (datagram, address, port, tag) => {
+    // One bad datagram must never take the whole bridge down.
+    if (!(port > 0 && port < 65536) || !address) return;
+    try {
+      sock.send(datagram, port, address, (e) => { if (e) log(tag, e.message); });
+    } catch (e) { log(tag, e.message); }
+  };
   ws.on('message', (d) => {
     if (closed) return;
     const datagram = toBuf(d);
-    sock.send(datagram, remote.port, remote.address,
-      (e) => { if (e) log('udp send error', e.message); });
+    send(datagram, remote.address, remote.port, 'udp send error');
+    for (const extra of LAN_EXTRA) {
+      send(datagram, extra.host, extra.port || remote.port, 'udp extra send error');
+    }
   });
   ws.on('close', () => close());
   ws.on('error', (e) => { log('ws error', host + ':' + port, e.message); close(); });

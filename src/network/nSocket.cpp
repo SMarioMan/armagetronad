@@ -45,6 +45,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <errno.h>
 #include <stdlib.h>
 #include <vector>
+#include <map>
 
 #ifndef WIN32
 #include <arpa/inet.h> 
@@ -1256,6 +1257,53 @@ tString nAddress::GetHostname( void ) const
 //!
 // *******************************************************************************************
 
+#ifdef __EMSCRIPTEN__
+// The browser has no resolver: a name the game wants to reach is kept as a
+// name and handed to the bridge proxy, which does the lookup.  nAddress still
+// has to carry a numeric address, so names are mapped into the reserved
+// 233.0.0.0/8 block - any address in there is really a name, and ws_url_for()
+// turns it back into one.
+namespace
+{
+std::map< uint32_t, std::string > & ws_names()
+{
+    static std::map< uint32_t, std::string > n;
+    return n;
+}
+
+uint32_t ws_name_ip( char const * hostname )
+{
+    for ( std::map< uint32_t, std::string >::iterator it = ws_names().begin();
+          it != ws_names().end(); ++it )
+        if ( it->second == hostname )
+            return it->first;
+
+    uint32_t h = 2166136261u;
+    for ( char const * p = hostname; *p; ++p )
+        h = ( h ^ ( uint32_t )( unsigned char )*p ) * 16777619u;
+
+    for ( uint32_t k = 0; k < 4096; ++k )
+    {
+        uint32_t cand = 0xe9000000u | ( ( h + k * 2654435761u ) & 0x00ffffffu );
+        if ( ws_names().count( cand ) == 0 )
+        {
+            ws_names()[ cand ] = hostname;
+            return cand;
+        }
+    }
+    return 0;   // the reserved block is full
+}
+
+char const * ws_name_for( uint32_t ip )
+{
+    if ( ( ip & 0xff000000u ) != 0xe9000000u )
+        return NULL;
+    std::map< uint32_t, std::string >::iterator it = ws_names().find( ip );
+    return it == ws_names().end() ? NULL : it->second.c_str();
+}
+} // namespace
+#endif // __EMSCRIPTEN__
+
 nAddress & nAddress::SetHostname( const char * hostname )
 {
     // initialize networking at OS level
@@ -1268,6 +1316,23 @@ nAddress & nAddress::SetHostname( const char * hostname )
         return *this;
     }
 
+#ifdef __EMSCRIPTEN__
+    // wasm: remember the name and give the address a synthetic IP out of the
+    // block reserved above; the bridge proxy resolves the name when it opens
+    // the session to this destination.
+    {
+        uint32_t ip = ws_name_ip( hostname );
+        if ( ip == 0 )
+        {
+            // the reserved block is exhausted: treat it as an invalid address
+            *this = nAddress();
+            return *this;
+        }
+        addr_.addr.sa_family          = AF_INET;
+        addr_.addr_in.sin_addr.s_addr = htonl( ip );
+        return *this;
+    }
+#else
     // read address from recording
     static char const * section = "SINGLEHOSTNAME";
     if ( !tRecorder::PlaybackStrict( section, *this ) )
@@ -1292,6 +1357,7 @@ nAddress & nAddress::SetHostname( const char * hostname )
     tRecorder::Record( section, *this );
 
     return *this;
+#endif
 }
 
 // *******************************************************************************************
@@ -2065,9 +2131,13 @@ const std::string & ws_proxy_base()
 
 std::string ws_url_for( uint32_t ip, uint16_t port )
 {
-    char target[ 64 ];
-    snprintf( target, sizeof( target ), "%d.%d.%d.%d:%d",
-        ( ip >> 24 ) & 0xff, ( ip >> 16 ) & 0xff, ( ip >> 8 ) & 0xff, ip & 0xff, port );
+    char target[ 160 ];
+    char const * name = ws_name_for( ip );
+    if ( name != NULL )
+        snprintf( target, sizeof( target ), "%s:%d", name, port );
+    else
+        snprintf( target, sizeof( target ), "%d.%d.%d.%d:%d",
+            ( ip >> 24 ) & 0xff, ( ip >> 16 ) & 0xff, ( ip >> 8 ) & 0xff, ip & 0xff, port );
 
     const std::string & base = ws_proxy_base();
     if ( !base.empty() )
@@ -2143,6 +2213,10 @@ int ws_send( const sockaddr * addr, const uint8_t * data, int len )
     uint32_t ip = ntohl( sin->sin_addr.s_addr );
     uint16_t port = ntohs( sin->sin_port );
 
+    // An unconfigured nAddress sends to 0.0.0.0:0.  There is nothing to
+    // bridge there; the native build just fails the send and moves on.
+    if ( ip == 0 && port == 0 ) return len;
+
     int idx = -1;
     for ( size_t i = 0; i < ws_g().conns.size(); ++i )
         if ( ws_g().conns[ i ].key_ip == ip && ws_g().conns[ i ].key_port == port )
@@ -2159,7 +2233,12 @@ int ws_send( const sockaddr * addr, const uint8_t * data, int len )
         char ipstr[ 32 ];
         snprintf( ipstr, sizeof( ipstr ), "%d.%d.%d.%d",
             ( ip >> 24 ) & 0xff, ( ip >> 16 ) & 0xff, ( ip >> 8 ) & 0xff, ip & 0xff );
-        c.target.SetAddress( ipstr ).SetPort( port );
+        char const * nm = ws_name_for( ip );
+        if ( nm != NULL )
+            c.target.SetHostname( nm );
+        else
+            c.target.SetAddress( ipstr );
+        c.target.SetPort( port );
     }
 
     ws_ensure_open( idx );
@@ -2188,11 +2267,29 @@ int ws_recv( uint8_t * buf, int maxlen, nAddress & src )
         if ( !c.rx.empty() )
         {
             std::vector< uint8_t > & d = c.rx.front();
+            nAddress from = c.target;
+            if ( c.key_ip == 0xffffffffu )
+            {
+                // A broadcast session has no real peer: the bridge tags every
+                // reply with its sender (4 byte IPv4 + 2 byte port, network
+                // order) per reply so the servers can be told apart and connected to.
+                // Strip the tag and use it as the source address.
+                if ( d.size() < 6 )
+                {
+                    c.rx.pop_front();
+                    continue;
+                }
+                uint8_t const * tag = d.data();
+                char ip[ 32 ];
+                snprintf( ip, sizeof( ip ), "%u.%u.%u.%u", tag[0], tag[1], tag[2], tag[3] );
+                from.SetAddress( ip ).SetPort( ( tag[4] << 8 ) | tag[5] );
+                d.erase( d.begin(), d.begin() + 6 );
+            }
             int len = ( int ) d.size();
             if ( len > maxlen ) len = maxlen;
             memcpy( buf, d.data(), len );
             c.rx.pop_front();
-            src = c.target;
+            src = from;
             g.rr = ( i + 1 ) % n;
             return len;
         }
@@ -2419,6 +2516,10 @@ int nSocket::Broadcast( const char * buf, int len, unsigned int port ) const
 {
     tASSERT( IsOpen() );
 
+#ifdef __EMSCRIPTEN__
+    // wasm: there is no socket option to set here; the bridge session opened
+    // for INADDR_BROADCAST relays every answer of every answering server.
+#else
     if ( !broadcast_ )
     {
         int				i = 1;
@@ -2432,6 +2533,7 @@ int nSocket::Broadcast( const char * buf, int len, unsigned int port ) const
 
         broadcast_ = true;
     }
+#endif
 
     // prepare broadcasting address
     sockaddr_in broadcastaddr;
