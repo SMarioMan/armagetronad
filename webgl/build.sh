@@ -153,6 +153,9 @@ rm -rf webgl/dist
 mkdir -p webgl/dist
 cp webgl/site/index.html webgl/dist/index.html
 cp src/armagetronad_main.js src/armagetronad_main.wasm src/armagetronad_main.data webgl/dist/
+# The browser always asks for a favicon; without one every page load logs a
+# 404.  Ship the game's own 32x32 icon.
+cp textures/icon.png webgl/dist/favicon.png
 
 echo "=== Build complete: webgl/dist ==="
 ls -la webgl/dist
