@@ -42,7 +42,10 @@ DATA_DIR='/usr/local/share/games/armagetronad'
 # value into a bare path (parsed as C code).
 WASM_DEFS='-DPREFIX=\"/usr/local\" -DEXEC_PREFIX=\"/usr/local\" -DBINDIR=\"/usr/local/bin\" -DSBINDIR=\"/usr/local/sbin\" -DDATADIR=\"/usr/local/share\" -DAA_DATADIR=\"/usr/local/share/games/armagetronad\" -DSYSCONFDIR=\"/usr/local/etc\" -DAA_SYSCONFDIR=\"/usr/local/etc/games/armagetronad\" -DLOCALSTATEDIR=\"/usr/local/var\" -DAA_LOCALSTATEDIR=\"/usr/local/var/games/armagetronad\" -DSCRIPTDIR=\"/usr/local/share/games/armagetronad/scripts\" -DDOCDIR=\"/usr/local/share/doc\" -DAA_DOCDIR=\"/usr/local/share/doc/games/armagetronad\" -DRUNDIR=\"/usr/local/var/run\" -DAA_RUNDIR=\"/usr/local/var/run\" -DLOGDIR=\"/usr/local/var/log\" -DAA_LOGDIR=\"/usr/local/var/log\" -DOLDVARDIR=\"/usr/local/var/games/armagetronad/var\" -DAA_OLDVARDIR=\"/usr/local/var/games/armagetronad/var\" -DRELOCATABLE=\"no\"'
 export COMMON_FLAGS="-s USE_SDL=1 -s STB_IMAGE=1 -s USE_ZLIB=1 -s USE_LIBPNG=1 -s FILESYSTEM=1"
-export CXXFLAGS="-O2 -fexceptions $COMMON_FLAGS $WASM_DEFS -DHAVE_SINF -DHAVE_COSF -DHAVE_TANF -DHAVE_ATAN2F -DHAVE_SQRTF -DHAVE_LOGF -DHAVE_EXPF -DHAVE_FABSF -DHAVE_FLOORF -DHAVE_ISBLANK -DHAVE_WMEMSET"
+# EXTRA_CXXFLAGS/EXTRA_LDFLAGS are appended for diagnostic builds
+# (e.g. EXTRA_CXXFLAGS="-g4" EXTRA_LDFLAGS="-s ASSERTIONS=2 -g4"); they are
+# empty in normal use and keep the release flags untouched.
+export CXXFLAGS="-O2 -fexceptions $COMMON_FLAGS $WASM_DEFS -DHAVE_SINF -DHAVE_COSF -DHAVE_TANF -DHAVE_ATAN2F -DHAVE_SQRTF -DHAVE_LOGF -DHAVE_EXPF -DHAVE_FABSF -DHAVE_FLOORF -DHAVE_ISBLANK -DHAVE_WMEMSET $EXTRA_CXXFLAGS"
 export CFLAGS="$CXXFLAGS"
 
 export ac_cv_exeext=.js
@@ -127,6 +130,7 @@ rm -f src/armagetronad_main.js src/armagetronad_main.wasm src/armagetronad_main.
 
 emmake make -j"$JOBS" \
 LDFLAGS="-s LEGACY_GL_EMULATION=1 -s GL_UNSAFE_OPTS=0 -s ALLOW_MEMORY_GROWTH=1 \
+$EXTRA_LDFLAGS \
 -s USE_SDL=1 -s STB_IMAGE=1 -s USE_ZLIB=1 -s USE_LIBPNG=1 -s FILESYSTEM=1 \
 --preload-file ../textures@${DATA_DIR}/textures \
 --preload-file ../models@${DATA_DIR}/models \
