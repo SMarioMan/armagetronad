@@ -1187,36 +1187,14 @@ static uMenuItemFunction apply
 
 //static bool offs=false;
 
-#ifdef __EMSCRIPTEN__
-// WebGL applies polygon offset to filled polygons only. The game uses the
-// offset state to bias its detail *lines* (the upper edge of a light wall, the
-// win zone outline, cycle edges) in front of the coplanar surface they lie on;
-// GL_POLYGON_OFFSET_LINE and GL_POLYGON_OFFSET_POINT are no valid WebGL
-// capabilities, so nothing gets biased at all and those lines z-fight with the
-// surface: they break up into flickering dashes and carve holes into it at
-// certain viewing angles. Move the other side of the contest instead -- fills
-// drawn while the game has the offset state off are pushed away from the eye by
-// the same amount the native build shifts the lines towards it, which restores
-// the intended depth ordering.
-static void wasm_DepthBias(bool offset)
-{
-    if (offset){
-        glPolygonOffset(0,0);
-        glDisable(GL_POLYGON_OFFSET_FILL);
-    }
-    else{
-        glPolygonOffset(2,5);
-        glEnable(GL_POLYGON_OFFSET_FILL);
-    }
-}
-#endif
-
 void sr_DepthOffset(bool offset){
+    // return;
+    //  if(offset!=offs){
+    //offs=offset;
 #ifndef DEDICATED
-#ifdef __EMSCRIPTEN__
-    wasm_DepthBias(offset);
-#else
     if (offset){
+        //glMatrixMode(GL_PROJECTION);
+        //glScalef(.9,.9,.9);
         glPolygonOffset(-2,-5);
         glEnable(GL_POLYGON_OFFSET_LINE);
         glEnable(GL_POLYGON_OFFSET_POINT);
@@ -1227,8 +1205,10 @@ void sr_DepthOffset(bool offset){
         glDisable(GL_POLYGON_OFFSET_POINT);
         glDisable(GL_POLYGON_OFFSET_LINE);
         glDisable(GL_POLYGON_OFFSET_FILL);
+        //glMatrixMode(GL_PROJECTION);
+        //glScalef(1/.9,1/.9,1/.9);
     }
-#endif
+    //  }
 #endif
 }
 
