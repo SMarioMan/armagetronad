@@ -111,6 +111,18 @@ instead of shipping a broken page.
   is singleplayer by default.
 - User data (settings, scores, recordings) persists in IndexedDB: the page
   mounts IDBFS over `/home/web_user`. Clearing site data resets the game.
+- The page creates the canvas' WebGL context in `preRun`, before SDL asks for
+  one, because SDL 1.2 requests neither multisampling nor a stencil buffer: the
+  context comes up with `antialias:false, stencil:false` and every 1 px light
+  cycle line is then an unantialiased staircase that reads as a chain of
+  separate rectangles. The same hook enables
+  `EXT_texture_filter_anisotropic` and sets up to 8x anisotropy on every
+  texture the game uploads; with only isotropic mipmaps one screen direction
+  stays under-sampled and the minified floor grid moires badly toward the
+  horizon. A desktop build gets both from the driver, so this restores parity
+  rather than adding detail. The extension state and the buffer attributes
+  belong to the context created first, and SDL's own `getContext()` call
+  returns this same object.
 
 ## Multiplayer
 

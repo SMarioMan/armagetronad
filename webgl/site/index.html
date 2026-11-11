@@ -185,6 +185,46 @@
     var Module = {
       arguments: ARMA_ARGS,
       preRun: [function () {
+        // Create the WebGL context here, before SDL asks for one. SDL 1.2
+        // never requests multisampling, so without this the context comes up
+        // with antialias:false: every 1 px light cycle wall line is then an
+        // unantialiased staircase that reads as a chain of separate
+        // rectangles, and the minified floor grid moires. The native desktop
+        // build gets MSAA from the driver, so this restores parity; a canvas
+        // keeps the attributes of the context created first, and SDL's later
+        // getContext() call returns this same object.
+        var ctxAttrs = {
+          alpha: false, depth: true, stencil: true, antialias: true,
+          premultipliedAlpha: true, preserveDrawingBuffer: false,
+          failIfMajorPerformanceCaveat: false
+        };
+        var glctx = canvas.getContext('webgl', ctxAttrs) ||
+                    canvas.getContext('experimental-webgl', ctxAttrs);
+        if (!glctx) {
+          console.warn('could not create the WebGL context with multisampling');
+          return;
+        }
+        // Anisotropic filtering, which a desktop driver applies by default but
+        // a browser context never does: with only isotropic mipmaps, one
+        // screen direction stays under-sampled and the minified floor grid
+        // produces a strong moire pattern toward the horizon. The extension is
+        // enabled per context, so SDL keeps it when it re-uses this context;
+        // the level is applied to every texture the game uploads.
+        var aniso = glctx.getExtension('EXT_texture_filter_anisotropic') ||
+                    glctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
+        if (aniso) {
+          var level = Math.min(8, glctx.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT) || 1);
+          var upload = glctx.texImage2D;
+          glctx.texImage2D = function () {
+            var ret = upload.apply(glctx, arguments);
+            if (arguments[1] === 0) {
+              glctx.texParameterf(glctx.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, level);
+            }
+            return ret;
+          };
+        }
+      },
+      function () {
         // Gate main() until the persisted config is loaded from IDBFS.
         Module.addRunDependency('idbfs_config');
         try {
