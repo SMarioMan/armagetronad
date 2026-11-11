@@ -142,6 +142,15 @@ CI — it was used during development against local servers.
   `-s LEGACY_GL_EMULATION=1`, which newer emscripten releases are phasing out.
 - Single-threaded: no pthreads/SharedArrayBuffer, so no COOP/COEP requirement.
 - Network play needs the bridge, as above.
+- Frame rate is bounded by the fixed function emulation (every immediate mode
+  call is re-tessellated in JS) and by the browser's software renderer when no
+  GPU is available. Measured in headless Chrome with SwiftShader: menus run at
+  ~60 frames/s, a round at ~1.6 frames/s. The HUD `FPS:` readout and the game
+  clock both follow that rate correctly, so a low number is the renderer, not a
+  broken timer.
+- The top level main menu cannot be left. The native build exits the process
+  there; a page has no process to exit into, so leaving that menu re-opens it
+  and its "Exit game" item is not shown.
 
 ## Deployment
 
