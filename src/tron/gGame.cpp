@@ -2107,7 +2107,7 @@ static void sg_StopQuickExit()
 // play the game, handle redirects and clean up) is driven by the JS event
 // loop: one wasm loop advances the flow, the game itself runs as a nested
 // loop while it is active
-enum sgConnectPhase { CG_DO_CONNECT, CG_WAIT_GAME, CG_PLAY, CG_DONE };
+enum sgConnectPhase { CG_DO_CONNECT, CG_LOGIN, CG_WAIT_GAME, CG_PLAY, CG_DONE };
 
 struct sgConnectFlow
 {
@@ -2169,6 +2169,11 @@ static void sgConnectFinal( void * )
     sgConnectFlow * f = sg_flow;
     sg_flow = 0;
 
+#ifdef __EMSCRIPTEN__
+    // no login handshake may outlive the flow
+    sn_ConnectCancel();
+#endif
+
     // check for redirection (the native build does this in ConnectToServer)
     while ( f->okToRedirect )
     {
@@ -2220,9 +2225,34 @@ static bool sgConnectFrame( void * )
     if ( f->phase == CG_DONE )
         return false;
 
-    if ( f->phase == CG_DO_CONNECT )
+    if ( f->phase == CG_DO_CONNECT
+#ifdef __EMSCRIPTEN__
+        || f->phase == CG_LOGIN
+#endif
+        )
     {
-        nConnectError error = f->server->Connect();
+        nConnectError error;
+
+#ifdef __EMSCRIPTEN__
+        if ( f->phase == CG_LOGIN )
+        {
+            // the browser cannot wait for the answer: one handshake step per frame
+            error = sn_ConnectPump();
+        }
+        else
+#endif
+        {
+            error = f->server->Connect();
+        }
+
+        if ( error == nPENDING )
+        {
+            // keep the flow running: the handshake is advanced every frame
+            f->phase = CG_LOGIN;
+            tAdvanceFrame();
+            return true;
+        }
+
         switch (error)
         {
         case nABORT:
@@ -2230,17 +2260,16 @@ static bool sgConnectFrame( void * )
             f->phase = CG_DONE;
             return false;
         case nOK:
+            f->endTime = tSysTimeFloat() + 30;
             f->phase = CG_WAIT_GAME;
             con << tOutput("$network_connecting_gamestate");
-            return false; // wait for the game on the next frame
+            return true;
         case nTIMEOUT:
             sg_NetworkError("$network_message_timeout_title", "$network_message_timeout_inter", 20);
-            f->okToRedirect = false;
             f->phase = CG_DONE;
             return false;
         case nDENIED:
             sg_NetworkError("$network_message_denied_title", sn_DenyReason.Len() > 2 ? "$network_message_denied_inter2" : "$network_message_denied_inter", 20);
-            f->okToRedirect = false;
             f->phase = CG_DONE;
             return false;
         }
@@ -2343,7 +2372,30 @@ bool ConnectToServerCore(nServerInfoBase *server)
     o.SetTemplateParameter(1, server->GetName());
     o << "$network_connecting_to_server";
     con << o;
+
+#ifdef __EMSCRIPTEN__
+    // sn_Connect only sends the login here and returns nPENDING: the answer is
+    // delivered while the frame function is off the JS stack, so the remaining
+    // handshake is driven by the connection flow instead of a blocking loop.
     error = server->Connect();
+
+    if ( error == nPENDING )
+    {
+        sgConnectFlow * f = new sgConnectFlow;
+        f->server = 0; // the login is in flight, the server info stays with the caller
+        f->owns_server = false;
+        f->reverter = reverter;
+        f->to = to;
+        f->okToRedirect = true;
+        f->endTime = 0;
+        f->phase = CG_LOGIN;
+        sg_flow = f;
+        tWasmLoop::Start( &sgConnectFrame, &sgConnectFlowExit );
+        return true; // the tail runs when the flow ends
+    }
+#else
+    error = server->Connect();
+#endif
 
     switch (error)
     {

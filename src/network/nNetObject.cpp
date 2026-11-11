@@ -479,7 +479,13 @@ unsigned short next_free(){
                 m->Send(0);
             }
 
+#ifdef __EMSCRIPTEN__
+            // the browser must not spin here: keep the stall short and let the
+            // following frames deliver the answers that are still on the way
+            double timeout=tSysTimeFloat()+5;
+#else
             double timeout=tSysTimeFloat()+60;
+#endif
             while(sn_Connections[0].socket && distribute==request && tSysTimeFloat()<timeout){
                 // wait for new ids from the server
 #ifdef DEBUG
@@ -1936,6 +1942,20 @@ static nDescriptor sync_nd(28,sync_msg_handler,"sync_msg");
 
 // from nNetwork.C
 
+#ifdef __EMSCRIPTEN__
+// One round of the login sync handshake, advanced once per frame: blocking
+// inside sn_Sync is impossible because the answers only arrive while the frame
+// function is off the JS stack.
+struct snSyncRound
+{
+    bool          active = false;
+    bool          syncObjects = false;
+    nTimeAbsolute endTime = 0;
+};
+
+static snSyncRound s_sync_round;
+#endif
+
 void sn_Sync(REAL timeout,bool sync_sn_netObjects, bool otherEnd){
     nTimeAbsolute endTime=timeout+tSysTimeFloat();
 
@@ -1944,6 +1964,32 @@ void sn_Sync(REAL timeout,bool sync_sn_netObjects, bool otherEnd){
 #endif
 
     if (sn_GetNetState()==nCLIENT){
+#ifdef __EMSCRIPTEN__
+        // One non blocking pass: the transport is loss free and every frame
+        // pumps sn_Receive()/SyncAll()/sn_SendPlanned() anyway.  The login
+        // handshake drives its own round (see sn_SyncStart/sn_SyncStep).
+        if ( !s_sync_round.active )
+        {
+            static nVersionFeature sg_ServerSync( 10 );
+
+            sync_ack[0]=true;
+            if ( sg_ServerSync.Supported( 0 ) && otherEnd )
+            {
+                tJUST_CONTROLLED_PTR< nMessage > m=new nMessage(sync_nd);
+                *m << timeout;
+                m->Write(sync_sn_netObjects);
+                m->Write(c_sync);
+                m->Send(0);
+                sync_ack[0]=false;
+            }
+
+            sn_Receive();
+            if (sync_sn_netObjects)
+                nNetObject::SyncAll();
+            sn_SendPlanned();
+            return;
+        }
+#endif
         // repeat as often as packet loss suggests: of 100 packets, we want a single lost packet left probability of 1%.
         REAL failureProbability = 1;
         while ( failureProbability > .0001 && timeout > .01 )
@@ -2042,6 +2088,68 @@ void sn_Sync(REAL timeout,bool sync_sn_netObjects, bool otherEnd){
     //con << "Stop sync.\n";
 #endif
 }
+
+#ifdef __EMSCRIPTEN__
+//! start one round of the login sync handshake
+void sn_SyncStart(REAL timeout, bool sync_sn_netObjects, bool otherEnd)
+{
+    static nVersionFeature sg_ServerSync( 10 );
+
+    s_sync_round.active      = true;
+    s_sync_round.syncObjects = sync_sn_netObjects;
+    s_sync_round.endTime     = tSysTimeFloat() + timeout;
+
+    sync_ack[0] = true;
+
+    if ( sg_ServerSync.Supported( 0 ) && otherEnd )
+    {
+        tJUST_CONTROLLED_PTR< nMessage > m = new nMessage(sync_nd);
+        *m << timeout;
+        m->Write(sync_sn_netObjects);
+        m->Write(c_sync);
+        m->Send(0);
+        sync_ack[0] = false;
+    }
+}
+
+
+//! one step of the round; true when it is over (synced, disconnected or timed out)
+bool sn_SyncStep()
+{
+    if ( !s_sync_round.active )
+    {
+        return true;
+    }
+
+    sn_Receive();
+
+    if ( s_sync_round.syncObjects )
+    {
+        nNetObject::SyncAll();
+    }
+
+    sn_SendPlanned();
+
+    bool done = !sn_Connections[0].socket
+        || tRecorder::DesyncedPlayback()
+        || ( sync_ack[0] && sn_Connections[0].ackPending == 0 && sn_QueueLen(0) == 0 )
+        || tSysTimeFloat() >= s_sync_round.endTime;
+
+    if ( done )
+    {
+        s_sync_round.active = false;
+    }
+
+    return done;
+}
+
+
+//! drop a round that will not be finished
+void sn_SyncCancel()
+{
+    s_sync_round.active = false;
+}
+#endif
 
 static void sync_msg_handler(nMessage &m){
     static bool recursion=false;

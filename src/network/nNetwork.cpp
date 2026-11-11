@@ -3143,6 +3143,25 @@ void sn_Bend( tString const & server, unsigned int port)
     sn_Bend( address );
 }
 
+#ifdef __EMSCRIPTEN__
+
+// The state of a login handshake that has been handed over to the frame loop.
+struct snHandshake
+{
+    tJUST_CONTROLLED_PTR< nMessage > mess;
+    nAddress            server;
+    nSocket const *     socket;
+    nLoginType          loginType;
+    nTimeRolling        timeout;
+    nTimeAbsolute       nextSend;
+    REAL                resend;
+    int                   stage = 0; // 0: login answer, 1/2: sync round
+};
+
+static snHandshake * s_hs = 0;
+#endif
+
+
 nConnectError sn_Connect( nAddress const & server, nLoginType loginType, nSocket const * socket ){
     sn_DenyReason = "";
 
@@ -3239,6 +3258,17 @@ nConnectError sn_Connect( nAddress const & server, nLoginType loginType, nSocket
 
     static REAL resend = .25;
     nTimeAbsolute nextSend = tSysTimeFloat() + resend/5;
+#ifdef __EMSCRIPTEN__
+    s_hs = new snHandshake;
+    s_hs->mess      = mess;
+    s_hs->server    = server;
+    s_hs->socket    = socket;
+    s_hs->loginType = loginType;
+    s_hs->timeout   = timeout;
+    s_hs->nextSend  = nextSend;
+    s_hs->resend    = resend;
+    return nPENDING;
+#else
     while(sn_GetNetState()==nCLIENT && tSysTimeFloat()<timeout &&
             !login_failed && !login_succeeded){
         if ( tSysTimeFloat() > nextSend )
@@ -3276,7 +3306,7 @@ nConnectError sn_Connect( nAddress const & server, nLoginType loginType, nSocket
         {
             con << tOutput("$network_login_failed_timeout");
             sn_SetNetState(nSTANDALONE);
-            return nTIMEOUT;
+        return nTIMEOUT;
         }
     }
     else{
@@ -3316,7 +3346,140 @@ nConnectError sn_Connect( nAddress const & server, nLoginType loginType, nSocket
 
         return nOK;
     }
+#endif
 }
+
+#ifdef __EMSCRIPTEN__
+
+//! one iteration of the login wait loop, driven by the connection flow
+nConnectError sn_ConnectPump()
+{
+    if ( !s_hs )
+    {
+        // no handshake in flight; nothing to wait for
+        return nOK;
+    }
+
+    snHandshake & hs = *s_hs;
+
+    if ( tSysTimeFloat() > hs.nextSend )
+    {
+        hs.nextSend = tSysTimeFloat() + hs.resend;
+        hs.mess->SendImmediately(0,false);
+        nMessage::SendCollected(0);
+    }
+
+    sn_Receive();
+    sn_SendPlanned();
+
+    if ( hs.stage == 0 )
+    {
+        if ( tConsole::Idle(true) )
+        {
+            con << tOutput("$network_login_failed_abort");
+            sn_SetNetState(nSTANDALONE);
+            delete s_hs;
+            s_hs = 0;
+            return nABORT;
+        }
+
+        if ( login_failed )
+        {
+            con << tOutput("$network_login_failed");
+            sn_SetNetState(nSTANDALONE);
+            delete s_hs;
+            s_hs = 0;
+            return nDENIED;
+        }
+
+        if ( tSysTimeFloat() >= hs.timeout || sn_GetNetState() != nCLIENT )
+        {
+            nLoginType      oldType = hs.loginType;
+            nAddress        server  = hs.server;
+            nSocket const * sock    = hs.socket;
+            delete s_hs;
+            s_hs = 0;
+
+            if ( oldType == Login_All )
+            {
+                // retry with the login method of pre-0.2.5.2 servers
+                return sn_Connect( server, Login_Pre0252, sock );
+            }
+
+            con << tOutput("$network_login_failed_timeout");
+            sn_SetNetState(nSTANDALONE);
+            return nTIMEOUT;
+        }
+    }
+
+    if ( login_succeeded )
+    {
+        if ( hs.stage == 0 )
+        {
+            nCallbackLoginLogout::UserLoggedIn(0);
+
+            if ( sn_GetNetState() != nCLIENT )
+            {
+                delete s_hs;
+                s_hs = 0;
+                return nDENIED;
+            }
+
+            tOutput mess;
+            mess.SetTemplateParameter(1, sn_myNetID);
+            mess << "$network_login_success";
+            con << mess;
+            con << tOutput("$network_login_sync");
+
+            // the sync handshake is driven one step per frame as well
+            sn_SyncStart(40, true, true);
+            hs.stage = 1;
+            return nPENDING;
+        }
+
+        if ( !sn_SyncStep() )
+        {
+            return nPENDING;
+        }
+
+        if ( sn_GetNetState() != nCLIENT )
+        {
+            delete s_hs;
+            s_hs = 0;
+            return nDENIED;
+        }
+
+        if ( hs.stage == 1 )
+        {
+            con << tOutput("$network_login_relabeling");
+            con << tOutput("$network_login_sync2");
+
+            sn_SyncStart(40, true, true);
+            hs.stage = 2;
+            return nPENDING;
+        }
+
+        con << tOutput("$network_login_done");
+
+        // marginalize past ping values
+        nPingAverager::SetWeight(1);
+
+        delete s_hs;
+        s_hs = 0;
+        return nOK;
+    }
+
+    return nPENDING;
+}
+
+//! the connection flow gave up: drop the handshake in flight
+void sn_ConnectCancel()
+{
+    sn_SyncCancel();
+    delete s_hs;
+    s_hs = 0;
+}
+#endif
 
 
 void nReadError( bool critical )

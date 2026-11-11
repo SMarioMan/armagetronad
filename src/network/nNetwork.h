@@ -111,7 +111,7 @@ void nReadError( bool critical = true );
 
 // We can be single player, multiplayer server/client.
 typedef enum {nSTANDALONE,nSERVER,nCLIENT} nNetState;
-typedef enum {nOK, nTIMEOUT, nDENIED, nABORT}   nConnectError;
+typedef enum {nOK, nTIMEOUT, nDENIED, nABORT, nPENDING}   nConnectError;
 
 
 // set/get the state
@@ -359,6 +359,22 @@ enum nLoginType
 
 // go to client mode and connect to server
 nConnectError sn_Connect(nAddress const & server, nLoginType loginType = Login_All, nSocket const * socket = NULL );
+
+#ifdef __EMSCRIPTEN__
+// The browser build cannot block inside sn_Connect: the server only gets a
+// chance to answer while the frame function is off the stack.  sn_Connect
+// therefore sends the login and returns nPENDING; the wait loop runs one step
+// per frame via sn_ConnectPump until it yields a final result.
+nConnectError sn_ConnectPump();
+void sn_ConnectCancel();
+
+// The login sync handshake is split the same way: sn_SyncStart sends the
+// request, sn_SyncStep advances one frame and reports whether the round is
+// over, sn_SyncCancel drops an unfinished round.
+void sn_SyncStart(REAL timeout, bool sync_sn_netObjects, bool otherEnd);
+bool sn_SyncStep();
+void sn_SyncCancel();
+#endif
 
 // let the server connection socket point to a new server (EVIL!)
 void sn_Bend( nAddress const & server );
