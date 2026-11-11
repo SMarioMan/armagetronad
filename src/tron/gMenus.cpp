@@ -747,6 +747,24 @@ public:
             return uMenuItemStringWithHistory::Event(e);
     }
 };
+#ifdef __EMSCRIPTEN__
+//! runs when the console menu loop ends. uMenu::Enter() only starts the loop
+//! in this build and do_con() returns right away, so the input line the menu
+//! item references must live on the heap and the console state has to be
+//! undone here instead of at the end of do_con().
+static void WasmConsoleLoopExit(uMenu *m, void *arg)
+{
+    tString *line = static_cast<tString *>(arg);
+
+    uMenu::WasmFreeTree(m, 0);
+    delete line;
+
+    se_ChatState( ePlayerNetID::ChatFlags_Console, false );
+    se_SetShowScoresAuto(true);
+    sr_con.SetHeight(7,false);
+}
+#endif
+
 
 void do_con(){
     su_ClearKeys();
@@ -754,13 +772,18 @@ void do_con(){
     se_ChatState( ePlayerNetID::ChatFlags_Console, true );
     sr_con.SetHeight(20,false);
     se_SetShowScoresAuto(false);
+#ifdef __EMSCRIPTEN__
+    tString *cline = new tString;
+    tString &c = *cline;
+#else
     tString c;
+#endif
 
     uMenu con_menu_dummy(tOutput(""),false);
     uMenu * con_menu;
 #ifdef __EMSCRIPTEN__
     con_menu = uMenu::WasmNew( tOutput(""), false );
-    con_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+    con_menu->SetOnLoopExit( &WasmConsoleLoopExit, cline );
 #else
     con_menu = &con_menu_dummy;
 #endif
@@ -770,10 +793,12 @@ void do_con(){
     con_menu->SetTop(-.7);
     con_menu->Enter();
 
+#ifndef __EMSCRIPTEN__
     se_ChatState( ePlayerNetID::ChatFlags_Console, false );
 
     se_SetShowScoresAuto(true);
     sr_con.SetHeight(7,false);
+#endif
 }
 #endif
 
