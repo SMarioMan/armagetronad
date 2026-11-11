@@ -90,7 +90,8 @@ these patches on `src/armagetronad_main.js` after every link:
   surfaces whose 2D canvas `IMG_Load_RW` discarded in `SDL.GL` mode; falls back
   to a heap-buffer copy. Without it the game froze on the first game start.
 - `patch_gl_emulation.py` — the legacy GL emulation lacks immediate-mode
-  `GL_QUAD_STRIP`, used for player walls; it is added.
+  `GL_QUAD_STRIP`, used for player walls; the mode is retargeted to
+  `GL_TRIANGLE_STRIP`, which the wall's vertex order already is.
 - `patch_emulation_fixes.py` — the fixed-function fragment shader is hardcoded
   to `precision mediump float`, which bands fog, trail fades, floor lighting
   and per-vertex wall alpha on desktop WebGL; promoted to `highp`.
