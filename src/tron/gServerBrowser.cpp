@@ -235,7 +235,13 @@ void gServerBrowser::BrowseSpecialMaster( nServerInfoBase * master, char const *
 
     sr_textOut = to;
 
+#ifdef __EMSCRIPTEN__
+    // (wasm) BrowseServers() returns as soon as the loop is only *started*,
+    // so this help text has to outlive the calling function.
+    static tOutput StartHelpTextInternet("$network_master_host_inet_help");
+#else
     tOutput StartHelpTextInternet("$network_master_host_inet_help");
+#endif
     sg_StartHelpText = &StartHelpTextInternet;
     sg_TalkToMaster = true;
 
@@ -276,7 +282,13 @@ void gServerBrowser::BrowseLAN()
 
     sr_textOut = to;
 
+#ifdef __EMSCRIPTEN__
+    // (wasm) see BrowseSpecialMaster: the browser menu is still up when this
+    // function has long returned.
+    static tOutput StartHelpTextLAN("$network_master_host_lan_help");
+#else
     tOutput StartHelpTextLAN("$network_master_host_lan_help");
+#endif
     sg_StartHelpText = &StartHelpTextLAN;
     sg_TalkToMaster = false;
 
@@ -284,6 +296,18 @@ void gServerBrowser::BrowseLAN()
 
     nServerInfo::SetCreator(cback);
 }
+
+#ifdef __EMSCRIPTEN__
+// (wasm build) tail of BrowseServers(): in the native build the blocking menu
+// loop returns here and the caller cleans up; here the loop is driven by the
+// JS event loop and BrowseServers() has already returned, so the tail runs as
+// the loop's exit action and the menu is freed with its tree.
+static void WasmBrowseServersExit( uMenu * m, void * )
+{
+    nServerInfo::GetFromLANContinuouslyStop();
+    uMenu::WasmFreeTree( m, 0 );
+}
+#endif // __EMSCRIPTEN__
 
 void gServerBrowser::BrowseServers()
 {
@@ -296,7 +320,7 @@ void gServerBrowser::BrowseServers()
     gServerMenu * browser;
 #ifdef __EMSCRIPTEN__
     browser = new gServerMenu("Server Browser");
-    browser->SetOnLoopExit( &uMenu::WasmFreeTree );
+    browser->SetOnLoopExit( &WasmBrowseServersExit );
 #else
     browser = &browser_dummy;
 #endif
@@ -320,12 +344,11 @@ void gServerBrowser::BrowseServers()
 
     browser->Enter();
 
-#ifdef __EMSCRIPTEN__
-    // items are freed by the menu tree; free the menu object itself
-    delete browser;
-#endif
 
+#ifndef __EMSCRIPTEN__
+    // (wasm) done by WasmBrowseServersExit when the browser loop ends
     nServerInfo::GetFromLANContinuouslyStop();
+#endif
 
     //  gLogo::SetBig(false);
     //  gLogo::SetSpinning(true);
