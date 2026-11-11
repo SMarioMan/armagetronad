@@ -95,11 +95,23 @@ inline const GLubyte* gluErrorString(GLenum error) {
 extern "C" {
     inline void glTexCoord2d(GLdouble s, GLdouble t) { glTexCoord2f((GLfloat)s, (GLfloat)t); }
     inline void glTexCoord3fv(const GLfloat *v) { glTexCoord3f(v[0], v[1], v[2]); }
-    // glHint/glShadeModel/glPolygonMode/glDrawBuffer are provided by the
-    // emscripten GL emulation (glShadeModel/glPolygonMode are no-ops there;
-    // the emscripten screen settings force sr_smoothShading, so only
-    // GL_SMOOTH is ever requested). glRectf is implemented in rGL.cpp.
+    // WebGL only understands the GLES2 hint targets.  The GL1 fixed function
+    // hints (perspective correction, fog, line/polygon smoothing) are rejected
+    // with INVALID_ENUM once per call: rScreen.cpp issues the perspective
+    // correction hint on every display (re)init, which filled the browser
+    // console with 500+ warnings per session and made Chrome stop reporting
+    // any other GL error at all ("too many errors").  Forward only what WebGL
+    // can act on.
+    inline void rGLHint(GLenum target, GLenum mode)
+    {
+        if (target == 0x8516 /* GL_GENERATE_MIPMAP_HINT */)
+            glHint(target, mode);
+    }
 
+    // glShadeModel/glPolygonMode/glDrawBuffer come from the emscripten GL
+    // emulation (glShadeModel/glPolygonMode are no-ops there; the emscripten
+    // screen settings force sr_smoothShading, so only GL_SMOOTH is ever
+    // requested).  glRectf is implemented in rGL.cpp.
     void glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);
     inline void glRecti(GLint x1, GLint y1, GLint x2, GLint y2) { glRectf((GLfloat)x1, (GLfloat)y1, (GLfloat)x2, (GLfloat)y2); }
     // Display lists are never used on emscripten (rDisplayList.cpp forces
@@ -110,6 +122,7 @@ extern "C" {
     inline void glCallList(GLuint list) { (void)list; }
     inline void glDeleteLists(GLuint first, GLsizei range) { (void)first; (void)range; }
 }
+#define glHint rGLHint
 
 // SDL shims for functions the emscripten SDL port does not provide
 #include <SDL.h>
