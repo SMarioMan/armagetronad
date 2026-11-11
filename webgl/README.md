@@ -126,7 +126,16 @@ Then open the game page with `?proxy=ws://host:8091/` (or
 `?proxy=wss://host:8443/`). The https deployment requires `wss://`, otherwise
 the browser blocks the connection as mixed content. The bridge maps each
 WebSocket session to the UDP socket of one server. This path is not covered by
-CI — it was used during development against local servers.
+CI — it was verified against a native dedicated server of the same version
+running next to the dev site.
+
+Join from the menu: Play Game → Multiplayer → Custom Connect (or a Server
+Bookmark) and give the address and the port of the server. Joining by address
+is the supported path: LAN browse sends a broadcast, which the bridge does not
+forward. The login handshake and the two sync rounds of a join are stepped one
+iteration per animation frame (`sn_ConnectPump`, `sn_SyncStart`/`sn_SyncStep`)
+because the browser only delivers the server answer while the frame function is
+off the JS stack.
 
 ## Debug hooks
 
@@ -142,6 +151,8 @@ CI — it was used during development against local servers.
   `-s LEGACY_GL_EMULATION=1`, which newer emscripten releases are phasing out.
 - Single-threaded: no pthreads/SharedArrayBuffer, so no COOP/COEP requirement.
 - Network play needs the bridge, as above.
+- LAN server browse stays empty: it probes the local network with a broadcast,
+  and the bridge maps one WebSocket to one server address.
 - Frame rate is bounded by the fixed function emulation (every immediate mode
   call is re-tessellated in JS) and by the browser's software renderer when no
   GPU is available. Measured in headless Chrome with SwiftShader: menus run at
