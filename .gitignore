@@ -118,4 +118,17 @@ docker/deploy/targets.sh
 src/nTrueVersion.h
 .changetag
 fingerprint
+
 wget-log*
+# --- WebAssembly (webgl) build output ---
+/webgl/dist/
+/webgl/emscripten.cache
+/webgl/.downloads/
+/webgl/*.log
+/a.wasm
+/webgl/proxy/node_modules/
+/src/armagetronad_main.js
+/src/armagetronad_main.wasm
+/src/armagetronad_main.data
+# the site page must not be swallowed by the blanket *.html rule above
+!webgl/site/index.html

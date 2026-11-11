@@ -34,6 +34,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "eCoord.h"
 #include "uMenu.h"
 #include "tSysTime.h"
+#include <iostream>
 
 // static rFileTexture sg_LogoTexture(rTextureGroups::TEX_FONT, "textures/KGN_logo.png",0,0,1);
 static rISurfaceTexture* sg_LogoMPTitle = NULL;

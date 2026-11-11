@@ -1988,6 +1988,222 @@ static REAL sn_simulateReceivePacketLoss = 0;
 static tSettingItem<REAL> sn_sumulateReceivePacketLossConfig( "SIMULATE_RECEIVE_PACKET_LOSS", sn_simulateReceivePacketLoss );
 #endif
 
+//=============================================================================
+// emscripten (WebAssembly) transport: the browser has no UDP sockets, so the
+// Armagetron datagram protocol is carried over WebSockets. Every (host:port)
+// destination the game talks to becomes one binary WebSocket session:
+//   * proxy mode  : <Module.ARM_PROXY_BASE>?target=<ip>:<port>
+//   * direct mode : ws(s)://<ip>:<port>   (the modified server listens here)
+// A WS binary message is exactly one Armagetron datagram (1:1, never split or
+// coalesced) -- the protocol framing carries no destination field, so each
+// destination must be a fixed session, identified by its (IP,port).
+//=============================================================================
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/websocket.h>
+#include <deque>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <cstdint>
+#include <cstdlib>
+#include <cstdio>
+
+EM_JS( char * , arm_ws_proxy_base , ( ) , {
+    var b = "";
+    try { if ( typeof Module !== "undefined" && Module.ARM_PROXY_BASE ) b = String( Module.ARM_PROXY_BASE ); }
+    catch ( e ) { }
+    var n = lengthBytesUTF8( b ) + 1;
+    var p = _malloc( n );
+    stringToUTF8( b, p, n );
+    return p; // malloc'd; caller frees
+} );
+
+EM_JS( int , arm_ws_secure , ( ) , {
+    try { return ( typeof location !== "undefined" && location.protocol === "https:" ) ? 1 : 0; }
+    catch ( e ) { return 0; }
+} );
+
+namespace
+{
+
+struct WsConn
+{
+    nAddress   target;      // destination (host:port) of this session; used as RX source
+    uint32_t   key_ip;
+    uint16_t   key_port;
+    int        handle;      // emscripten websocket handle, -1 if none
+    int        state;       // 0=none 1=connecting 2=open 3=closed
+    std::deque< std::vector< uint8_t > > tx;  // sends queued until the socket opens
+    std::deque< std::vector< uint8_t > > rx;  // received datagrams
+};
+
+struct WsGlobal
+{
+    std::vector< WsConn > conns;
+    int rr;
+    WsGlobal() : rr( 0 ) { }
+};
+
+WsGlobal & ws_g()
+{
+    static WsGlobal g;
+    return g;
+}
+
+// read Module.ARM_PROXY_BASE once and cache it
+const std::string & ws_proxy_base()
+{
+    static std::string s = []() -> std::string
+    {
+        char * p = arm_ws_proxy_base();
+        std::string r = p ? p : "";
+        free( p );
+        return r;
+    }();
+    return s;
+}
+
+std::string ws_url_for( uint32_t ip, uint16_t port )
+{
+    char target[ 64 ];
+    snprintf( target, sizeof( target ), "%d.%d.%d.%d:%d",
+        ( ip >> 24 ) & 0xff, ( ip >> 16 ) & 0xff, ( ip >> 8 ) & 0xff, ip & 0xff, port );
+
+    const std::string & base = ws_proxy_base();
+    if ( !base.empty() )
+    {
+        std::string url = base;
+        if ( url.rfind( "https://", 0 ) == 0 )      url.replace( 0, 8, "wss://" );
+        else if ( url.rfind( "http://", 0 ) == 0 )   url.replace( 0, 7, "ws://" );
+        while ( !url.empty() && url.back() == '/' )  url.pop_back();
+        return url + "?target=" + target;
+    }
+    // direct mode: the modified server listens for WS on the game port itself
+    std::string scheme = arm_ws_secure() ? "wss://" : "ws://";
+    return scheme + target;
+}
+
+bool WsOnOpen( int, const EmscriptenWebSocketOpenEvent *, void * ud )
+{
+    WsConn & c = ws_g().conns[ ( int )( intptr_t ) ud ];
+    c.state = 2;
+    while ( !c.tx.empty() )
+    {
+        emscripten_websocket_send_binary( c.handle, c.tx.front().data(), ( uint32_t ) c.tx.front().size() );
+        c.tx.pop_front();
+    }
+    return true;
+}
+
+bool WsOnMessage( int, const EmscriptenWebSocketMessageEvent * e, void * ud )
+{
+    WsConn & c = ws_g().conns[ ( int )( intptr_t ) ud ];
+    c.rx.push_back( std::vector< uint8_t >( e->data, e->data + e->numBytes ) );
+    return true;
+}
+
+bool WsOnClose( int, const EmscriptenWebSocketCloseEvent *, void * ud )
+{
+    ws_g().conns[ ( int )( intptr_t ) ud ].state = 3;
+    return true;
+}
+
+bool WsOnError( int, const EmscriptenWebSocketErrorEvent *, void * ud )
+{
+    ws_g().conns[ ( int )( intptr_t ) ud ].state = 3;
+    return true;
+}
+
+void ws_ensure_open( int idx )
+{
+    WsConn & c = ws_g().conns[ idx ];
+    if ( c.state == 1 || c.state == 2 ) return;
+    std::string url = ws_url_for( c.key_ip, c.key_port );
+    EmscriptenWebSocketCreateAttributes attrs;
+    emscripten_websocket_init_create_attributes( &attrs );
+    attrs.url = url.c_str();
+    attrs.createOnMainThread = true;
+    int h = emscripten_websocket_new( &attrs );
+    if ( h < 0 )
+    {
+        c.state = 3;
+        return;
+    }
+    c.handle = h;
+    c.state = 1;
+    emscripten_websocket_set_onopen_callback( h, ( void * )( intptr_t ) idx, WsOnOpen );
+    emscripten_websocket_set_onmessage_callback( h, ( void * )( intptr_t ) idx, WsOnMessage );
+    emscripten_websocket_set_onclose_callback( h, ( void * )( intptr_t ) idx, WsOnClose );
+    emscripten_websocket_set_onerror_callback( h, ( void * )( intptr_t ) idx, WsOnError );
+}
+
+int ws_send( const sockaddr * addr, const uint8_t * data, int len )
+{
+    sockaddr_in * sin = reinterpret_cast< sockaddr_in * >( const_cast< sockaddr * >( addr ) );
+    uint32_t ip = ntohl( sin->sin_addr.s_addr );
+    uint16_t port = ntohs( sin->sin_port );
+
+    int idx = -1;
+    for ( size_t i = 0; i < ws_g().conns.size(); ++i )
+        if ( ws_g().conns[ i ].key_ip == ip && ws_g().conns[ i ].key_port == port )
+        { idx = ( int ) i; break; }
+    if ( idx < 0 )
+    {
+        ws_g().conns.push_back( WsConn() );
+        idx = ( int ) ws_g().conns.size() - 1;
+        WsConn & c = ws_g().conns[ idx ];
+        c.key_ip = ip;
+        c.key_port = port;
+        c.handle = -1;
+        c.state = 0;
+        char ipstr[ 32 ];
+        snprintf( ipstr, sizeof( ipstr ), "%d.%d.%d.%d",
+            ( ip >> 24 ) & 0xff, ( ip >> 16 ) & 0xff, ( ip >> 8 ) & 0xff, ip & 0xff );
+        c.target.SetAddress( ipstr ).SetPort( port );
+    }
+
+    ws_ensure_open( idx );
+    WsConn & c = ws_g().conns[ idx ];
+    if ( c.state == 2 )
+    {
+        emscripten_websocket_send_binary( c.handle, const_cast< uint8_t * >( data ), ( uint32_t ) len );
+    }
+    else
+    {
+        // socket still establishing (or failed); queue the datagram for flush on open
+        c.tx.push_back( std::vector< uint8_t >( data, data + len ) );
+    }
+    return len;
+}
+
+int ws_recv( uint8_t * buf, int maxlen, nAddress & src )
+{
+    WsGlobal & g = ws_g();
+    int n = ( int ) g.conns.size();
+    if ( n <= 0 ) return -1;
+    for ( int k = 0; k < n; ++k )
+    {
+        int i = ( g.rr + k ) % n;
+        WsConn & c = g.conns[ i ];
+        if ( !c.rx.empty() )
+        {
+            std::vector< uint8_t > & d = c.rx.front();
+            int len = ( int ) d.size();
+            if ( len > maxlen ) len = maxlen;
+            memcpy( buf, d.data(), len );
+            c.rx.pop_front();
+            src = c.target;
+            g.rr = ( i + 1 ) % n;
+            return len;
+        }
+    }
+    return -1;
+}
+
+} // namespace
+#endif // __EMSCRIPTEN__
+
 // *******************************************************************************************
 // *
 // *	Read
@@ -2001,6 +2217,12 @@ static tSettingItem<REAL> sn_sumulateReceivePacketLossConfig( "SIMULATE_RECEIVE_
 //!
 // *******************************************************************************************
 
+#ifdef __EMSCRIPTEN__
+int nSocket::Read( int8 * buf, int len, nAddress & addr ) const
+{
+    return ws_recv( reinterpret_cast< uint8_t * >( buf ), len, addr );
+}
+#else
 int nSocket::Read( int8 * buf, int len, nAddress & addr ) const
 {
     tASSERT( IsOpen() );
@@ -2063,6 +2285,7 @@ int nSocket::Read( int8 * buf, int len, nAddress & addr ) const
 
     return ret;
 }
+#endif // __EMSCRIPTEN__
 
 #ifdef DEBUG
 static REAL sn_simulateSendPacketLoss = 0;
@@ -2083,6 +2306,14 @@ static tSettingItem<REAL> sn_sumulateSendPacketLossConfig( "SIMULATE_SEND_PACKET
 //!
 // *******************************************************************************************
 
+#ifdef __EMSCRIPTEN__
+int nSocket::Write( const int8 * buf, int len, const sockaddr * addr, int addrlen ) const
+{
+    ( void ) addrlen;
+    if ( len <= 0 ) return -1;
+    return ws_send( addr, reinterpret_cast< const uint8_t * >( buf ), len );
+}
+#else
 int nSocket::Write( const int8 * buf, int len, const sockaddr * addr, int addrlen ) const
 {
     tASSERT( IsOpen() );
@@ -2137,6 +2368,7 @@ int nSocket::Write( const int8 * buf, int len, const sockaddr * addr, int addrle
 
     return ret;
 }
+#endif // __EMSCRIPTEN__
 
 // *******************************************************************************************
 // *

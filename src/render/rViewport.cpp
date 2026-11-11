@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "rViewport.h"
 #include "rConsole.h"
 #include "tConfiguration.h"
+#include "wdbg.h"
 
 #ifndef DEDICATED
 #include "rGL.h"
@@ -317,12 +318,19 @@ void rViewport::CorrectViewports(int MAX_PLAYERS){
 
 
 void rViewport::Update(int MAX_PLAYERS){
+    wdbgi("VU_CONF", conf_num);
+    wdbgi("VU_NCONF", rViewportConfiguration::next_conf_num);
+    wdbgi("VU_NVP", rViewportConfiguration::s_viewportConfigurations[conf_num]->num_viewports);
+    wdbgi("VU_B0_PRE", sr_viewportBelongsToPlayer[0]);
+    wdbgi("VU_B1_PRE", sr_viewportBelongsToPlayer[1]);
     rViewportConfiguration::UpdateConf();
     CorrectViewports(MAX_PLAYERS);
 
     int i;
     for(i=MAX_VIEWPORTS-1;i>=0;i--)
         sr_viewportBelongsToPlayer[i]=s_newViewportBelongsToPlayer[i];
+    wdbgi("VU_B0_POST", sr_viewportBelongsToPlayer[0]);
+    wdbgi("VU_B1_POST", sr_viewportBelongsToPlayer[1]);
 }
 
 void rViewport::SetDirectionOfCorrection(int vp, int dir){

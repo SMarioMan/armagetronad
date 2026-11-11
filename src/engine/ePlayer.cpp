@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "eTeam.h"
 #include "tMemManager.h"
 #include "ePlayer.h"
+#include "wdbg.h"
 //#include "tInitExit.h"
 #include "tConfiguration.h"
 #include "eNetGameObject.h"
@@ -576,32 +577,39 @@ static void PasswordCallback( nKrawall::nPasswordRequest const & request,
     uInputScrambler scrambler;
 
     // password was not stored. Request it from user:
-    uMenu login(message, false);
+    uMenu login_dummy(message, false);
+    uMenu * login;
+#ifdef __EMSCRIPTEN__
+    login = uMenu::WasmNew( message, false );
+    login->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    login = &login_dummy;
+#endif
 
     // password storage;
     tString password;
 
-    eMenuItemPassword pw(&login, password);
-    eMenuItemUserName us(&login, username);
-    us.SetColorMode( rTextField::COLOR_IGNORE );
+    eMenuItemPassword * pw = new eMenuItemPassword(login, password);
+    eMenuItemUserName * us = new eMenuItemUserName(login, username);
+    us->SetColorMode( rTextField::COLOR_IGNORE );
 
-    uMenuItemSelection<int> storepw(&login,
+    uMenuItemSelection<int> * storepw = new uMenuItemSelection<int>(login,
                                     "$login_storepw_text",
                                     "$login_storepw_help",
                                     se_PasswordStorageMode);
-    storepw.NewChoice("$login_storepw_dont_text",
+    storepw->NewChoice("$login_storepw_dont_text",
                       "$login_storepw_dont_help",
                       -1);
-    storepw.NewChoice("$login_storepw_mem_text",
+    storepw->NewChoice("$login_storepw_mem_text",
                       "$login_storepw_mem_help",
                       0);
-    storepw.NewChoice("$login_storepw_disk_text",
+    storepw->NewChoice("$login_storepw_disk_text",
                       "$login_storepw_disk_help",
                       1);
 
-    uMenuItemExit cl(&login, "$login_cancel", "$login_cancel_help" );
+    uMenuItemExit * cl = new uMenuItemExit(login, "$login_cancel", "$login_cancel_help" );
 
-    login.SetSelected(1);
+    login->SetSelected(1);
 
     // check if the username the server sent us matches one of the players'
     // global IDs. If it does we can directly select the password menu
@@ -619,7 +627,7 @@ static void PasswordCallback( nKrawall::nPasswordRequest const & request,
             }
         }
         if(match) {
-            login.SetSelected(0);
+            login->SetSelected(0);
         }
     }
 
@@ -628,7 +636,7 @@ static void PasswordCallback( nKrawall::nPasswordRequest const & request,
 
     se_ChatState( ePlayerNetID::ChatFlags_Menu, true );
 
-    login.Enter();
+    login->Enter();
 
     // return username/scrambled password
     {
@@ -989,7 +997,14 @@ void ePlayerNetID::SetSilenced( bool silenced )
 // menu where you can silence players
 void ePlayerNetID::SilenceMenu()
 {
-    uMenu menu( "$player_police_silence_text" );
+    uMenu menu_dummy( tOutput("$player_police_silence_text") );
+    uMenu * menu;
+#ifdef __EMSCRIPTEN__
+    menu = uMenu::WasmNew( tOutput("$player_police_silence_text") );
+    menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    menu = &menu_dummy;
+#endif
 
     int size = se_PlayerNetIDs.Len();
     eMenuItemSilence** items = tNEW( eMenuItemSilence* )[ size ];
@@ -1000,7 +1015,7 @@ void ePlayerNetID::SilenceMenu()
         ePlayerNetID* player = se_PlayerNetIDs[ i ];
         if ( player->IsHuman() )
         {
-            items[i] = tNEW( eMenuItemSilence )( &menu, player );
+            items[i] = tNEW( eMenuItemSilence )( menu, player );
         }
         else
         {
@@ -1009,23 +1024,32 @@ void ePlayerNetID::SilenceMenu()
 
     }
 
-    menu.Enter();
+    menu->Enter();
 
+#ifndef __EMSCRIPTEN__
     for ( i = size - 1; i>=0; --i )
     {
         if( items[i] ) delete items[i];
     }
+#endif
     delete[] items;
 }
 
 void ePlayerNetID::PoliceMenu()
 {
-    uMenu menu( "$player_police_text" );
+    uMenu menu_dummy( tOutput("$player_police_text") );
+    uMenu * menu;
+#ifdef __EMSCRIPTEN__
+    menu = uMenu::WasmNew( tOutput("$player_police_text") );
+    menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    menu = &menu_dummy;
+#endif
 
-    uMenuItemFunction kick( &menu, "$player_police_kick_text", "$player_police_kick_help", eVoter::KickMenu );
-    uMenuItemFunction silence( &menu, "$player_police_silence_text", "$player_police_silence_help", ePlayerNetID::SilenceMenu );
+    uMenuItemFunction * kick = new uMenuItemFunction( menu, "$player_police_kick_text", "$player_police_kick_help", eVoter::KickMenu );
+    uMenuItemFunction * silence = new uMenuItemFunction( menu, "$player_police_silence_text", "$player_police_silence_help", ePlayerNetID::SilenceMenu );
 
-    menu.Enter();
+    menu->Enter();
 }
 
 
@@ -1298,6 +1322,14 @@ ePlayer::~ePlayer(){
 
 #ifndef DEDICATED
 void ePlayer::Render(){
+    {
+        static int wn=0;
+        if (++wn % 60 == 0)
+        {
+            wdbgi("EPR_ID", ID());
+            wdbgi("EPR_CAM", (int)(long)cam);
+        }
+    }
     if (cam) cam->Render();
 
     // present tooltip help
@@ -3954,12 +3986,19 @@ static void do_chat(){
         sr_con.SetHeight(15,false);
         se_SetShowScoresAuto(false);
 
-        uMenu chat_menu("",false);
-        eMenuItemChat s(&chat_menu,se_say,se_chatter);
-        chat_menu.SetCenter(-.75);
-        chat_menu.SetBot(-2);
-        chat_menu.SetTop(-.7);
-        chat_menu.Enter();
+        uMenu chat_menu_dummy(tOutput(""),false);
+        uMenu * chat_menu;
+#ifdef __EMSCRIPTEN__
+        chat_menu = uMenu::WasmNew( tOutput(""), false );
+        chat_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+        chat_menu = &chat_menu_dummy;
+#endif
+        eMenuItemChat * s = new eMenuItemChat(chat_menu,se_say,se_chatter);
+        chat_menu->SetCenter(-.75);
+        chat_menu->SetBot(-2);
+        chat_menu->SetTop(-.7);
+        chat_menu->Enter();
 
         se_ChatState( ePlayerNetID::ChatFlags_Chat, false );
 

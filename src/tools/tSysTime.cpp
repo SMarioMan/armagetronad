@@ -27,6 +27,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "config.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include "tSysTime.h"
 #include "tRecorder.h"
 #include "tConsole.h"
@@ -312,8 +316,59 @@ void tDelayForce( int usecdelay )
     s_delayedInPlayback = false;
 }
 
+// (wasm build) playback pacing: a recording was made at the native frame
+// rate, which can be far above the browser's rAF rate (e.g. 345fps vs
+// 60fps). Sample the T section timestamps to expose the recorded frame
+// rate so tWasmLoop can run several frames per animation tick and keep
+// the playback in real time, like the native loop does.
+#ifdef __EMSCRIPTEN__
+static double s_playbackTargetFPS = 60.0;
+static int s_fpsSamples = 0;
+static double s_fpsLastSec = -1.0;
+
+static void tPlaybackSampleFPS( double recSec )
+{
+    if ( s_fpsSamples < 20 && s_fpsLastSec >= 0 )
+    {
+        double dt = recSec - s_fpsLastSec;
+        if ( dt > 0.0002 && dt < 0.5 )
+        {
+            double fps = 1.0 / dt;
+            s_playbackTargetFPS += ( fps - s_playbackTargetFPS ) * 0.1;
+            ++s_fpsSamples;
+        }
+    }
+    s_fpsLastSec = recSec;
+}
+
+double tPlaybackTargetFPS()
+{
+    return s_playbackTargetFPS;
+}
+
+// (wasm build) seconds of the currently playing back recording (raw
+// recorded time, no time scaling). Used by the playback harness to
+// target a moment, and by tWasmLoop to auto-pause at a target.
+double tPlaybackRecSec()
+{
+    return timeRelative.seconds + timeRelative.microseconds * 1E-6;
+}
+
+// JS-facing bridge for tPlaybackRecSec (playback harness / debugger).
+extern "C"
+EMSCRIPTEN_KEEPALIVE double adGetRecSec()
+{
+    return tPlaybackRecSec();
+}
+#endif
+
 void tAdvanceFrame( int usecdelay )
 {
+    // (wasm build) no sleep here: the frame function already runs as a
+    // fresh top-level call from the JS event loop (tWasmLoop).  A sleep
+    // in the middle of the frame would make asyncify re-execute the
+    // whole frame a second time.
+
     // delay a bit if we're not playing back
     if ( usecdelay > 0 )
         tDelay( usecdelay );
@@ -329,6 +384,10 @@ void tAdvanceFrame( int usecdelay )
 
         // correct start time so transition to normal time after the recording ended is smooth
         timeStart = timeStart + timeNewRelative - timeRelative;
+#ifdef __EMSCRIPTEN__
+        // feed the playback pacing with the recorded frame rate
+        tPlaybackSampleFPS( timeRelative.seconds + timeRelative.microseconds * 1E-6 );
+#endif
     }
     else
     {

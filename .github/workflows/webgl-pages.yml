@@ -1,0 +1,111 @@
+name: WebGL build & Pages
+
+on:
+  push:
+    branches: [webgl]
+  pull_request:
+    branches: [webgl]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: webgl-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # full history: bootstrap.sh derives the version string and
+          # fingerprint from git
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install autotools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake pkg-config build-essential
+
+      - name: Set up emsdk + wasm libxml2
+        id: toolchain
+        env:
+          EMSDK_DIR: ${{ runner.temp }}/emsdk
+          LIBXML2_PREFIX: ${{ runner.temp }}/libxml2-wasm
+          DOWNLOAD_DIR: ${{ runner.temp }}/dl
+        run: ./webgl/setup_toolchain.sh 2>&1 | tee "$RUNNER_TEMP/toolchain.log"
+
+      - name: Bootstrap autotools
+        run: ./bootstrap.sh
+
+      # A half built toolchain would otherwise show up much later as a
+      # confusing configure error.  Job logs need a signed-in session,
+      # annotations do not, so the state is reported as an annotation.
+      - name: Check toolchain
+        run: |
+          em="$RUNNER_TEMP/emsdk/upstream/emscripten/em++"
+          lx="$RUNNER_TEMP/libxml2-wasm/lib/libxml2.a"
+          if [ ! -x "$em" ] || [ ! -f "$lx" ]; then
+            info=$( { echo "em++=$([ -x "$em" ] && echo yes || echo no) libxml2=$([ -f "$lx" ] && echo yes || echo no)"; \
+                     echo "runner temp: $(ls "$RUNNER_TEMP" 2>&1 | tr '\n' ' ')"; \
+                     echo "log tail: $(tail -c 900 "$RUNNER_TEMP/toolchain.log" 2>/dev/null | tr '\n' ' ')"; } \
+                    | tr -d '\r' | tr '\n' '~' | sed -e 's/%/%25/g' -e 's/::/%3A%3A/g' ) || true
+            printf '::error::toolchain incomplete: %s\n' "$info"
+            exit 1
+          fi
+          "$em" --version | head -1
+
+      - name: Build WebAssembly port
+        id: build
+        env:
+          EMSDK_DIR: ${{ runner.temp }}/emsdk
+          LIBXML2_PREFIX: ${{ runner.temp }}/libxml2-wasm
+          CLEAN: 0
+        run: ./webgl/build.sh 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - name: Build failure log
+        if: failure() && steps.build.outcome == 'failure'
+        run: |
+          info=$(tail -c 2000 "$RUNNER_TEMP/build.log" 2>/dev/null \
+                  | tr -d '\r' | tr '\n' '~' | sed -e 's/%/%25/g' -e 's/::/%3A%3A/g') || true
+          printf '::error::build log tail: %s\n' "$info"
+
+      - name: Show build output
+        run: ls -la webgl/dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: armagetronad-webgl-site
+          path: webgl/dist
+          retention-days: 30
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: webgl/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    # The github-pages environment is allowed to deploy from webgl only
+    # (Settings -> Environments -> github-pages -> Branches or tag policies).
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Published site
+        run: echo "Published ${{ steps.deployment.outputs.page_url }}" | tee -a "$GITHUB_STEP_SUMMARY"

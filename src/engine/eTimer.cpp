@@ -688,11 +688,28 @@ void se_SyncGameTimer(){
         se_mainGameTimer->SyncTime();
 }
 
+#ifdef __EMSCRIPTEN__
+// which pause sources currently hold the game timer; file-scope so the
+// mask can be reset with the timer (se_MakeGameTimer/se_KillGameTimer)
+static int s_gameTimerPausedBySources = eTimerPauseSource::eTIMER_PAUSE_NONE;
+#endif
+
 void se_MakeGameTimer(){
+#ifdef __EMSCRIPTEN__
+    // a fresh game timer starts unpaused; any pause is (re)applied by the
+    // game flow via se_PauseGameTimer
+    s_gameTimerPausedBySources = eTimerPauseSource::eTIMER_PAUSE_NONE;
+#endif
     tNEW(eTimer);
 }
 
 void se_KillGameTimer(){
+#ifdef __EMSCRIPTEN__
+    // pause state belongs to the timer's lifetime; don't leak it into the
+    // next game's timer (a stale pause mask froze new game timers on the
+    // wasm build, leaving the world unrendered)
+    s_gameTimerPausedBySources = eTimerPauseSource::eTIMER_PAUSE_NONE;
+#endif
     se_mainGameTimerHolder=nullptr;
     if (se_mainGameTimer)
         delete se_mainGameTimer;
@@ -706,7 +723,11 @@ void se_ResetGameTimer(REAL t){
 }
 
 void se_PauseGameTimer(bool p,  eTimerPauseSource source){
+#ifdef __EMSCRIPTEN__
+    int & pausedBySources = s_gameTimerPausedBySources;
+#else
     static int pausedBySources = eTimerPauseSource::eTIMER_PAUSE_NONE;
+#endif
     if(p)
     {
         pausedBySources |= source;

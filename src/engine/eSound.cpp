@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <iostream>
 #include <stdlib.h>
 #include "eGrid.h"
-#include "tException.h"
+#include "tSysTime.h"
 
 //eGrid* eSoundPlayer::S_Grid = NULL;
 
@@ -87,6 +87,15 @@ static tList<eSoundPlayer> se_globalPlayers;
 void fill_audio(void *udata, Uint8 *stream, int len)
 {
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+    // The mix code below is additive (read-modify-write of dest), so the
+    // callback buffer must start out silent on every call. The emscripten
+    // JS port reuses one malloc'd buffer for every callback - without this
+    // zeroing, old samples accumulate until the output saturates and
+    // "phantom" audio plays on forever, e.g. in the menus.
+    // (native audio drivers hand out clean buffers, so this is only needed here)
+    memset( stream, 0, len );
+#endif
     real_sound_sources=0;
     int i;
     if (eGrid::CurrentGrid())
@@ -187,7 +196,11 @@ void se_SoundInit()
         }
 
         desired.format=AUDIO_S16SYS;
+#ifdef __EMSCRIPTEN__
+        desired.samples=1024;
+#else
         desired.samples=128;
+#endif
         while (desired.samples <= desired.freq >> (6-buffer_shift))
             desired.samples <<= 1;
         desired.channels = 2;
@@ -347,6 +360,84 @@ eWavData::eWavData(const char * fileName,const char *alternative)
 #undef SDL_LoadWAV
 #endif
 
+#ifdef __EMSCRIPTEN__
+// Minimal RIFF/WAV reader for the emscripten build. The emscripten SDL
+// port provides no SDL_LoadWAV (the header macro expands to
+// SDL_LoadWAV_RW, which is unimplemented there). The game's sound files
+// are plain 8- or 16-bit PCM, so parse the fmt/data chunks directly.
+static SDL_AudioSpec * SDLCALL SDL_LoadWAV(char const *file, SDL_AudioSpec *spec, Uint8 **audio_buf, Uint32 *audio_len)
+{
+    FILE *fp = fopen(file, "rb");
+    if (!fp)
+        return NULL;
+
+    unsigned char hdr[12];
+    if (fread(hdr, 1, 12, fp) != 12 || memcmp(hdr, "RIFF", 4) != 0 || memcmp(hdr + 8, "WAVE", 4) != 0)
+    {
+        fclose(fp);
+        return NULL;
+    }
+
+    int format = 0, channels = 0, freq = 0, bits = 0;
+    long data_off = 0, data_len = 0;
+    unsigned char chunk[8];
+    while (fread(chunk, 1, 8, fp) == 8)
+    {
+        unsigned int clen = (unsigned int)chunk[4] | ((unsigned int)chunk[5] << 8)
+                          | ((unsigned int)chunk[6] << 16) | ((unsigned int)chunk[7] << 24);
+        if (memcmp(chunk, "fmt ", 4) == 0)
+        {
+            unsigned char f[16];
+            if (clen < 16 || (int)fread(f, 1, 16, fp) != 16)
+                break;
+            format   = f[0] | (f[1] << 8);
+            channels = f[2] | (f[3] << 8);
+            freq     = f[4] | (f[5] << 8) | (f[6] << 16) | (f[7] << 24);
+            bits     = f[14] | (f[15] << 8);
+            if (clen > 16)
+                fseek(fp, clen - 16, SEEK_CUR);
+        }
+        else if (memcmp(chunk, "data", 4) == 0)
+        {
+            data_off = ftell(fp);
+            data_len = clen;
+            break;
+        }
+        else
+        {
+            fseek(fp, clen, SEEK_CUR);
+        }
+        if (clen & 1)
+            fseek(fp, 1, SEEK_CUR);
+    }
+    fclose(fp);
+
+    if (format != 1 || (bits != 8 && bits != 16) || freq <= 0 || data_off <= 0)
+        return NULL;
+
+    fp = fopen(file, "rb");
+    if (!fp)
+        return NULL;
+    fseek(fp, data_off, SEEK_SET);
+    *audio_buf = (Uint8 *)malloc(data_len > 0 ? data_len : 1);
+    if (!*audio_buf)
+    {
+        fclose(fp);
+        return NULL;
+    }
+    size_t got = fread(*audio_buf, 1, data_len, fp);
+    fclose(fp);
+    *audio_len = (Uint32)got;
+
+    spec->freq = (int)freq;
+    spec->channels = (int)channels;
+    spec->format = (bits == 8) ? AUDIO_U8 : AUDIO_S16SYS;
+    spec->samples = 0;
+    spec->callback = NULL;
+    spec->userdata = NULL;
+    return spec;
+}
+#else
 static SDL_AudioSpec * SDLCALL SDL_LoadWAV(char const *file, SDL_AudioSpec *spec, Uint8 **audio_buf, Uint32 *audio_len)
 {
     auto *rw = SDL_RWFromFile(file, "rb");
@@ -355,6 +446,7 @@ static SDL_AudioSpec * SDLCALL SDL_LoadWAV(char const *file, SDL_AudioSpec *spec
 
     return SDL_LoadWAV_RW(rw,1, spec,audio_buf,audio_len);
 }
+#endif
 
 #endif
 

@@ -54,6 +54,7 @@ libtools_a_SOURCES=	${tools_extra} tools/tArray.cpp tools/tArray.h tools/tCallba
 	tools/tMemStack.cpp tools/tMemStack.h tools/tReferenceHolder.h \
     tools/tRing.cpp tools/tRing.h tools/tSafePTR.cpp\
 	tools/tSafePTR.h tools/tString.cpp tools/tString.h tools/tSysTime.cpp tools/tSysTime.h tools/tToDo.cpp tools/tToDo.h\
+	tools/tWasmLoop.cpp tools/tWasmLoop.h\
 	tools/tException.cpp tools/tException.h\
 	tools/tRecorder.cpp tools/tRecorder.h\
 	tools/tRecorderInternal.cpp tools/tRecorderInternal.h\

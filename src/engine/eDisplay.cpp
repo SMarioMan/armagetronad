@@ -372,6 +372,13 @@ void eGrid::display_simple( int viewer,bool floor,
 
         su_FetchAndStoreSDLInput();
         int floorDetail = sr_floorDetail;
+#ifdef __EMSCRIPTEN__
+        // The WebGL-emulated GL has no anisotropic filtering and minifies the
+        // 1px line floor textures (floor_a/floor_b) into a severe wavy moire.
+        // Use the plain per-vertex-coloured line grid, which renders cleanly
+        // without texture sampling and matches the classic tron look.
+        floorDetail = rFLOOR_GRID;
+#endif
 
         // no multitexturing without alpha blending
         if ( !sr_alphaBlend && floorDetail > rFLOOR_TEXTURE )

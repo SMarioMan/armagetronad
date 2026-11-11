@@ -62,3 +62,14 @@ void sr_CheckGLError()
     }
 }
 #endif
+#ifdef __EMSCRIPTEN__
+extern "C" void glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
+{
+    glBegin(GL_QUADS);
+    glVertex2f(x1, y1);
+    glVertex2f(x2, y1);
+    glVertex2f(x2, y2);
+    glVertex2f(x1, y2);
+    glEnd();
+}
+#endif

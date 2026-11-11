@@ -2009,7 +2009,14 @@ void eVoter::RemoveFromGame()
 
 void eVoter::KickMenu()							// activate player kick menu
 {
-    uMenu menu( "$player_police_kick_text" );
+    uMenu menu_dummy( tOutput("$player_police_kick_text") );
+    uMenu * menu;
+#ifdef __EMSCRIPTEN__
+    menu = uMenu::WasmNew( tOutput("$player_police_kick_text") );
+    menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    menu = &menu_dummy;
+#endif
 
     int size = se_PlayerNetIDs.Len();
     eMenuItemKick** items = tNEW( eMenuItemKick* )[ size ];
@@ -2020,7 +2027,7 @@ void eVoter::KickMenu()							// activate player kick menu
         ePlayerNetID* player = se_PlayerNetIDs[ i ];
         if ( player->IsHuman() )
         {
-            items[i] = tNEW( eMenuItemKick )( &menu, player );
+            items[i] = tNEW( eMenuItemKick )( menu, player );
         }
         else
         {
@@ -2028,13 +2035,15 @@ void eVoter::KickMenu()							// activate player kick menu
         }
     }
 
-    menu.Enter();
+    menu->Enter();
 
+#ifndef __EMSCRIPTEN__
     for ( i = size - 1; i>=0; --i )
     {
         if( items[i] )
             delete items[i];
     }
+#endif
     delete[] items;
 }
 
@@ -2066,27 +2075,36 @@ void eVoter::VotingMenu()						// activate voting menu ( you can vote about sugg
             return;
 
         // fill menu
-        uMenu menu( "$voting_menu_text" );
+        uMenu menu_dummy( tOutput("$voting_menu_text") );
+        uMenu * menu;
+#ifdef __EMSCRIPTEN__
+        menu = uMenu::WasmNew( tOutput("$voting_menu_text") );
+        menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+        menu = &menu_dummy;
+#endif
 
         eMenuItemVote** items = tNEW( eMenuItemVote* )[ size ];
 
         int i;
         for ( i = size-1; i>=0; --i )
         {
-            items[i] = tNEW( eMenuItemVote )( &menu, eVoteItem::GetItems()( i ) );
+            items[i] = tNEW( eMenuItemVote )( menu, eVoteItem::GetItems()( i ) );
         }
 
         // enter menu
         recursion = true;
-        votingMenu = &menu;
-        menu.Enter();
+        votingMenu = menu;
+        menu->Enter();
         votingMenu = 0;
         recursion = false;
 
+#ifndef __EMSCRIPTEN__
         for ( i = size - 1; i>=0; --i )
         {
             delete items[i];
         }
+#endif
         delete[] items;
 
         // expire old items

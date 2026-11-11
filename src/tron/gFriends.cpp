@@ -46,19 +46,26 @@ gFriends::gFriends()
 
 void gFriends::FriendsMenu( void )
 {
-    uMenu net_menu("$friends_menu");
+    uMenu net_menu_dummy("$friends_menu");
+    uMenu * net_menu;
+#ifdef __EMSCRIPTEN__
+    net_menu = uMenu::WasmNew( "$friends_menu" );
+    net_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    net_menu = &net_menu_dummy;
+#endif
 
-	uMenuItemToggle friends_enable (&net_menu, "$friends_enable", "$friends_enable_help", sg_enableFriends);
+	uMenuItemToggle * friends_enable = new uMenuItemToggle(net_menu, "$friends_enable", "$friends_enable_help", sg_enableFriends);
 
 	tString name;
     for (int i = MAX_FRIENDS-1; i>=0; i--)
 	{
 		name = tOutput("$friend_word");
 		name << " " << (i + 1);
-		tNEW(uMenuItemString) (uMenuItemString(&net_menu, name, "$friend_help", sg_friends.friends[i]));
+		tNEW(uMenuItemString) (uMenuItemString(net_menu, name, "$friend_help", sg_friends.friends[i]));
     }
 
-    net_menu.Enter();
+    net_menu->Enter();
 }
 
 bool getFriendsEnabled()

@@ -1,3 +1,7 @@
 All the documentation for Armagetron is now in the doc/ directory and in HTML.
 Starting point is, of course, doc/index.html.
 The directory is usually located in /usr/local/games/armagetronad.
+
+This branch (webgl) also builds the game as a WebAssembly/WebGL application
+that runs in the browser: see webgl/README.md and
+https://smarioman.github.io/armagetronad/ .

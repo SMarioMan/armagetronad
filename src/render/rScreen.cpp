@@ -48,6 +48,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifndef SDL_OPENGL
 #ifndef DIRTY
 #define DIRTY
@@ -79,6 +83,13 @@ static REAL aspect[ArmageTron_Custom+2]= {1, 1	, 1  , 1  , 1  , 1  , 1	 , 1	,   
 
 int sr_screenWidth,sr_screenHeight;
 
+#ifdef __EMSCRIPTEN__
+// (web) The live window's available area, reported by JS on load and on
+// every resize. In "desktop" screen mode the render resolution tracks this
+// so the game fills the window and follows it as it is resized.
+int sr_wasmWinW = 0, sr_wasmWinH = 0;
+#endif
+
 static tSettingItem<int>  at_ch("CUSTOM_SCREEN_HEIGHT"	, height[ArmageTron_Custom]);
 static tSettingItem<int>  at_cw("CUSTOM_SCREEN_WIDTH" 	, width	[ArmageTron_Custom]);
 static tSettingItem<REAL> at_ca("CUSTOM_SCREEN_ASPECT" , aspect[ArmageTron_Custom]);
@@ -99,12 +110,21 @@ std::istream & operator >> ( std::istream & s, rScreenSize const & size )
 }
 */
 
+#ifdef __EMSCRIPTEN__
+static rScreenSettings em6(ArmageTron_800_600, false, ArmageTron_ColorDepth_16, true, false);
+static rScreenSettings em5(ArmageTron_800_600, false, ArmageTron_ColorDepth_Desktop, true, false);
+static rScreenSettings em4(ArmageTron_800_600, false,ArmageTron_ColorDepth_16);
+static rScreenSettings em3(ArmageTron_800_600, true, ArmageTron_ColorDepth_16);
+static rScreenSettings em2(ArmageTron_800_600, true, ArmageTron_ColorDepth_16, false);
+static rScreenSettings em1(ArmageTron_800_600);
+#else
 static rScreenSettings em6(ArmageTron_320_240, false, ArmageTron_ColorDepth_16, true, false);
 static rScreenSettings em5(ArmageTron_320_240, false, ArmageTron_ColorDepth_Desktop, true, false);
 static rScreenSettings em4(ArmageTron_640_480, false,ArmageTron_ColorDepth_16);
 static rScreenSettings em3(ArmageTron_640_480, true, ArmageTron_ColorDepth_16);
 static rScreenSettings em2(ArmageTron_640_480, true, ArmageTron_ColorDepth_16, false);
 static rScreenSettings em1(ArmageTron_640_480);
+#endif
 
 static rScreenSettings *emergency[MAXEMERGENCY+2]={ &lastSuccess, &lastSuccess, &em1, &em2, &em3 , &em4, &em5, &em6};
 
@@ -356,6 +376,30 @@ void sr_ReinitDisplay(){
 
 }
 
+#ifdef __EMSCRIPTEN__
+// (web) Report the live window size to the renderer. In "desktop" screen
+// mode the display is re-initialized so the canvas + GL viewport follow the
+// window (called by JS on load and on every resize).
+extern "C" EMSCRIPTEN_KEEPALIVE
+void sr_WasmWindowResized(int w, int h)
+{
+    if (w > 0 && h > 0)
+    {
+        sr_wasmWinW = w;
+        sr_wasmWinH = h;
+    }
+
+    if (sr_screen && w > 0 && h > 0)
+    {
+        rResolution cur = currentScreensetting.fullscreen
+            ? currentScreensetting.res.res
+            : currentScreensetting.windowSize.res;
+        if (cur == ArmageTron_Desktop)
+            sr_ReinitDisplay();
+    }
+}
+#endif
+
 
 // *******************************************
 
@@ -407,11 +451,15 @@ static void sr_SetGLAttributes( int rDepth, int gDepth, int bDepth, int zDepth )
     switch (currentScreensetting.vSync)
     {
     case ArmageTron_VSync_On:
+#ifndef __EMSCRIPTEN__
         SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, 1 );
+#endif
         break;
     case ArmageTron_VSync_Off:
     case ArmageTron_VSync_MotionBlur:
+#ifndef __EMSCRIPTEN__
         SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, 0 );
+#endif
         break;
     case ArmageTron_VSync_Default:
         break;
@@ -435,6 +483,7 @@ static bool lowlevel_sr_InitDisplay(){
     sr_screenWidth = res.width;
     sr_screenHeight= res.height;
 
+
     // desktop color depth
     static int desktopCD_R = 5;
     static int desktopCD_G = 5;
@@ -444,6 +493,29 @@ static bool lowlevel_sr_InitDisplay(){
     static int sr_desktopWidth = 0, sr_desktopHeight = 0;
 
     // determine those values
+#ifdef __EMSCRIPTEN__
+    // web: "desktop" resolution tracks the live window size (reported by JS
+    // via sr_WasmWindowResized); fall back to the current canvas size.
+    if (sr_wasmWinW > 0 && sr_wasmWinH > 0)
+    {
+        sr_desktopWidth  = sr_wasmWinW;
+        sr_desktopHeight = sr_wasmWinH;
+    }
+    else
+    {
+        const SDL_VideoInfo* videoInfo = SDL_GetVideoInfo();
+        if (videoInfo && sr_DesktopScreensizeSupported())
+        {
+            sr_desktopWidth  = videoInfo->current_w;
+            sr_desktopHeight = videoInfo->current_h;
+        }
+        else if (sr_desktopWidth == 0)
+        {
+            sr_desktopWidth  = 800;
+            sr_desktopHeight = 600;
+        }
+    }
+#else
     if ( sr_desktopWidth == 0 && !sr_screen )
     {
         // select sane defaults in case the following operation fails
@@ -477,6 +549,7 @@ static bool lowlevel_sr_InitDisplay(){
 #endif
         }
     }
+#endif
 
     if (!sr_screen)
     {
@@ -846,6 +919,9 @@ bool sr_InitDisplay(){
     use_directx_back = sr_useDirectX;
 
     cycleprograminited = false;
+#ifdef __EMSCRIPTEN__
+    sr_texturesTruecolor = true;
+#endif
     while (failed_attempts <= MAXEMERGENCY+1)
     {
         if (failed_attempts)
@@ -990,9 +1066,13 @@ void sr_LoadDefaultConfig(){
         for (i=rTextureGroups::TEX_GROUPS-1;i>=0;i--)
             rTextureGroups::TextureMode[i]=-1;
 
+
 #ifndef DEDICATED
         rTextureGroups::TextureMode[rTextureGroups::TEX_OBJ]=GL_NEAREST_MIPMAP_NEAREST;
         rTextureGroups::TextureMode[rTextureGroups::TEX_FONT]=GL_NEAREST_MIPMAP_NEAREST;
+#endif
+#ifdef __EMSCRIPTEN__
+        rTextureGroups::TextureMode[rTextureGroups::TEX_FLOOR]=GL_LINEAR;
 #endif
 
         sr_highRim=false;

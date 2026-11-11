@@ -23,7 +23,11 @@ class tCurlGlobal
 public:
     tCurlGlobal()
     {
+#ifdef __EMSCRIPTEN__
+        // no network in the browser; skip libcurl initialization
+#else
         curl_global_init(CURL_GLOBAL_DEFAULT);
+#endif
     };
 
     ~tCurlGlobal()
@@ -74,6 +78,12 @@ static tSettingItem<tString> conf_res_repo("RESOURCE_REPOSITORY_CLIENT", tResour
 
 tResourceManager::Result tResourceManager::FetchURI(const char* URI, std::ostream& o)
 {
+#ifdef __EMSCRIPTEN__
+    // No network access in the browser; all resources are loaded from the
+    // local (emscripten virtual) filesystem.
+    con << tOutput("$resource_fetcherror_noconnect", URI);
+    return Result::ERROR_Unknown;
+#else
 #ifdef LIBCURL_PROTOCOL_HTTP
     {
         tCurlLocal handle;
@@ -154,6 +164,7 @@ tResourceManager::Result tResourceManager::FetchURI(const char* URI, std::ostrea
 #endif
     con << "OK\n";
     return Result::RESULT_Ok;
+#endif
 }
 
 static int myHTTPFetch(const char* URI, const char* filename, const char* savepath)

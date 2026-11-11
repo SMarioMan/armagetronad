@@ -150,6 +150,9 @@ private:
     GLuint tint_;           //!< the OpenGL id of this texture
     bool repx_,repy_;       //!< flags indicating whether the texture repeats in x and y direction
     bool storeAlpha_;       //!< flag indicating whether the alpha value should be stored
+#ifdef __EMSCRIPTEN__
+    bool mipmapped_;        //!< set by Upload if a mipmap chain was built (WebGL1: POT only)
+#endif // __EMSCRIPTEN__
 };
 
 // ******************************************************************************************

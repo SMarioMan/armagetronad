@@ -144,6 +144,10 @@ tString expand_home(const tString & pathname);
 
 #define expand_home_c(c) expand_home(tString(c))
 
+#ifdef __EMSCRIPTEN__
+// Game data is preloaded into the emscripten virtual filesystem.
+#define DATA_DIR "/usr/local/share/games/armagetronad"
+#endif
 #ifdef DATA_DIR
 static tString st_DataDir(expand_home_c(DATA_DIR));    // directory for game data
 #else
@@ -1341,6 +1345,9 @@ static tString GeneratePrefix()
     // the binary path as it was compiled in
     tString const & bindirCompiled = st_bindirCompiled;
     // and the current binary path
+#ifdef __EMSCRIPTEN__
+    return tString("/usr/local");
+#endif
     tString bindirNow(GenerateParentOfExecutable(1));
     if(bindirNow.Len() <= 1)
         return prefixCompiled;

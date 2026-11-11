@@ -39,6 +39,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tResourceManager.h"
 
 #include <sstream>
+#ifdef __EMSCRIPTEN__
+#include <stdlib.h>
+#include <vector>
+#endif
 
 #ifndef DEDICATED
 #include "rRender.h"
@@ -220,8 +224,32 @@ void rSurface::Create( char const * fileName )
     tString s = tDirectories::Data().GetReadPath( fileName );
 
     // Load image
+#ifdef __EMSCRIPTEN__
+    // The emscripten IMG port (stb_image) decodes with the standard
+    // alpha convention (255 = opaque), exactly like native SDL_image:
+    // IMG_InvertAlpha() has been a no-op since SDL_image 1.0.10, so the
+    // "inversion" the game asks for never actually happens on the native
+    // path either. Do NOT invert the alpha channel here.
+    FILE *fp = fopen((const char*)s, "rb");
+    SDL_Surface *surface = NULL;
+    if (fp) {
+        fseek(fp, 0, SEEK_END);
+        long size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        unsigned char *buffer = (unsigned char *)malloc(size);
+        if (buffer) {
+            fread(buffer, 1, size, fp);
+            SDL_RWops *rw = SDL_RWFromMem(buffer, size);
+            surface = IMG_Load_RW(rw, 1);
+            free(buffer);
+        }
+        fclose(fp);
+    }
+    Create( surface );
+#else
     IMG_InvertAlpha(true);
     Create( IMG_Load(s) );
+#endif
 
     //if ( surface_ )
     //    std::cerr << "loaded surface " << fileName << "\n";
@@ -258,7 +286,11 @@ void rSurface::Create( SDL_Surface * surface )
             break;
 
         case 2:
+#ifdef __EMSCRIPTEN__
+            format_ = GL_LUMINANCE_ALPHA;
+#else
             format_ = GL_LUMINANCE8_ALPHA8;
+#endif
             break;
 
         case 3:
@@ -428,6 +460,9 @@ void rITexture::OnUnload( void )
 
 rISurfaceTexture::rISurfaceTexture( int group, bool repx, bool repy, bool storeAlpha )
         : group_( group ), textureModeLast_( -1), tint_( 0 ), repx_( repx ), repy_( repy ), storeAlpha_( storeAlpha )
+#ifdef __EMSCRIPTEN__
+        , mipmapped_( false )
+#endif // __EMSCRIPTEN__
 {
 }
 
@@ -477,6 +512,70 @@ void rISurfaceTexture::ProcessImage( SDL_Surface * surface )
 //!
 // ******************************************************************************************
 
+#ifdef __EMSCRIPTEN__
+// WebGL1 has no gluBuild2DMipmaps (or glGenerateMipmap in the legacy GL
+// emulation), so build the mipmap chain in software and upload each level:
+// every level is the 2x2 box average of the level above, mirroring what
+// gluBuild2DMipmaps does in the native build. Only POT textures get a
+// chain; WebGL1 refuses mipmaps for anything else.
+static bool UploadMipLevels( const SDL_Surface * tex )
+{
+    const int w = tex->w;
+    const int h = tex->h;
+    const int bpp = tex->format->BytesPerPixel;
+
+    if ( (w & (w - 1)) || (h & (h - 1)) || bpp < 1 || bpp > 4 )
+        return false;
+
+    const int internalFormat = bpp == 4 ? GL_RGBA
+                               : bpp == 3 ? GL_RGB
+                               : bpp == 2 ? GL_LUMINANCE_ALPHA
+                               : GL_LUMINANCE;
+    const int pitch = tex->pitch > 0 ? tex->pitch : w * bpp;
+    const unsigned char * src = (const unsigned char *)tex->pixels;
+
+    std::vector< unsigned char > cur, nxt;
+    cur.assign( src, src + (size_t)pitch * h );
+
+    int level = 1;
+    int cw = w, ch = h, cp = pitch;
+    while ( cw > 1 || ch > 1 )
+    {
+        const int nw = cw > 1 ? cw / 2 : 1;
+        const int nh = ch > 1 ? ch / 2 : 1;
+        nxt.resize( (size_t)nw * nh * bpp );
+
+        for ( int y = 0; y < nh; y++ )
+        {
+            const unsigned char * src0 = &cur[(size_t)(2 * y) * cp];
+            const unsigned char * src1 = &cur[(size_t)(2 * y + 1) * cp];
+            unsigned char * dst = &nxt[(size_t)y * nw * bpp];
+
+            for ( int x = 0; x < nw; x++ )
+            {
+                const unsigned char * a = &src0[2 * x * bpp];
+                const unsigned char * b = 2 * x + 1 < cw ? &src0[(2 * x + 1) * bpp] : a;
+                const unsigned char * c = &src1[2 * x * bpp];
+                const unsigned char * d = 2 * x + 1 < cw ? &src1[(2 * x + 1) * bpp] : c;
+
+                for ( int i = 0; i < bpp; i++ )
+                    dst[i] = (unsigned char)((a[i] + b[i] + c[i] + d[i]) / 4);
+            }
+        }
+
+        glTexImage2D(GL_TEXTURE_2D, level, internalFormat, nw, nh, 0,
+                     internalFormat, GL_UNSIGNED_BYTE, &nxt[0]);
+
+        cur.swap(nxt);
+        cw = nw;
+        ch = nh;
+        cp = nw * bpp;
+        level++;
+    }
+
+    return level > 1;
+}
+#endif
 void rISurfaceTexture::Upload( rSurface & surface )
 {
 #ifndef DEDICATED
@@ -503,6 +602,13 @@ void rISurfaceTexture::Upload( rSurface & surface )
     else
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
 
+#ifdef __EMSCRIPTEN__
+    int format;
+    if ( storageHack_ || ( storeAlpha_ && texalpha ) )
+        format=GL_RGBA;
+    else
+        format=GL_RGB;
+#else
     int format;
     if (sr_texturesTruecolor)
         if (storageHack_ || ( storeAlpha_ && texalpha ) )
@@ -514,9 +620,53 @@ void rISurfaceTexture::Upload( rSurface & surface )
             format=GL_RGBA4;
         else
             format=GL_RGB5;
+#endif
 
+#ifdef __EMSCRIPTEN__
+    // The emscripten IMG port (stb_image) always produces 32-bit RGBA
+    // surfaces, so upload them directly. (SDL_BlitSurface is unavailable
+    // in the emscripten SDL port, so no intermediate surface.)
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    switch (tex->format->BytesPerPixel) {
+    case 4:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->w, tex->h, 0,
+                      GL_RGBA, GL_UNSIGNED_BYTE, tex->pixels);
+        break;
+    case 3:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex->w, tex->h, 0,
+                      GL_RGB, GL_UNSIGNED_BYTE, tex->pixels);
+        break;
+    case 2:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, tex->w, tex->h, 0,
+                      GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, tex->pixels);
+        break;
+    case 1:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, tex->w, tex->h, 0,
+                      GL_LUMINANCE, GL_UNSIGNED_BYTE, tex->pixels);
+        break;
+    default:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->w, tex->h, 0,
+                      GL_RGBA, GL_UNSIGNED_BYTE, tex->pixels);
+        break;
+    }
+
+    // WebGL1: NPOT textures must use CLAMP_TO_EDGE (and never mipmap filters,
+    // which OnSelect remaps). POT textures keep the game's wrap settings and
+    // get a mipmap chain so minification filters like the native build.
+    if ( (tex->w & (tex->w - 1)) || (tex->h & (tex->h - 1)) )
+    {
+        mipmapped_ = false;
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    else
+    {
+        mipmapped_ = UploadMipLevels( tex );
+    }
+#else
     gluBuild2DMipmaps(GL_TEXTURE_2D,format,tex->w,tex->h,
                       texformat,GL_UNSIGNED_BYTE,tex->pixels);
+#endif
 
     sr_UnlockSDL();
  #endif
@@ -540,6 +690,7 @@ void rISurfaceTexture::OnSelect( bool enforce )
         RenderEnd(true);
 
         int texmod=rTextureGroups::TextureMode[group_];
+
         if (enforce && texmod<0) texmod=GL_NEAREST_MIPMAP_NEAREST;
 
         if(textureModeLast_!=texmod)
@@ -566,8 +717,24 @@ void rISurfaceTexture::OnSelect( bool enforce )
                 //glEnable(GL_TEXTURE);
                 glEnable(GL_TEXTURE_2D);
 
-                glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
-                                texmod);
+#ifdef __EMSCRIPTEN__
+                // WebGL1: a mipmapped min filter needs a complete mip chain,
+                // which Upload only builds for POT textures (mipmapped_).
+                // NPOT textures fall back to the equivalent non-mipmapped
+                // filter; textureModeLast_ still tracks the requested mode,
+                // so no reload loop can result.
+                int minfilter = texmod;
+                if ( !mipmapped_ )
+                {
+                    if (minfilter == GL_NEAREST_MIPMAP_NEAREST) minfilter = GL_NEAREST;
+                    else if (minfilter == GL_LINEAR_MIPMAP_NEAREST) minfilter = GL_LINEAR;
+                    else if (minfilter == GL_NEAREST_MIPMAP_LINEAR) minfilter = GL_NEAREST;
+                    else if (minfilter == GL_LINEAR_MIPMAP_LINEAR) minfilter = GL_LINEAR;
+                }
+                glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,minfilter);
+#else
+                glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,texmod);
+#endif
 
                 switch(texmod)
                 {

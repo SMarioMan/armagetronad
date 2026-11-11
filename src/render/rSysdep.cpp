@@ -761,8 +761,16 @@ void  rSysDep::ClearGL(){
         }
         */
 
+#ifdef __EMSCRIPTEN__
+        // Single-buffered WebGL: clearing the color buffer wipes the screen
+        // before the browser presents it (the game clears AFTER the swap).
+        // Clear only the depth buffer; the color buffer is overwritten by
+        // the frame's opaque background (menu grid / 3D skybox).
+        glClear(GL_DEPTH_BUFFER_BIT);
+#else
         glClearColor(0.0,0.0,0.0,1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#endif
     }
 }
 #endif

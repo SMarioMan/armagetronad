@@ -35,4 +35,11 @@ void tAdvanceFrame( int usecdelay = 0);       //! andvances one frame: updates t
 void tDelay( int usecdelay );                 //! delays for the specified number of microseconds
 void tDelayForce( int usecdelay );            //! delays for the specified number of microseconds, even when playing back
 
+#ifdef __EMSCRIPTEN__
+//! (wasm build) frame rate of the currently playing back recording
+double tPlaybackTargetFPS();
+//! (wasm build) seconds of the currently playing back recording
+double tPlaybackRecSec();
+#endif
+
 #endif

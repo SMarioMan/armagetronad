@@ -200,6 +200,11 @@ static gServerFavoritesHolder sg_favoriteHolder("");
 // alternative master servers
 static gServerFavoritesHolder sg_masterHolder("_MASTER");
 
+class gMenuItemEditSubmenu;
+
+//! run when the edit submenu loop ends: exit the parent menu
+static void tSubmenuThenExitParent( uMenu *, void * );
+
 //! edit submenu item quitting the parent menu when it's done
 class gMenuItemEditSubmenu: public uMenuItemSubmenu
 {
@@ -215,10 +220,28 @@ public:
         // delegate to base
         uMenuItemSubmenu::Enter();
 
+#ifdef __EMSCRIPTEN__
+        // exit the parent menu only once the submenu loop has ended,
+        // because the parent's loop-exit cleanup frees this submenu
+        Submenu()->SetOnLoopExit( &tSubmenuThenExitParent, this );
+#else
         // exit the parent menu (so we don't have to update the edit menu)
+        menu->Exit();
+#endif
+    }
+
+    //! exit the parent menu (used by the wasm loop-exit cleanup)
+    void ExitParent()
+    {
         menu->Exit();
     }
 };
+
+static void tSubmenuThenExitParent( uMenu *, void * arg )
+{
+    gMenuItemEditSubmenu * item = static_cast<gMenuItemEditSubmenu *>( arg );
+    item->ExitParent();
+}
 
 //! connect to a favorite server
 static void sg_ConnectFavorite( int ID )
@@ -317,7 +340,12 @@ public:
         sg_AddBookmarkString( "menu_edit_slot", fe );
 
         // create edit menu
+#ifdef __EMSCRIPTEN__
+        // the menu tree owns the submenu and its item (freed by WasmFreeTree)
+        edit_     = uMenu::WasmNew(fe);
+#else
         edit_     = tNEW(uMenu)                (fe);
+#endif
         editmenu_ = tNEW(gMenuItemEditSubmenu) ( &edit_menu, edit_, fe);
 
         Generate( fav, edit_ );
@@ -327,8 +355,12 @@ public:
 
     ~gServerFavoriteMenuEntries()
     {
+#ifdef __EMSCRIPTEN__
+        // edit_ and editmenu_ are freed by the menu tree
+#else
         delete editmenu_; editmenu_ = 0;
         delete edit_; edit_ = 0;
+#endif
     }
 
 private:
@@ -338,11 +370,39 @@ private:
 
 static void sg_GenerateConnectionItems();
 
+#ifdef __EMSCRIPTEN__
+//! run when the edit-servers menu ends: free the helper objects and the tree
+static void sgEditServersLoopExit( uMenu * m, void * arg )
+{
+    gServerFavoriteMenuEntries ** entries = static_cast<gServerFavoriteMenuEntries**>( arg );
+    for ( int i = NUM_FAVORITES-1; i >= 0; --i )
+        delete entries[i];
+    delete[] entries;
+    uMenu::WasmFreeTree( m, 0 );
+
+    // regenerate parent menu
+    sg_GenerateConnectionItems();
+}
+#endif
+
 // Edit servers submenu funcion
 static void sg_EditServers()
 {
     int i;
 
+#ifdef __EMSCRIPTEN__
+    // create menu
+    gServerFavoriteMenuEntries ** entries = new gServerFavoriteMenuEntries*[ NUM_FAVORITES ];
+    uMenu * edit_menu = uMenu::WasmNew( sg_GetBookmarkString( "menu_edit" ) );
+    edit_menu->SetOnLoopExit( &sgEditServersLoopExit, entries );
+
+    // create menu entries
+    for ( i = NUM_FAVORITES-1; i>=0; --i )
+        entries[i] = tNEW( gServerFavoriteMenuEntries )( sg_holder->GetFavorite(i), *edit_menu );
+
+    // enter menu
+    edit_menu->Enter();
+#else
     // create menu
     uMenu edit_menu(sg_GetBookmarkString( "menu_edit" ) );
 
@@ -360,6 +420,7 @@ static void sg_EditServers()
 
     // regenerate parent menu
     sg_GenerateConnectionItems();
+#endif
 }
 
 // ugly hack: functions clearing and filling the connection menu
@@ -427,6 +488,21 @@ static void sg_FavoritesMenu( INTFUNCPTR connect, gServerFavoritesHolder & holde
 
     sg_TransferCustomServer();
 
+#ifdef __EMSCRIPTEN__
+    // heap menu; the items are owned by the menu tree (freed on loop exit)
+    uMenu * net_menu = uMenu::WasmNew( sg_GetBookmarkString( "menu" ) );
+    net_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+    sg_connectionMenu = net_menu;
+
+    uMenuItemFunction * edit = new uMenuItemFunction(net_menu,sg_GetBookmarkString( "menu_edit" ), sg_GetBookmarkString( "menu_edit_help" ),&sg_EditServers);
+    sg_connectionMenuItemKeep = edit;
+
+    sg_GenerateConnectionItems();
+    net_menu->Enter();
+
+    sg_connectionMenuItemKeep = NULL;
+    sg_connectionMenu = NULL;
+#else
     uMenu net_menu(sg_GetBookmarkString( "menu" ) );
     sg_connectionMenu = & net_menu;
 
@@ -439,6 +515,7 @@ static void sg_FavoritesMenu( INTFUNCPTR connect, gServerFavoritesHolder & holde
 
     sg_connectionMenuItemKeep = NULL;
     sg_connectionMenu = NULL;
+#endif
 }
 
 // *********************************************************************************************
@@ -491,7 +568,7 @@ void gServerFavorites::AlternativesMenu( void )
 
 // *********************************************************************************************
 // *
-// *	CustomConnectMenu
+//	CustomConnectMenu
 // *
 // *********************************************************************************************
 //!
@@ -502,17 +579,33 @@ void gServerFavorites::CustomConnectMenu( void )
 {
     sg_TransferCustomServer();
 
+#ifdef __EMSCRIPTEN__
+    uMenu * net_menu = uMenu::WasmNew( "$network_custjoin_text" );
+    net_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+    sg_connectionMenu = net_menu;
+
+    gServerFavorite & fav = sg_favoriteHolder.GetFavorite(-1);
+
+    // create menu entries
+    sg_languageIDPrefix = "$bookmarks_";
+    sg_Connect = &sg_ConnectFavorite;
+    gCustomConnectEntries submenu( fav, net_menu );
+
+    net_menu->Enter();
+    sg_connectionMenu = NULL;
+#else
     uMenu net_menu("$network_custjoin_text");
     sg_connectionMenu = & net_menu;
 
     gServerFavorite & fav = sg_favoriteHolder.GetFavorite(-1);
-    
+
     // create menu entries
     sg_languageIDPrefix = "$bookmarks_";
     sg_Connect = &sg_ConnectFavorite;
     gCustomConnectEntries submenu( fav, &net_menu );
 
     net_menu.Enter();
+#endif
 }
 
 // *********************************************************************************************

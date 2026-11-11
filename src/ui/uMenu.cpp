@@ -39,11 +39,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tDirectories.h"
 //#include "tRecording.h"
 #include "tToDo.h"
+#ifdef __EMSCRIPTEN__
+#include "tWasmLoop.h"
+#include "tRecorder.h"
+#include "wdbg.h"
+#endif // __EMSCRIPTEN__
 #include "tException.h"
 
 #ifndef DEDICATED
 #include "rRender.h"
 #include "rSDL.h"
+#include "rFont.h"
 #endif
 
 #include <vector>
@@ -53,6 +59,12 @@ FUNCPTR  uMenu::idle(NULL);
 bool uMenu::wrap=true;
 uMenu::QuickExit uMenu::quickexit=uMenu::QuickExit_Off;
 bool uMenu::exitToMain=false;
+
+#ifndef DEDICATED
+// (moved up from its former position below uMenu::GenericBackground so that
+//  OnEnterFrame can reference it)
+static bool s_idleBackground = false;
+#endif
 
 // *****************************************************
 
@@ -65,6 +77,11 @@ uMenu::uMenu(const char *t="",bool exit_item)
     menuBot=-.7;
     yOffset=0;
     selected = 10000000;
+#ifdef __EMSCRIPTEN__
+    m_onLoopExit=0;
+    m_onLoopExitArg=0;
+    m_wasmOwned=false;
+#endif // __EMSCRIPTEN__
 }
 #endif
 
@@ -76,6 +93,11 @@ uMenu::uMenu(const tOutput &t,bool exit_item)
     menuBot=-.7;
     yOffset=0;
     selected = 100000000;
+#ifdef __EMSCRIPTEN__
+    m_onLoopExit=0;
+    m_onLoopExitArg=0;
+    m_wasmOwned=false;
+#endif // __EMSCRIPTEN__
 }
 
 uMenu::~uMenu(){
@@ -144,7 +166,74 @@ bool uMenu::MenuActive()
 static rNoAutoDisplayAtNewlineCallback su_noNewline( uMenu::MenuActive );
 // static rSmallConsoleCallback su_smallConsole( su_InMenu );
 
+#ifdef __EMSCRIPTEN__
+static const float menu_repeatdelay = 0.2f;
+static const float menu_repeatrateStart = 0.2f;
+static const float menu_repeatrateMin = 0.05f;
+static float menu_repeatrate = menu_repeatrateStart;
+#endif // __EMSCRIPTEN__
+
+// (wasm build) runs once when the menu loop ends: the tail of the classic
+// blocking loop, then the tree cleanup set by the menu's creator
+#ifdef __EMSCRIPTEN__
+static void uMenuLoopExit( void * arg )
+{
+    uMenu * m = static_cast<uMenu*>( arg );
+    wdbg("uMenuLoopExit: menu loop ended");
+    s_globalRepeat = false;
+    uCallbackMenuLeave::MenuLeave();
+    su_inMenu = false;
+    m->WasmLoopExit();
+}
+#endif // __EMSCRIPTEN__
+
+// (wasm build) frame function for tWasmLoop: one menu iteration on the given menu
+#ifdef __EMSCRIPTEN__
+static bool tWasmMenuFrame( void * arg )
+{
+    static int fr = 0;
+    bool r = static_cast<uMenu *>( arg )->WasmFrame();
+    if ( fr < 5 || (fr % 120) == 0 )
+        wdbgi("tWasmMenuFrame: frame result", r ? 1 : 0);
+    ++fr;
+    return r;
+}
+#endif // __EMSCRIPTEN__
 void uMenu::OnEnter(){
+#ifdef __EMSCRIPTEN__
+#ifdef DEDICATED
+    return;
+#else
+    // delete stuck keys, maybe a menu item catches key release events.
+    su_ClearKeys();
+
+    uCallbackMenuEnter::MenuEnter();
+    su_inMenu = true;
+
+    wdbgi("OnEnter: items.Len()", items.Len());
+
+    if (items.Len()<=0)
+    {
+        wdbg("OnEnter: items empty, returning without starting loop");
+        return;
+    }
+
+    exitFlag=0;
+    yOffset=menuTop;
+    loop_localRepeat = false;
+    loop_nextrepeat = 0.0f;
+    loop_lastt = 0;
+    loop_snapScroll = false;
+    menu_repeatrate = menu_repeatrateStart;
+
+    lastkey=tSysTimeFloat();
+
+    // the loop body is one frame function; the native build runs it inline,
+    // the wasm build has the JS event loop call it on every animation frame
+    wdbg("OnEnter: starting tWasmLoop");
+    tWasmLoop::Start( &tWasmMenuFrame, &uMenuLoopExit, this );
+#endif
+#else
 #ifndef DEDICATED
     bool localRepeat = false;
     float nextrepeat = 0.0f;
@@ -396,7 +485,252 @@ void uMenu::OnEnter(){
 
     uCallbackMenuLeave::MenuLeave();
     su_inMenu = false;
+#endif // __EMSCRIPTEN__
 }
+
+#ifdef __EMSCRIPTEN__
+// one iteration of the menu loop; returns true to run another frame
+bool uMenu::OnEnterFrame(){
+#ifdef DEDICATED
+    return false;
+#endif
+
+    {
+        static int ent = 0;
+        if ( ent < 5 ) { wdbgi("OnEnterFrame enter, items", items.Len()); ++ent; }
+    }
+
+    if ( exitFlag || quickexit || exitToMain )
+    {
+        wdbgi("OnEnterFrame exit flags: exitFlag/quickexit/exitToMain", exitFlag*100+quickexit*10+exitToMain);
+        return false;
+    }
+
+    st_DoToDo();
+    tAdvanceFrame();
+
+    REAL ts=tSysTimeFloat()-loop_lastt;
+    loop_lastt=tSysTimeFloat();
+    if (ts>.2) ts=.2;
+
+    if(loop_snapScroll)
+    {
+        if(ts * 30 < 1)
+            loop_snapScroll = false;
+    }
+    else
+    {
+        if(ts * 15 > 1)
+            loop_snapScroll = true;
+    }
+    auto scrollBy = [this, snapScroll = loop_snapScroll, ts](REAL delta)
+    {
+        if(snapScroll || fabsf(delta) < 1E-6)
+        {
+            yOffset += delta;
+        }
+        else
+        {
+            // almost standard exponential decay; the proximity factor makes it
+            // approach the target position like t -> t^2 for negative t
+            REAL proximity = std::min(1.0f, 10.0f * sqrtf(fabsf(delta)));
+            REAL speed = std::min(1.0f, ts * 6 / proximity);
+            yOffset += speed * delta;
+        }
+    };
+
+    menuentries=items.Len();
+
+    // clamp cursor
+    if (selected < 0 )
+        selected = 0;
+    if ( selected >= items.Len())
+        selected = items.Len()-1;
+
+    {
+        SDL_Event tEvent;
+        uInputProcessGuard inputProcessGuard;
+        while (!exitFlag && !quickexit && !exitToMain && su_GetSDLInput(tEvent))
+        {
+            REAL entertime = tSysTimeFloat();
+
+            switch (tEvent.type)
+            {
+            case SDL_KEYDOWN:
+                if ( tEvent.key.keysym.sym == SDLK_UNKNOWN )
+                {
+                    // don't repeat unknown syms. They come from multi-key compositions and
+                    // don't send keyup events when released.
+                    break;
+                }
+            loop_localRepeat = s_globalRepeat = true;
+                memcpy( &loop_tEventRepeat, &tEvent, sizeof( SDL_Event ) );
+                loop_nextrepeat = tSysTimeFloat() + menu_repeatdelay;
+                break;
+            case SDL_KEYUP:
+                loop_localRepeat = s_globalRepeat = false;
+                menu_repeatrate = menu_repeatrateStart;
+                break;
+            }
+
+            this->HandleEvent( tEvent );
+
+            // quit shortcut
+            if ( quickexit )
+                break;
+
+            if ( tSysTimeFloat() - entertime > 1 )
+            {
+                loop_localRepeat = s_globalRepeat = false;
+            }
+        }
+
+        if ( loop_localRepeat && s_globalRepeat && tSysTimeFloat() > loop_nextrepeat )
+        {
+            this->HandleEvent( loop_tEventRepeat );
+            loop_nextrepeat = tSysTimeFloat() + menu_repeatrate;
+            menu_repeatrate *= .71;
+            if ( menu_repeatrate < menu_repeatrateMin )
+                menu_repeatrate = menu_repeatrateMin;
+        }
+    }
+
+    // we're about to render, last chance to make changes to the menu
+    OnRender();
+
+    // clamp cursor
+    if (selected < 0 )
+        selected = 0;
+    if ( selected >= items.Len())
+        selected = items.Len()-1;
+
+    // quit shortcut
+    if ( quickexit )
+    {
+        wdbgi("OnEnterFrame exit: quickexit", quickexit);
+        s_globalRepeat = false;
+        uCallbackMenuLeave::MenuLeave();
+        su_inMenu = false;
+        return false;
+    }
+
+    if ( items.Len() <= 0 )
+    {
+        wdbgi("OnEnterFrame exit: items empty", items.Len());
+        s_globalRepeat = false;
+        uCallbackMenuLeave::MenuLeave();
+        su_inMenu = false;
+        return false;
+    }
+
+    menuBot=-1+spaceBelow;
+
+    const REAL border=.3;
+    const REAL smallborder=.1;
+
+    menuentries=items.Len();
+
+    REAL ysel=YPos(selected);
+
+    {
+        REAL scrollUp = menuBot+border-ysel;
+        if(scrollUp > 0)
+            scrollBy(scrollUp);
+    }
+    {
+        REAL scrollDown = menuTop-border-ysel;
+        if(scrollDown < 0)
+            scrollBy(scrollDown);
+    }
+
+    if (ysel<menuBot)
+        yOffset+=(menuBot-ysel);
+
+    if (ysel>menuTop-smallborder)
+        yOffset+=(menuTop-smallborder-ysel);
+
+    if (YPos(0)>menuBot+smallborder)
+        yOffset+=menuBot+smallborder-YPos(0);
+
+    if (YPos(menuentries-1)<menuTop-smallborder)
+        yOffset+=menuTop-smallborder-YPos(menuentries-1);
+
+    sr_ResetRenderState(true);
+    items[selected]->RenderBackground();
+
+    if (selected >= items.Len()) selected = items.Len()-1;
+
+    static const REAL timeout=.5;
+
+    if (sr_glOut && !exitFlag && !quickexit){
+        items[selected]->Render(center,YPos(selected),1,true);
+
+        for (int i=items.Len()-1;i>=0;i--)
+            if (i!=selected){
+                REAL y=YPos(i);
+                REAL alpha=1;
+                const REAL b=.1;
+                if (y<menuBot+b)
+                    alpha=(y-menuBot)/b;
+                if (y>menuTop-b)
+                    alpha=(menuTop-y)/b;
+                if (y>menuBot && y<menuTop)
+                {
+                    rTextField::SetDefaultColor( tColor(1,1,1,1) );
+                    rTextField::SetBlendColor( tColor(1,1,1,1) );
+                    items[i]->Render(center,y,alpha,false);
+                }
+            }
+
+        rTextField::SetDefaultColor( tColor(1,1,1,1) );
+        rTextField::SetBlendColor( tColor(1,1,1,1) );
+
+        Color(.6,.6,1,1);
+        ::DisplayText(0,menuTop+text_height*titlefac
+                      ,text_width*titlefac*rTextField::AspectWidthMultiplier(),text_height*titlefac,
+                      title,0);
+
+        glDisable(GL_TEXTURE_2D);
+        //glDisable(GL_TEXTURE);
+        Color(1,.2,.2,.5);
+        if (YPos(0)<menuBot+smallborder && (int(tSysTimeFloat()))%2)
+            arrow(.9,menuBot+.1,-1,.05);
+        if (YPos(menuentries-1)>menuTop && (int(tSysTimeFloat())+1)%2)
+            arrow(.9,menuTop,1,.05);
+
+        REAL helpAlpha = tSysTimeFloat()-lastkey-timeout;
+        if( helpAlpha > 1 )
+        {
+            helpAlpha = 1;
+        }
+
+        disphelp = helpAlpha > 0;
+        if ( items[selected]->DisplayHelp( disphelp, menuBot, helpAlpha ) )
+        {
+            if (sr_alphaBlend)
+                glColor4f(1,.8,.8, helpAlpha );
+            else
+                Color(helpAlpha,
+                      .8*helpAlpha,
+                      .8*helpAlpha);
+
+            rTextField c(-.95f,menuBot-.04f,rCWIDTH_NORMAL*rTextField::AspectWidthMultiplier());
+            c.SetWidth(static_cast<int>((1.9f-items[selected]->SpaceRight())/c.GetCWidth()));
+            c << items[selected]->Help();
+        }
+    }
+    else
+        if ( !sr_glOut )
+        {
+            tDelay( 10000 );
+        }
+
+    rSysDep::SwapGL();
+    rSysDep::ClearGL();
+
+    return true;
+}
+#endif // __EMSCRIPTEN__ (OnEnterFrame)
 
 void uMenu::HandleEvent( SDL_Event event )
 {
@@ -505,9 +839,6 @@ void uMenu::HandleEvent( SDL_Event event )
 #endif
 }
 
-#ifndef DEDICATED
-static bool s_idleBackground = false;
-#endif
 
 // paints a nice background
 void uMenu::GenericBackground(REAL top){
@@ -580,6 +911,42 @@ void uMenu::GenericBackground(REAL top){
 void uMenu::OnExit(){
     exitFlag=1;
 }
+
+#ifdef __EMSCRIPTEN__
+void uMenu::SetOnLoopExit( void (*fn)( uMenu *, void * ), void * arg )
+{
+    m_onLoopExit = fn;
+    m_onLoopExitArg = arg;
+}
+
+static void tWasmFreeMenuTree( uMenu * m )
+{
+    // free the child menus that are part of this wasm tree first, so that
+    // when this menu's items are deleted no submenu item references a freed
+    // menu;  global menus (not wasm-owned) are left untouched
+    for (int i = m->NumItems()-1; i >= 0; --i)
+    {
+        uMenu * s = m->Item(i)->Submenu();
+        if ( s && s->WasmOwned() )
+            tWasmFreeMenuTree( s );
+    }
+    delete m;
+}
+
+void uMenu::WasmFreeTree( uMenu * m, void * )
+{
+    tWasmFreeMenuTree( m );
+}
+#endif // __EMSCRIPTEN__
+
+#ifdef __EMSCRIPTEN__
+uMenu * uMenu::WasmNew( const tOutput &t, bool exit_item )
+{
+    uMenu * m = new uMenu( t, exit_item );
+    m->m_wasmOwned = true;
+    return m;
+}
+#endif
 
 //! called every frame before the menu is rendered
 void uMenu::OnRender()
@@ -836,7 +1203,7 @@ bool uMenuItemString::Event(SDL_Event &e){
         return false;
     bool ret=true;
     SDL_keysym &c=e.key.keysym;
-    SDLMod mod = c.mod;
+    SDLMod mod = (SDLMod)c.mod;
     bool moveWordLeft, moveWordRight, deleteWordLeft, deleteWordRight, moveBeginning, moveEnd, killForwards;
     moveWordLeft = moveWordRight = deleteWordLeft = deleteWordRight = moveBeginning = moveEnd = killForwards = false;
 
@@ -1016,7 +1383,7 @@ bool uMenuItemStringWithHistory::Event(SDL_Event &e)
     // flag indicating that the event was handled
     bool ret = false;
 #ifndef DEDICATED
-    SDLMod mod = e.key.keysym.mod;
+    SDLMod mod = (SDLMod)e.key.keysym.mod;
 
     if (e.type == SDL_KEYDOWN
             && ((e.key.keysym.sym == SDLK_UP)
@@ -1229,7 +1596,131 @@ bool uMenu::IdleInput( bool processInput )
     return false;
 }
 
+#ifdef __EMSCRIPTEN__
+namespace
+{
+    // state of one message dialog; one slot per nested dialog
+    // (a console message can open a dialog on top of a dialog)
+    struct tMessageDialog
+    {
+        tOutput message;
+        std::vector<tString> lines;
+        REAL to;
+        REAL timeout;
+        REAL ignoreInput;
+        unsigned offset;
+        bool ret;
+        bool textOutBack;
+        FUNCPTR idleBack;
+    };
+
+    tMessageDialog s_dialogs[16];
+    int s_dialogDepth = 0;
+
+    // clean up a finished dialog and stop the frame loop
+    bool EndDialog( tMessageDialog & d )
+    {
+        // catch some keyboard input
+        uInputProcessGuard inputProcessGuard;
+        SDL_Event ev;
+        while (su_GetSDLInput(ev)) ;
+        uMenu::SetIdle(d.idleBack);
+        rITexture::UnloadAll();
+        sr_textOut = d.textOutBack;
+        --s_dialogDepth;
+        return false;
+    }
+
+    // one iteration of the dialog loop; true to run another frame
+    bool MessageDialogFrame( void * )
+    {
+        if ( s_dialogDepth <= 0 )
+            return false;
+        tMessageDialog & d = s_dialogs[s_dialogDepth - 1];
+
+        if ( uMenu::quickexit || !( d.to < 0 || tSysTimeFloat() < d.timeout ) )
+            return EndDialog( d );
+
+
+        SDL_Event tEvent;
+        if ( su_GetSDLInput(tEvent) && tEvent.type==SDL_KEYDOWN)
+        {
+            switch (tEvent.key.keysym.sym)
+            {
+            case SDLK_UP:
+                if (d.offset > 0)
+                    d.offset -= 1;
+                return true; // like 'continue': skip render and advance
+            case SDLK_DOWN:
+                d.offset += 1;
+                return true;
+            case SDLK_ESCAPE:
+                d.ret = false;
+                break;
+            default:
+                break;
+            }
+            if ( tSysTimeFloat() > d.ignoreInput )
+            {
+                // exit on any key (upstream behavior: the welcome screen
+                // continues on any key press once the dialog has been up
+                // for half a second)
+                return EndDialog( d );
+            }
+            else
+            {
+                // esc may have been pressed in error
+                d.ret = true;
+            }
+        }
+
+        if ( sr_glOut )
+        {
+            sr_ResetRenderState(true);
+            rViewport::s_viewportFullscreen.Select();
+
+            rSysDep::ClearGL();
+
+            uMenu::GenericBackground();
+
+            //16*3/640.0, 32*3/480.0
+            REAL w=0.1*(REAL(sr_screenHeight)/sr_screenWidth),h=0.2;
+
+            //REAL middle=-.6;
+
+            tString m(d.message);
+            int len = m.Len();
+            if (w * len > 1.8)
+            {
+                h = h * 1.8 / (w * len);
+                w = 1.8 / len;
+            }
+
+            Color(1,1,1);
+            DisplayText(0,.8,w,h, d.message);
+
+            //16/640.0
+            w = 1/30.0*(REAL(sr_screenHeight)/sr_screenWidth);
+            h = 32/480.0;
+
+            if (d.offset >= d.lines.size()) d.offset = d.lines.size() - 1;
+            {
+                rTextField c(-.8,.6, w, h);
+
+                for (unsigned i = d.offset; i < d.lines.size(); ++i)
+                    c << d.lines[i] << "\n";
+            }
+        }
+        rSysDep::SwapGL();
+        tAdvanceFrame();
+        return true;
+    }
+}
+#endif
+
 // return value: false only if the user pressed ESC
+// (wasm build: the dialog runs asynchronously on the main loop; the
+// return value is then always true)
 bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL to){
     bool ret = true;
 #ifdef DEDICATED
@@ -1268,6 +1759,48 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
         while (su_GetSDLInput(tEvent)) ;
     }
 
+#ifdef __EMSCRIPTEN__
+    {
+        uInputProcessGuard inputProcessGuard;
+
+        //convert to an array for scrolling
+        tString interpretationString;
+        interpretationString << interpretation << "\\n";
+        std::vector<tString> lines;
+        int lastNewline = 0;
+        for (int i = 0; i < interpretationString.Len() - 1; ++i) {
+            if (interpretationString[i] == '\\n' && i != 0) {
+                lines.push_back(interpretationString.SubStr(lastNewline, i - lastNewline));
+                lastNewline = i + 1;
+            }
+        }
+
+        bool dialogStarted = s_dialogDepth < 16;
+        if ( dialogStarted )
+        {
+            tMessageDialog & d = s_dialogs[s_dialogDepth++];
+            d.message = message;
+            d.lines = lines;
+            d.to = to;
+            d.timeout = timeout;
+            d.ignoreInput = tSysTimeFloat() + .5;
+            d.offset = 0;
+            d.ret = true;
+            d.textOutBack = textOutBack;
+            d.idleBack = idle_back;
+            tWasmLoop::Start( &MessageDialogFrame );
+            ret = true;
+        }
+        if ( !dialogStarted )
+        {
+            // dialog stack overflow: the dialog did not run, undo the setup
+            uMenu::SetIdle(idle_back);
+            rITexture::UnloadAll();
+            sr_textOut = textOutBack;
+        }
+        // (the tail below is done by MessageDialogFrame when the dialog ends)
+    }
+#else
     {
         uInputProcessGuard inputProcessGuard;
 
@@ -1358,6 +1891,7 @@ bool uMenu::Message(const tOutput& message, const tOutput& interpretation, REAL 
     rITexture::UnloadAll();
 
     sr_textOut = textOutBack;
+#endif
 #endif
 
     return ret;

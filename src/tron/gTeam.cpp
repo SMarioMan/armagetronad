@@ -146,12 +146,19 @@ public:
         tOutput title;
         title.SetTemplateParameter( 1, player->GetName() );
         title << "$team_menu_player_title";
-        uMenu playerMenu( title );
+        uMenu playerMenu_dummy( title );
+        uMenu * playerMenu;
+#ifdef __EMSCRIPTEN__
+        playerMenu = uMenu::WasmNew( title );
+        playerMenu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+        playerMenu = &playerMenu_dummy;
+#endif
         tArray<uMenuItem*> items;
 
         if ( !player->IsSpectating() )
         {
-            items[ items.Len() ] = tNEW( gMenuItemSpectate ) ( &playerMenu, player );
+            items[ items.Len() ] = tNEW( gMenuItemSpectate ) ( playerMenu, player );
         }
 
         for ( i = eTeam::teams.Len()-1; i>=0; --i )
@@ -159,7 +166,7 @@ public:
             eTeam *team = eTeam::teams(i);
             if ( team != player->NextTeam() )
             {
-                items[ items.Len() ] = tNEW( gMenuItemPlayerTeam ) ( &playerMenu, player, team, team->PlayerMayJoin( player )  );
+                items[ items.Len() ] = tNEW( gMenuItemPlayerTeam ) ( playerMenu, player, team, team->PlayerMayJoin( player )  );
             }
         }
 
@@ -168,15 +175,17 @@ public:
                player->CurrentTeam() && player->CurrentTeam()->NumHumanPlayers() == 1 )
         )
         {
-            items[ items.Len() ] = tNEW( gMenuItemNewTeam ) ( &playerMenu, player );
+            items[ items.Len() ] = tNEW( gMenuItemNewTeam ) ( playerMenu, player );
         }
 
-        playerMenu.Enter();
+        playerMenu->Enter();
 
+#ifndef __EMSCRIPTEN__
         for ( i = items.Len()-1; i>=0; --i )
         {
             delete items(i);
         }
+#endif
     }
 };
 
@@ -188,7 +197,14 @@ void gTeam::TeamMenu()
 {
     int i;
 
-    uMenu Menu( tOutput("$team_menu_title") );
+    uMenu Menu_dummy( tOutput("$team_menu_title") );
+    uMenu * Menu;
+#ifdef __EMSCRIPTEN__
+    Menu = uMenu::WasmNew( tOutput("$team_menu_title") );
+    Menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    Menu = &Menu_dummy;
+#endif
     tArray<uMenuItem*> items;
 
     for ( i = MAX_PLAYERS-1; i>=0; --i )
@@ -201,24 +217,29 @@ void gTeam::TeamMenu()
             help << "$team_menu_player_help";
             ePlayerNetID* pni = player->netPlayer;
             if ( pni )
-                items[ items.Len() ] = tNEW( gMenuItemPlayer ) ( &Menu, pni, help );
+                items[ items.Len() ] = tNEW( gMenuItemPlayer ) ( Menu, pni, help );
         }
     }
 
     if ( items.Len() > 1 )
     {
-        Menu.Enter();
+        Menu->Enter();
     }
     else if ( items.Len() >= 1 )
     {
         items[0]->Enter();
+#ifdef __EMSCRIPTEN__
+        // the menu loop never ran for the root; free it now
+        uMenu::WasmFreeTree( Menu, 0 );
+#endif
     }
 
+#ifndef __EMSCRIPTEN__
     for ( i = items.Len()-1; i>=0; --i )
     {
         delete items(i);
     }
+#endif
 }
-
 
 

@@ -292,9 +292,16 @@ void gServerBrowser::BrowseServers()
     nServerInfo::StartQueryAll( sg_queryType );
     continuePoll = true;
 
-    gServerMenu browser("Server Browser");
+    gServerMenu browser_dummy("Server Browser");
+    gServerMenu * browser;
+#ifdef __EMSCRIPTEN__
+    browser = new gServerMenu("Server Browser");
+    browser->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    browser = &browser_dummy;
+#endif
 
-    gServerStartMenuItem start(&browser);
+    gServerStartMenuItem * start = new gServerStartMenuItem(browser);
 
     /*
       while (nServerInfo::DoQueryAll(sg_simultaneous));
@@ -304,14 +311,19 @@ void gServerBrowser::BrowseServers()
       if (nServerInfo::GetFirstServer())
       ConnectToServer(nServerInfo::GetFirstServer());
     */
-    browser.Update();
+    browser->Update();
 
     // eat excess input the user made while the list was fetched
     SDL_Event ignore;
     REAL time;
     while(su_GetSDLInput(ignore, time)) ;
 
-    browser.Enter();
+    browser->Enter();
+
+#ifdef __EMSCRIPTEN__
+    // items are freed by the menu tree; free the menu object itself
+    delete browser;
+#endif
 
     nServerInfo::GetFromLANContinuouslyStop();
 

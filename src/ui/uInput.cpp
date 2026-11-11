@@ -524,7 +524,14 @@ public:
 static void s_InputConfigGeneric(int ePlayer, uAction *&actions,const tOutput &title){
     uMenuItemInput **input;
 
-    uMenu input_menu(title);
+    uMenu input_menu_dummy(title);
+    uMenu * input_menu;
+#ifdef __EMSCRIPTEN__
+    input_menu = uMenu::WasmNew( title );
+    input_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    input_menu = &input_menu_dummy;
+#endif
 
     uActionTooltip::Disable(ePlayer+1);
 
@@ -535,17 +542,19 @@ static void s_InputConfigGeneric(int ePlayer, uAction *&actions,const tOutput &t
     input=tNEW(uMenuItemInput*)[len];
     int a=0;
     for(uAction *A=actions;A; A = A->Next()){
-        input[a++]=new uMenuItemInput(&input_menu,
+        input[a++]=new uMenuItemInput(input_menu,
                                       A,
                                       ePlayer+1);
 
     }
 
-    input_menu.ReverseItems();
-    input_menu.Enter();
+    input_menu->ReverseItems();
+    input_menu->Enter();
 
+#ifndef __EMSCRIPTEN__
     for(int b=a-1;b>=0;b--)
         delete input[b];
+#endif
     delete[] input;
 }
 

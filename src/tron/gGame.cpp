@@ -42,6 +42,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "rSysdep.h"
 #include "rFont.h"
 #include "uMenu.h"
+#include "tWasmLoop.h"
+#include "wdbg.h"
 #include "nConfig.h"
 #include "rScreen.h"
 #include "rViewport.h"
@@ -279,85 +281,92 @@ void gGameSettings::AutoAI(bool success){
 
 void gGameSettings::Menu()
 {
-    uMenu GameSettings("$game_settings_menu_text");
+    uMenu GameSettings_dummy("$game_settings_menu_text");
+    uMenu * GameSettings;
+#ifdef __EMSCRIPTEN__
+    GameSettings = uMenu::WasmNew( "$game_settings_menu_text" );
+    GameSettings->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    GameSettings = &GameSettings_dummy;
+#endif
 
-    uMenuItemReal wzmr
-    (&GameSettings,
+    uMenuItemReal * wzmr = new uMenuItemReal
+    (GameSettings,
      "$game_menu_wz_mr_text",
      "$game_menu_wz_mr_help",
      winZoneMinRoundTime, (REAL) 0, (REAL) 1000, (REAL) 10 );
 
-    uMenuItemReal wzmld
-    (&GameSettings,
+    uMenuItemReal * wzmld = new uMenuItemReal
+    (GameSettings,
      "$game_menu_wz_ld_text",
      "$game_menu_wz_ld_help",
      winZoneMinLastDeath, (REAL) 0 , (REAL) 1000, (REAL) 10 );
 
-    uMenuItemToggle team_et
-    (&GameSettings,
+    uMenuItemToggle * team_et = new uMenuItemToggle
+    (GameSettings,
      "$game_menu_balance_quit_text",
      "$game_menu_balance_quit_help",
      enforceTeamRulesOnQuit);
 
-    uMenuItemToggle team_bt
-    (&GameSettings,
+    uMenuItemToggle * team_bt = new uMenuItemToggle
+    (GameSettings,
      "$game_menu_balance_ais_text",
      "$game_menu_balance_ais_help",
      balanceTeamsWithAIs);
 
-    uMenuItemInt team_mi
-    (&GameSettings,
+    uMenuItemInt * team_mi = new uMenuItemInt
+    (GameSettings,
      "$game_menu_imb_text",
      "$game_menu_imb_help",
      maxTeamImbalance,2,10);
 
-    uMenuItemInt team_maxp
-    (&GameSettings,
+    uMenuItemInt * team_maxp = new uMenuItemInt
+    (GameSettings,
      "$game_menu_max_players_text",
      "$game_menu_max_players_help",
      maxPlayersPerTeam,1,16);
 
-    uMenuItemInt team_minp
-    (&GameSettings,
+    uMenuItemInt * team_minp = new uMenuItemInt
+    (GameSettings,
      "$game_menu_min_players_text",
      "$game_menu_min_players_help",
      minPlayersPerTeam,1,16);
 
-    uMenuItemInt team_max
-    (&GameSettings,
+    uMenuItemInt * team_max = new uMenuItemInt
+    (GameSettings,
      "$game_menu_max_teams_text",
      "$game_menu_max_teams_help",
      maxTeams,1,16);
 
-    uMenuItemInt team_min
-    (&GameSettings,
+    uMenuItemInt * team_min = new uMenuItemInt
+    (GameSettings,
      "$game_menu_min_teams_text",
      "$game_menu_min_teams_help",
      minTeams,1,16);
 
-    uMenuItemSelection<gFinishType> finisht
-    (&GameSettings,"$game_menu_finish_text",
+    uMenuItemSelection<gFinishType> * finisht = new uMenuItemSelection<gFinishType>
+    (GameSettings,"$game_menu_finish_text",
      "$game_menu_finish_help",finishType);
-    finisht.NewChoice("$game_menu_finish_expr_text",
+    finisht->NewChoice("$game_menu_finish_expr_text",
                       "$game_menu_finish_expr_help",
                       gFINISH_EXPRESS);
-    finisht.NewChoice("$game_menu_finish_stop_text",
+    finisht->NewChoice("$game_menu_finish_stop_text",
                       "$game_menu_finish_stop_help",
                       gFINISH_IMMEDIATELY);
-    finisht.NewChoice("$game_menu_finish_fast_text",
+    finisht->NewChoice("$game_menu_finish_fast_text",
                       "$game_menu_finish_fast_help",
                       gFINISH_SPEEDUP);
-    finisht.NewChoice("$game_menu_finish_normal_text",
+    finisht->NewChoice("$game_menu_finish_normal_text",
                       "$game_menu_finish_normal_help",
                       gFINISH_NORMAL);
 
-    uMenuItemSelection<gGameType> gamet
-    (&GameSettings,"$game_menu_mode_text",
+    uMenuItemSelection<gGameType> * gamet = new uMenuItemSelection<gGameType>
+    (GameSettings,"$game_menu_mode_text",
      "$game_menu_mode_help",gameType);
-    gamet.NewChoice("$game_menu_mode_free_text",
+    gamet->NewChoice("$game_menu_mode_free_text",
                     "$game_menu_mode_free_help",
                     gFREESTYLE);
-    gamet.NewChoice("$game_menu_mode_lms_text",
+    gamet->NewChoice("$game_menu_mode_lms_text",
                     "$game_menu_mode_lms_help",
                     gDUEL);
     /*
@@ -366,153 +375,157 @@ void gGameSettings::Menu()
     					gHUMAN_VS_AI);
     */
 
-    uMenuItemReal speedconf
-    (&GameSettings,
+    uMenuItemReal * speedconf = new uMenuItemReal
+    (GameSettings,
      "$game_menu_speed_text",
      "$game_menu_speed_help",
      speedFactor,(REAL)-10,(REAL)10,(REAL)0.5);
 
-    uMenuItemReal sizeconf
-    (&GameSettings,
+    uMenuItemReal * sizeconf = new uMenuItemReal
+    (GameSettings,
      "$game_menu_size_text",
      "$game_menu_size_help",
      sizeFactor,(REAL)-10,(REAL)10,(REAL)0.5);
 
-    uMenuItemSelection<REAL> wsuconf
-    (&GameSettings,
+    uMenuItemSelection<REAL> * wsuconf = new uMenuItemSelection<REAL>
+    (GameSettings,
      "$game_menu_wallstayup_text",
      "$game_menu_wallstayup_help",
      wallsStayUpDelay);
-    wsuconf.NewChoice( "$game_menu_wallstayup_infinite_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_infinite_text",
                        "$game_menu_wallstayup_infinite_help",
                        -1.0f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_immediate_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_immediate_text",
                        "$game_menu_wallstayup_immediate_help",
                        0.0f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_halfsecond_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_halfsecond_text",
                        "$game_menu_wallstayup_halfsecond_help",
                        0.5f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_second_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_second_text",
                        "$game_menu_wallstayup_second_help",
                        1.0f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_2second_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_2second_text",
                        "$game_menu_wallstayup_2second_help",
                        2.0f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_4second_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_4second_text",
                        "$game_menu_wallstayup_4second_help",
                        4.0f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_8second_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_8second_text",
                        "$game_menu_wallstayup_8second_help",
                        8.0f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_16second_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_16second_text",
                        "$game_menu_wallstayup_16second_help",
                        16.0f );
-    wsuconf.NewChoice( "$game_menu_wallstayup_32second_text",
+    wsuconf->NewChoice( "$game_menu_wallstayup_32second_text",
                        "$game_menu_wallstayup_32second_help",
                        32.0f );
 
-    uMenuItemSelection<REAL> wlconf
-    (&GameSettings,
+    uMenuItemSelection<REAL> * wlconf = new uMenuItemSelection<REAL>
+    (GameSettings,
      "$game_menu_wallslength_text",
      "$game_menu_wallslength_help",
      wallsLength);
-    wlconf.NewChoice( "$game_menu_wallslength_infinite_text",
+    wlconf->NewChoice( "$game_menu_wallslength_infinite_text",
                       "$game_menu_wallslength_infinite_help",
                       -1.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_25meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_25meter_text",
                       "$game_menu_wallslength_25meter_help",
                       25.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_50meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_50meter_text",
                       "$game_menu_wallslength_50meter_help",
                       50.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_100meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_100meter_text",
                       "$game_menu_wallslength_100meter_help",
                       100.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_200meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_200meter_text",
                       "$game_menu_wallslength_200meter_help",
                       200.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_300meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_300meter_text",
                       "$game_menu_wallslength_300meter_help",
                       300.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_400meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_400meter_text",
                       "$game_menu_wallslength_400meter_help",
                       400.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_600meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_600meter_text",
                       "$game_menu_wallslength_600meter_help",
                       600.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_800meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_800meter_text",
                       "$game_menu_wallslength_800meter_help",
                       800.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_1200meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_1200meter_text",
                       "$game_menu_wallslength_1200meter_help",
                       1200.0f );
-    wlconf.NewChoice( "$game_menu_wallslength_1600meter_text",
+    wlconf->NewChoice( "$game_menu_wallslength_1600meter_text",
                       "$game_menu_wallslength_1600meter_help",
                       1600.0f );
 
-    uMenuItemSelection<REAL> erconf
-    (&GameSettings,
+    uMenuItemSelection<REAL> * erconf = new uMenuItemSelection<REAL>
+    (GameSettings,
      "$game_menu_exrad_text",
      "$game_menu_exrad_help",
      explosionRadius);
-    erconf.NewChoice( "$game_menu_exrad_0_text",
+    erconf->NewChoice( "$game_menu_exrad_0_text",
                       "$game_menu_exrad_0_help",
                       0.0f );
-    erconf.NewChoice( "$game_menu_exrad_2meters_text",
+    erconf->NewChoice( "$game_menu_exrad_2meters_text",
                       "$game_menu_exrad_2meters_help",
                       2.0f );
-    erconf.NewChoice( "$game_menu_exrad_4meters_text",
+    erconf->NewChoice( "$game_menu_exrad_4meters_text",
                       "$game_menu_exrad_4meters_help",
                       4.0f );
-    erconf.NewChoice( "$game_menu_exrad_8meters_text",
+    erconf->NewChoice( "$game_menu_exrad_8meters_text",
                       "$game_menu_exrad_8meters_help",
                       8.0f );
-    erconf.NewChoice( "$game_menu_exrad_16meters_text",
+    erconf->NewChoice( "$game_menu_exrad_16meters_text",
                       "$game_menu_exrad_16meters_help",
                       16.0f );
-    erconf.NewChoice( "$game_menu_exrad_32meters_text",
+    erconf->NewChoice( "$game_menu_exrad_32meters_text",
                       "$game_menu_exrad_32meters_help",
                       32.0f );
-    erconf.NewChoice( "$game_menu_exrad_64meters_text",
+    erconf->NewChoice( "$game_menu_exrad_64meters_text",
                       "$game_menu_exrad_64meters_help",
                       64.0f );
-    erconf.NewChoice( "$game_menu_exrad_128meters_text",
+    erconf->NewChoice( "$game_menu_exrad_128meters_text",
                       "$game_menu_exrad_128meters_help",
                       128.0f );
 
-    uMenuItemToggle autoiqconf
-    (&GameSettings,
+    uMenuItemToggle * autoiqconf = new uMenuItemToggle
+    (GameSettings,
      "$game_menu_autoiq_text",
      "$game_menu_autoiq_help",
      autoIQ);
 
-    uMenuItemToggle autoaiconf
-    (&GameSettings,
+    uMenuItemToggle * autoaiconf = new uMenuItemToggle
+    (GameSettings,
      "$game_menu_autoai_text",
      "$game_menu_autoai_help",
      autoNum);
 
 
-    uMenuItemInt iqconf
-    (&GameSettings,
+    uMenuItemInt * iqconf = new uMenuItemInt
+    (GameSettings,
      "$game_menu_iq_text",
      "$game_menu_iq_help",
      AI_IQ, 20, 100, 10);
 
-    uMenuItemInt mpconf
-    (&GameSettings,
+    uMenuItemInt * mpconf = new uMenuItemInt
+    (GameSettings,
      "$game_menu_minplayers_text",
      "$game_menu_minplayers_help",
      minPlayers,0,MAXAI);
 
-    uMenuItemInt aiconf
-    (&GameSettings,
+    uMenuItemInt * aiconf = new uMenuItemInt
+    (GameSettings,
      "$game_menu_ais_text",
      "$game_menu_ais_help",
      numAIs,0,MAXAI);
 
 
-    GameSettings.Enter();
+    GameSettings->Enter();
+#ifdef __EMSCRIPTEN__
+    // the menu tree is freed by WasmFreeTree when the loop ends
+    return;
+#endif
 }
 
 gGameSettings singlePlayer(10,
@@ -1688,6 +1701,11 @@ void init_game_objects(eGrid *grid){
 
 void init_game_camera(eGrid *grid){
 #ifndef DEDICATED
+    for(int i=0;i<ePlayer::Num();i++)
+    {
+        wdbgi("IGC_CONF", ePlayer::PlayerConfig(i)?1:0);
+        wdbgi("IGC_VP", ePlayer::PlayerViewport(i)?1:0);
+    }
     for(int i=ePlayer::Num()-1;i>=0;i--)
         if (ePlayer::PlayerIsInGame(i)){
             ePlayerNetID *p=ePlayer::PlayerConfig(i)->netPlayer;
@@ -1706,6 +1724,7 @@ void init_game_camera(eGrid *grid){
                                           CAMERA_SMART);
 
             lastTime_gameloop=lastTimeTimestep=0;
+            wdbgi("IGC_MADE", i);
         }
 #else
     se_ResetGameTimer( -PREPARE_TIME - sg_extraRoundTime );
@@ -1758,6 +1777,19 @@ void s_Timestep(eGrid *grid, REAL time,bool cam){
 #ifndef DEDICATED
 void RenderAllViewports(eGrid *grid){
     rViewportConfiguration *conf=rViewportConfiguration::CurrentViewportConfiguration();
+    {
+        static double wlast=0;
+        double wn=tRealSysTimeFloat();
+        if (wn-wlast>1.0)
+        {
+            wlast=wn;
+            wdbgi("RVP_CAMS", grid ? grid->Cameras().Len() : -1);
+            wdbgi("RVP_NVP", conf ? conf->num_viewports : -1);
+            wdbgi("RVP_BEL0", sr_viewportBelongsToPlayer[0]);
+            wdbgi("RVP_BEL1", sr_viewportBelongsToPlayer[1]);
+            wdbgi("RVP_GL", sr_glOut?1:0);
+        }
+    }
 
     if(sr_glOut){
         sr_ResetRenderState();
@@ -1779,7 +1811,7 @@ void RenderAllViewports(eGrid *grid){
             rViewport *act=conf->Port(i);
             if (act && ePlayer::PlayerConfig(p))
                 ePlayer::PlayerConfig(p)->Render();
-            else con << "hey! viewport " << i << " does not exist!\n";
+            else { wdbgi("RVP_MISS", i); wdbgi("RVP_ACT", act?1:0); con << "hey! viewport " << i << " does not exist!\n"; }
         }
 
         // glDisable( GL_FOG );
@@ -1803,6 +1835,11 @@ void RenderAllViewports(eGrid *grid){
 
 
 void Render(eGrid *grid, REAL time, bool swap=true){
+    {
+        static double wlast=0;
+        double wn=tRealSysTimeFloat();
+        if (wn-wlast>2.0) { wlast=wn; wdbg("RENDER_CALLED"); }
+    }
 #ifdef DEBUG
     //  eFace::UpdateVisAll(10);
 #endif
@@ -1869,12 +1906,15 @@ static void cp(){
 
 static eLadderLogWriter sg_gameEndWriter("GAME_END", true);
 
-static void own_game( nNetState enter_state ){
-    tNEW(gGame);
-    se_MakeGameTimer();
-    max_player_speed = 0.0;
-    sg_EnterGame( enter_state );
+#ifdef __EMSCRIPTEN__
+// run once the game loop has ended (wasm: the loop is driven by the JS
+// event loop, so the post-loop code is deferred to the loop exit action)
+static void (*sg_gameTailFn)( void * ) = 0;
+static void * sg_gameTailArg = 0;
+#endif
 
+static void sgOwnGameTail( void * )
+{
     // write scores one last time
     ePlayerNetID::LogScoreDifferences();
     ePlayerNetID::UpdateSuspensions();
@@ -1884,6 +1924,22 @@ static void own_game( nNetState enter_state ){
 
     sg_currentGame=NULL;
     se_KillGameTimer();
+}
+
+static void own_game( nNetState enter_state ){
+    tNEW(gGame);
+    se_MakeGameTimer();
+    max_player_speed = 0.0;
+#ifdef __EMSCRIPTEN__
+    // the game loop is driven by the JS event loop; run the tail when it ends
+    sg_gameTailFn = &sgOwnGameTail;
+    sg_gameTailArg = 0;
+    sg_EnterGame( enter_state );
+#else
+    sg_EnterGame( enter_state );
+
+    sgOwnGameTail( 0 );
+#endif
 }
 
 void sg_SinglePlayerGame(){
@@ -2045,6 +2101,200 @@ static void sg_StopQuickExit()
 }
 
 // return code: false if there was an error or abort
+
+#ifdef __EMSCRIPTEN__
+// the whole client connection flow (connect, wait for the game to be created,
+// play the game, handle redirects and clean up) is driven by the JS event
+// loop: one wasm loop advances the flow, the game itself runs as a nested
+// loop while it is active
+enum sgConnectPhase { CG_DO_CONNECT, CG_WAIT_GAME, CG_PLAY, CG_DONE };
+
+struct sgConnectFlow
+{
+    nServerInfoBase * server; // owned when owns_server (redirect targets)
+    bool owns_server;
+    gSettingsReverter * reverter;
+    bool to;
+    bool okToRedirect;
+    REAL endTime;
+    sgConnectPhase phase;
+};
+
+static sgConnectFlow * sg_flow = 0; // the currently running connection flow
+
+static bool sgConnectFrame( void * );
+static void sgConnectFlowExit( void * );
+
+static void sgConnectGameTail( void * )
+{
+    sgConnectFlow * f = sg_flow;
+
+    bool ret = true;
+
+    sn_SetNetState(nSTANDALONE);
+
+    sg_currentGame = NULL;
+    nNetObject::ClearAll();
+    ePlayerNetID::ClearAll();
+
+    if (!sg_RequestedDisconnection && uMenu::quickexit != uMenu::QuickExit_Total )
+    {
+        sg_StopQuickExit();
+
+        switch (sn_GetLastError())
+        {
+        case nOK:
+            ret = sg_NetworkError("$network_message_abortconn_title",
+                                  "$network_message_abortconn_inter", 20);
+            break;
+        default:
+            ret = sg_NetworkError("$network_message_lostconn_title",
+                                  "$network_message_lostconn_inter", 20);
+            break;
+        }
+    }
+
+    sr_con.autoDisplayAtNewline=false;
+    sr_con.fullscreen=false;
+
+    sr_textOut=f->to;
+
+    // the game ended; the flow loop continues to check for a redirect
+    f->okToRedirect = ret;
+    f->phase = CG_DONE;
+}
+
+static void sgConnectFinal( void * )
+{
+    sgConnectFlow * f = sg_flow;
+    sg_flow = 0;
+
+    // check for redirection (the native build does this in ConnectToServer)
+    while ( f->okToRedirect )
+    {
+        auto redirectTo = sn_GetRedirectTo();
+
+        if ( !redirectTo.get() )
+            break;
+
+        // start a fresh connection flow for the redirect target
+        sgConnectFlow * nf = new sgConnectFlow;
+        nf->server = redirectTo.release();
+        nf->owns_server = true;
+        nf->reverter = new gSettingsReverter();
+        nf->to = sr_textOut;
+        nf->okToRedirect = true;
+        nf->endTime = 0;
+        nf->phase = CG_DO_CONNECT;
+        sg_flow = nf;
+        tWasmLoop::Start( &sgConnectFrame, &sgConnectFlowExit );
+        return;
+    }
+
+    sr_con.autoDisplayAtNewline=false;
+    sr_con.fullscreen=false;
+
+    sn_SetNetState(nSTANDALONE);
+
+    sg_currentGame = NULL;
+    nNetObject::ClearAll();
+    ePlayerNetID::ClearAll();
+
+    sr_textOut=f->to;
+
+    sg_StopQuickExit();
+
+    if ( f->owns_server )
+        delete f->server;
+    delete f->reverter;
+    delete f;
+}
+
+static bool sgConnectFrame( void * )
+{
+    sgConnectFlow * f = sg_flow;
+
+    if ( f->phase == CG_PLAY )
+        return true; // the nested game loop is running
+
+    if ( f->phase == CG_DONE )
+        return false;
+
+    if ( f->phase == CG_DO_CONNECT )
+    {
+        nConnectError error = f->server->Connect();
+        switch (error)
+        {
+        case nABORT:
+            f->okToRedirect = false;
+            f->phase = CG_DONE;
+            return false;
+        case nOK:
+            f->phase = CG_WAIT_GAME;
+            con << tOutput("$network_connecting_gamestate");
+            return false; // wait for the game on the next frame
+        case nTIMEOUT:
+            sg_NetworkError("$network_message_timeout_title", "$network_message_timeout_inter", 20);
+            f->okToRedirect = false;
+            f->phase = CG_DONE;
+            return false;
+        case nDENIED:
+            sg_NetworkError("$network_message_denied_title", sn_DenyReason.Len() > 2 ? "$network_message_denied_inter2" : "$network_message_denied_inter", 20);
+            f->okToRedirect = false;
+            f->phase = CG_DONE;
+            return false;
+        }
+    }
+
+    // CG_WAIT_GAME: one iteration of the wait-for-game loop
+    if ( sg_currentGame || tSysTimeFloat() >= f->endTime || sn_GetNetState() == nSTANDALONE )
+    {
+        if ( sg_currentGame )
+        {
+            sr_con.autoDisplayAtNewline=false;
+            sr_con.fullscreen=false;
+
+            con << tOutput("$network_syncing_gamestate");
+
+            // run the game as a nested loop; when it ends, continue here
+            sg_gameTailFn = &sgConnectGameTail;
+            sg_gameTailArg = 0;
+            f->phase = CG_PLAY;
+            sg_EnterGame( nCLIENT );
+            return true; // the game loop is now the inner loop; wait for it
+        }
+        else
+        {
+            // Timeout. Try again!
+            sg_NetworkError("$network_message_lateto_title", "$network_message_lateto_inter", 20);
+            f->okToRedirect = false;
+            f->phase = CG_DONE;
+        }
+        return false;
+    }
+
+    tAdvanceFrame();
+    sg_Receive();
+    nNetObject::SyncAll();
+    tAdvanceFrame();
+    sn_SendPlanned();
+    st_DoToDo();
+
+#ifndef DEDICATED
+    rSysDep::SwapGL();
+    rSysDep::ClearGL();
+#endif
+
+    sn_Delay();
+    return true;
+}
+
+static void sgConnectFlowExit( void * )
+{
+    sgConnectFinal( 0 );
+}
+#endif
+
 bool ConnectToServerCore(nServerInfoBase *server)
 {
     tASSERT( server );
@@ -2052,7 +2302,12 @@ bool ConnectToServerCore(nServerInfoBase *server)
     ePlayerNetID::ClearAll();
 
     // revert to default settings, restore current vlaues on exit
+#ifdef __EMSCRIPTEN__
+    // the flow outlives this call, so it owns the reverter
+    gSettingsReverter * reverter = new gSettingsReverter();
+#else
     gSettingsReverter reverter;
+#endif
 
     sn_bigBrotherString = renderer_identification;
 
@@ -2093,17 +2348,26 @@ bool ConnectToServerCore(nServerInfoBase *server)
     switch (error)
     {
     case nABORT:
+#ifdef __EMSCRIPTEN__
+        delete reverter;
+#endif
         return false;
         break;
     case nOK:
         break;
     case nTIMEOUT:
         sg_NetworkError("$network_message_timeout_title", "$network_message_timeout_inter", 20);
+#ifdef __EMSCRIPTEN__
+        delete reverter;
+#endif
         return false;
         break;
 
     case nDENIED:
         sg_NetworkError("$network_message_denied_title", sn_DenyReason.Len() > 2 ? "$network_message_denied_inter2" : "$network_message_denied_inter", 20);
+#ifdef __EMSCRIPTEN__
+        delete reverter;
+#endif
         return false;
         break;
     }
@@ -2111,6 +2375,23 @@ bool ConnectToServerCore(nServerInfoBase *server)
 
     // ePlayerNetID::CompleteRebuild();
 
+#ifdef __EMSCRIPTEN__
+    if (sn_GetNetState()==nCLIENT){
+        // the flow is driven by the JS event loop
+        sgConnectFlow * f = new sgConnectFlow;
+        f->server = 0; // the connection is already established, the server is owned by the caller
+        f->owns_server = false;
+        f->reverter = reverter;
+        f->to = to;
+        f->okToRedirect = true;
+        f->endTime = tSysTimeFloat() + 30;
+        f->phase = CG_WAIT_GAME;
+        sg_flow = f;
+        con << tOutput("$network_connecting_gamestate");
+        tWasmLoop::Start( &sgConnectFrame, &sgConnectFlowExit );
+        return true; // the tail runs when the flow ends
+    }
+#else
     if (sn_GetNetState()==nCLIENT){
         REAL endTime=tSysTimeFloat()+30;
         con << tOutput("$network_connecting_gamestate");
@@ -2173,12 +2454,20 @@ bool ConnectToServerCore(nServerInfoBase *server)
     sr_textOut=to;
 
     return ret;
+#endif
 }
 
 void ConnectToServer(nServerInfoBase *server)
 {
     bool to = sr_textOut;
 
+#ifdef __EMSCRIPTEN__
+    // the entire flow (connect, game, redirects, cleanup) is deferred to
+    // the JS event loop
+    (void) to;
+    ConnectToServerCore( server );
+    return;
+#else
     bool okToRedirect = ConnectToServerCore( server );
 
     // REAL redirections = 0;
@@ -2230,6 +2519,7 @@ void ConnectToServer(nServerInfoBase *server)
     sr_textOut=to;
 
     sg_StopQuickExit();
+#endif
 }
 
 static tConfItem<int> mor("MAX_OUT_RATE",sn_maxRateOut);
@@ -2266,15 +2556,22 @@ void ret_to_MainMenu(){
 
 
 void net_options(){
-    uMenu net_menu("$network_opts_text");
+    uMenu net_menu_dummy("$network_opts_text");
+    uMenu * net_menu;
+#ifdef __EMSCRIPTEN__
+    net_menu = uMenu::WasmNew( "$network_opts_text" );
+    net_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    net_menu = &net_menu_dummy;
+#endif
 
-    uMenuItemInt high_port
-    (&net_menu,"$network_opts_maxport_text",
+    uMenuItemInt * high_port = new uMenuItemInt
+    (net_menu,"$network_opts_maxport_text",
      "$network_opts_maxport_help",
      gServerBrowser::highPort,1024,65536);
 
-    uMenuItemInt low_port
-    (&net_menu,"$network_opts_minport_text",
+    uMenuItemInt * low_port = new uMenuItemInt
+    (net_menu,"$network_opts_minport_text",
      "$network_opts_minport_help",
      gServerBrowser::lowPort,1024,65536);
 
@@ -2307,72 +2604,79 @@ void net_options(){
     */
 
 
-    uMenuItemInt out_rate
-    (&net_menu,"$network_opts_outrate_text",
+    uMenuItemInt * out_rate = new uMenuItemInt
+    (net_menu,"$network_opts_outrate_text",
      "$network_opts_outrate_help",
      sn_maxRateOut,2,32);
 
 
-    uMenuItemInt in_rate
-    (&net_menu,"$network_opts_inrate_text",
+    uMenuItemInt * in_rate = new uMenuItemInt
+    (net_menu,"$network_opts_inrate_text",
      "$network_opts_inrate_help",
      sn_maxRateIn,3,64);
 
 
-    uMenuItemToggle po2
-    (&net_menu,"$network_opts_predict_text",
+    uMenuItemToggle * po2 = new uMenuItemToggle
+    (net_menu,"$network_opts_predict_text",
      "$network_opts_predict_help",
      sr_predictObjects);
 
-    uMenuItemToggle lm2
-    (&net_menu,"$network_opts_lagometer_text",
+    uMenuItemToggle * lm2 = new uMenuItemToggle
+    (net_menu,"$network_opts_lagometer_text",
      "$network_opts_lagometer_help",
      sr_laggometer);
 
-    uMenuItemToggle ai
-    (&net_menu,"$network_opts_axesindicator_text",
+    uMenuItemToggle * ai = new uMenuItemToggle
+    (net_menu,"$network_opts_axesindicator_text",
      "$network_opts_axesindicator_help",
      sg_axesIndicator);
 
 
-    uMenuItemInt p_s
-    (&net_menu,"$network_opts_pingchar_text",
+    uMenuItemInt * p_s = new uMenuItemInt
+    (net_menu,"$network_opts_pingchar_text",
      "$network_opts_pingchar_help",
      pingCharity,0,300,20);
 
-    net_menu.Enter();
+    net_menu->Enter();
 
     if (gServerBrowser::lowPort > gServerBrowser::highPort)
         gServerBrowser::highPort = gServerBrowser::lowPort;
 }
 
 void sg_HostGameMenu(){
-    uMenu net_menu("$network_host_text");
+    uMenu net_menu_dummy("$network_host_text");
+    uMenu * net_menu;
+#ifdef __EMSCRIPTEN__
+    net_menu = uMenu::WasmNew( "$network_host_text" );
+    net_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    net_menu = &net_menu_dummy;
+#endif
 
-    sg_HostMenu = &net_menu;
+    sg_HostMenu = net_menu;
 
-    uMenuItemInt port(&net_menu, "$network_host_port_text",
+    uMenuItemInt * port = new uMenuItemInt(net_menu, "$network_host_port_text",
                       "$network_host_port_help"
                       ,reinterpret_cast<int &>(sn_serverPort), gServerBrowser::lowPort, gServerBrowser::highPort);
 
-    uMenuItemString serverName
-    (&net_menu,"$network_host_name_text",
+    uMenuItemString * serverName = new uMenuItemString
+    (net_menu,"$network_host_name_text",
      "$network_host_name_help",
      sn_serverName);
 
-    uMenuItemFunction settings1
-    (&net_menu,
+    uMenuItemFunction * settings1 = new uMenuItemFunction
+    (net_menu,
      "$game_settings_menu_text",
      "$game_settings_menu_help",
      &GameSettingsMP);
 
-    uMenuItemFunction serv
-    (&net_menu,"$network_host_host_text",
+    uMenuItemFunction * serv = new uMenuItemFunction
+    (net_menu,"$network_host_host_text",
      "$network_host_host_help",&sg_HostGame);
 
-    net_menu.ReverseItems();
-    net_menu.SetSelected(0);
-    net_menu.Enter();
+    net_menu->ReverseItems();
+    net_menu->SetSelected(0);
+    net_menu->Enter();
 
     sg_HostMenu = NULL;
 }
@@ -2396,26 +2700,33 @@ public:
 
 void net_game(){
 #ifndef DEDICATED
-    uMenu net_menu("$network_menu_text");
+    uMenu net_menu_dummy("$network_menu_text");
+    uMenu * net_menu;
+#ifdef __EMSCRIPTEN__
+    net_menu = uMenu::WasmNew( "$network_menu_text" );
+    net_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    net_menu = &net_menu_dummy;
+#endif
 
-    uMenuItemFunction cust
-    (&net_menu,"$network_custjoin_text",
+    uMenuItemFunction * cust = new uMenuItemFunction
+    (net_menu,"$network_custjoin_text",
      "$network_custjoin_help",&gServerFavorites::CustomConnectMenu);
 
-    uMenuItemFunction mas
-    (&net_menu,"$masters_menu",
+    uMenuItemFunction * mas = new uMenuItemFunction
+    (net_menu,"$masters_menu",
      "$masters_menu_help",&gServerFavorites::AlternativesMenu);
 
-    uMenuItemFunction fav
-    (&net_menu,"$bookmarks_menu",
+    uMenuItemFunction * fav = new uMenuItemFunction
+    (net_menu,"$bookmarks_menu",
      "$bookmarks_menu_help",&gServerFavorites::FavoritesMenu);
 
-    uMenuItemFunction bud
-    (&net_menu,"$friends_menu",
+    uMenuItemFunction * bud = new uMenuItemFunction
+    (net_menu,"$friends_menu",
      "$friends_menu_help",&gFriends::FriendsMenu);
 
-    uMenuItemFunction opt
-    (&net_menu,"$network_opts_text",
+    uMenuItemFunction * opt = new uMenuItemFunction
+    (net_menu,"$network_opts_text",
      "$network_opts_help",&net_options);
 
     /*
@@ -2424,17 +2735,17 @@ void net_game(){
       "$network_host_help",&sg_HostGameMenu);
     */
 
-    uMenuItemFunction lan
-    (&net_menu,"$network_menu_lan_text",
+    uMenuItemFunction * lan = new uMenuItemFunction
+    (net_menu,"$network_menu_lan_text",
      "$network_menu_lan_help",&gServerBrowser::BrowseLAN);
 
-    uMenuItemFunction inter
-    (&net_menu,"$network_menu_internet_text",
+    uMenuItemFunction * inter = new uMenuItemFunction
+    (net_menu,"$network_menu_internet_text",
      "$network_menu_internet_help",&gServerBrowser::BrowseMaster);
 
     gNetIdler idler;
     // rSysDep::StartNetSyncThread( &idler );
-    net_menu.Enter();
+    net_menu->Enter();
     rSysDep::StopNetSyncThread();
 #endif
 }
@@ -2507,7 +2818,13 @@ void sg_DisplayVersionInfo() {
 
 void sg_StartupPlayerMenu();
 
+// (wasm) loop-exit action for the ingame menu (defined after
+// ingame_menu_cleanup): frees the menu tree and runs the post-menu
+// work the native build does after MainMenu(true) returns
+static void WasmIngameMenuLoopExit( uMenu * m, void * );
+
 void MainMenu(bool ingame){
+    wdbgi("MainMenu: enter", ingame ? 1 : 0);
     //	update_settings();
 
     if (ingame)
@@ -2524,13 +2841,19 @@ void MainMenu(bool ingame){
     else
         gametitle << "$game_menu_ingame_text";
 
-    uMenu game_menu(gametitle);
+    uMenu game_menu_dummy(gametitle);
+    uMenu * game_menu;
+#ifdef __EMSCRIPTEN__
+    game_menu = uMenu::WasmNew( gametitle );
+#else
+    game_menu = &game_menu_dummy;
+#endif
 
     uMenuItemFunction *reset=NULL;
 
     if(ingame && sn_GetNetState()!=nCLIENT){
         reset=new uMenuItemFunction
-              (&game_menu,"$game_menu_reset_text",
+              (game_menu,"$game_menu_reset_text",
                "$game_menu_reset_help",
                &StartNewMatch);
     }
@@ -2539,13 +2862,13 @@ void MainMenu(bool ingame){
 
     if (!ingame)
         settings1=tNEW(uMenuItemFunction)
-                  (&game_menu,
+                  (game_menu,
                    "$game_settings_menu_text",
                    "$game_settings_menu_help",
                    &GameSettingsSP);
     else
         settings1=tNEW(uMenuItemFunction)
-                  (&game_menu,
+                  (game_menu,
                    "$game_settings_menu_text",
                    "$game_settings_menu_help",
                    &GameSettingsCurrent);
@@ -2553,10 +2876,10 @@ void MainMenu(bool ingame){
     uMenuItemFunction *connect=NULL,*start=NULL,*sound=NULL;
 
     if (!ingame){
-        start= new uMenuItemFunction(&game_menu,"$game_menu_start_text",
+        start= new uMenuItemFunction(game_menu,"$game_menu_start_text",
                                      "$game_menu_start_help",&sg_SinglePlayerGame);
         connect=new uMenuItemFunction
-                (&game_menu,
+                (game_menu,
                  "$network_menu_text",
                  "$network_menu_help",
                  &net_game);
@@ -2570,10 +2893,20 @@ void MainMenu(bool ingame){
     else
         title << "$ingame_menu_text";
 
-    uMenu MainMenu(title,false);
+    uMenu MainMenu_dummy(title,false);
+    uMenu * MainMenu;
+#ifdef __EMSCRIPTEN__
+    MainMenu = uMenu::WasmNew( title, false );
+    if (ingame)
+        MainMenu->SetOnLoopExit( &WasmIngameMenuLoopExit );
+    else
+        MainMenu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    MainMenu = &MainMenu_dummy;
+#endif
 
     if (ingame)
-        sg_IngameMenu = &MainMenu;
+        sg_IngameMenu = MainMenu;
 
     char const * extitle,* exhelp;
     if (!ingame){
@@ -2585,24 +2918,24 @@ void MainMenu(bool ingame){
         exhelp="$ingame_menu_exit_help";
     }
 
-    uMenuItemExit exx(&MainMenu,extitle,
+    uMenuItemExit * exx = new uMenuItemExit(MainMenu,extitle,
                       exhelp);
 
     uMenuItemFunction *return_to_main=NULL;
     if (ingame){
         if (sn_GetNetState()==nSTANDALONE)
             return_to_main=new uMenuItemFunction
-                           (&MainMenu,"$game_menu_exit_text",
+                           (MainMenu,"$game_menu_exit_text",
                             "$game_menu_exit_help",
                             &ret_to_MainMenu);
         else if (sn_GetNetState()==nCLIENT)
             return_to_main=new uMenuItemFunction
-                           (&MainMenu,"$game_menu_disconnect_text",
+                           (MainMenu,"$game_menu_disconnect_text",
                             "$game_menu_disconnect_help",
                             &ret_to_MainMenu);
         else
             return_to_main=new uMenuItemFunction
-                           (&MainMenu,
+                           (MainMenu,
                             "$game_menu_shutdown_text",
                             "game_menu_shutdown_help",
                             &ret_to_MainMenu);
@@ -2612,29 +2945,35 @@ void MainMenu(bool ingame){
     static nVersionFeature authentication( 15 );
     if ( sn_GetNetState() == nCLIENT && ingame && authentication.Supported(0) )
     {
-        auth =tNEW(uMenuItemFunction)(&MainMenu,
+        auth =tNEW(uMenuItemFunction)(MainMenu,
                                       "$player_authenticate_text",
                                       "$player_authenticate_help",
                                       &PlayerLogIn );
     }
 
-    uMenuItemFunction abb(&MainMenu,
+    uMenuItemFunction * abb = new uMenuItemFunction(MainMenu,
                           "$main_menu_about_text",
                           "$main_menu_about_help",
                           &sg_DisplayVersionInfo);
 
 
-    uMenu Settings("$system_settings_menu_text");
+    uMenu Settings_dummy("$system_settings_menu_text");
+    uMenu * Settings;
+#ifdef __EMSCRIPTEN__
+    Settings = uMenu::WasmNew( "$system_settings_menu_text" );
+#else
+    Settings = &Settings_dummy;
+#endif
 
-    uMenuItemSubmenu subm_settings
-    (&MainMenu,&Settings,
+    uMenuItemSubmenu * subm_settings = new uMenuItemSubmenu
+    (MainMenu,Settings,
      "$system_settings_menu_help");
 
 
     uMenuItem* team = NULL;
     if ( ingame )
     {
-        team = tNEW( uMenuItemFunction) ( &MainMenu,
+        team = tNEW( uMenuItemFunction) ( MainMenu,
                                           "$team_menu_title",
                                           "$team_menu_help",
                                           &gTeam::TeamMenu );
@@ -2644,7 +2983,7 @@ void MainMenu(bool ingame){
 
     //   if (!ingame)
     se_PlayerMenu= new uMenuItemFunction
-                   (&MainMenu,"$player_mainmenu_text",
+                   (MainMenu,"$player_mainmenu_text",
                     "$player_mainmenu_help",
                     &sg_PlayerMenu);
 
@@ -2652,57 +2991,63 @@ void MainMenu(bool ingame){
     uMenuItemFunction *voting=NULL;
     if ( ingame && sn_GetNetState() != nSTANDALONE )
     {
-        player_police = tNEW( uMenuItemFunction )( &MainMenu, "$player_police_text", "$player_police_help", ePlayerNetID::PoliceMenu );
+        player_police = tNEW( uMenuItemFunction )( MainMenu, "$player_police_text", "$player_police_help", ePlayerNetID::PoliceMenu );
 
         if ( eVoter::VotingPossible() )
-            voting = tNEW( uMenuItemFunction )( &MainMenu, "$voting_menu_text", "$voting_menu_help", eVoter::VotingMenu );
+            voting = tNEW( uMenuItemFunction )( MainMenu, "$voting_menu_text", "$voting_menu_help", eVoter::VotingMenu );
     }
 
-    uMenu misc("$misc_menu_text");
+    uMenu misc_dummy("$misc_menu_text");
+    uMenu * misc;
+#ifdef __EMSCRIPTEN__
+    misc = uMenu::WasmNew( "$misc_menu_text" );
+#else
+    misc = &misc_dummy;
+#endif
 
-    //  misc.SetCenter(.25);
+    //  misc->SetCenter(.25);
 
-    uMenuItemFunction first_setup
-    (&misc,"$misc_initial_menu_title",
+    uMenuItemFunction * first_setup = new uMenuItemFunction
+    (misc,"$misc_initial_menu_title",
      "$misc_initial_menu_help",
      &sg_StartupPlayerMenu);
 
-    uMenuItemFunction language
-    (&misc,"$language_menu_title",
+    uMenuItemFunction * language = new uMenuItemFunction
+    (misc,"$language_menu_title",
      "$language_menu_help",
      &sg_LanguageMenu);
 
-    uMenuItemFunction global_key
-    (&misc,"$misc_global_key_text",
+    uMenuItemFunction * global_key = new uMenuItemFunction
+    (misc,"$misc_global_key_text",
      "$misc_global_key_help",
      &su_InputConfigGlobal);
 
-    uMenuItemToggle wrap
-    (&misc,"$misc_menuwrap_text",
+    uMenuItemToggle * wrap = new uMenuItemToggle
+    (misc,"$misc_menuwrap_text",
      "$misc_menuwrap_help",
      uMenu::wrap);
 
-    uMenuItemToggle to2
-    (&misc,"$misc_textout_text",
+    uMenuItemToggle * to2 = new uMenuItemToggle
+    (misc,"$misc_textout_text",
      "$misc_textout_help",sr_textOut);
 
 
 
-    uMenuItemToggle mp
-    (&misc,"$misc_moviepack_text",
+    uMenuItemToggle * mp = new uMenuItemToggle
+    (misc,"$misc_moviepack_text",
      "$misc_moviepack_help",sg_moviepackUse);
 
 
-    uMenuItemSubmenu misc_sm
-    (&Settings,&misc,
+    uMenuItemSubmenu * misc_sm = new uMenuItemSubmenu
+    (Settings,misc,
      "$misc_menu_help");
 
     sound = new uMenuItemFunction
-            (&Settings,"$sound_menu_text",
+            (Settings,"$sound_menu_text",
              "$sound_menu_help",&se_SoundMenu);
 
-    uMenuItemSubmenu subm
-    (&Settings,&sg_screenMenu,
+    uMenuItemSubmenu * subm = new uMenuItemSubmenu
+    (Settings,&sg_screenMenu,
      "$display_settings_menu_help");
 
     uMenuItemSubmenu *gamemenuitem = NULL;
@@ -2714,8 +3059,8 @@ void MainMenu(bool ingame){
         else
             gamehelp="$game_menu_ingame_help";
 
-        gamemenuitem = tNEW(uMenuItemSubmenu) (&MainMenu,
-                                               &game_menu,
+        gamemenuitem = tNEW(uMenuItemSubmenu) (MainMenu,
+                                               game_menu,
                                                gamehelp
                                               );
     }
@@ -2726,7 +3071,11 @@ void MainMenu(bool ingame){
         // ePlayerNetID::Update();
     }
 
-    MainMenu.Enter();
+    MainMenu->Enter();
+#ifdef __EMSCRIPTEN__
+    // the menu tree is freed by WasmFreeTree when the loop ends
+    return;
+#endif
 
     if (settings1)
         delete settings1;
@@ -2809,7 +3158,14 @@ static void ingame_menu()
         sg_HostMenu=NULL;
         throw;
     }
+#ifdef __EMSCRIPTEN__
+    // (wasm) MainMenu() returns before the menu loop ends (the loop is
+    // driven by tWasmLoop), so the cleanup that the native build runs
+    // after the blocking menu returns is deferred to the loop-exit
+    // callback registered by MainMenu(ingame=true)
+#else
     ingame_menu_cleanup();
+#endif
 }
 
 static void ingame_menu_cleanup()
@@ -2825,6 +3181,24 @@ static void ingame_menu_cleanup()
     }
     //    globalingame=false;
 }
+
+#ifdef __EMSCRIPTEN__
+// (wasm) loop-exit action for the ingame menu: frees the menu tree,
+// clears sg_IngameMenu (the native build does this in MainMenu after
+// the blocking loop returns; left stale on wasm it keeps the game
+// timer paused forever and dangles after the tree is freed), then
+// runs the regular post-menu cleanup
+static void WasmIngameMenuLoopExit( uMenu * m, void * )
+{
+    bool wasIngame = ( sg_IngameMenu == m );
+    uMenu::WasmFreeTree( m, 0 );
+    if ( wasIngame )
+    {
+        sg_IngameMenu = NULL;
+        ingame_menu_cleanup();
+    }
+}
+#endif
 #endif
 
 
@@ -3156,6 +3530,7 @@ void gGame::StateUpdate(){
 
         // unsigned short int mes1 = 1, mes2 = 1, mes3 = 1, mes4 = 1, mes5 = 1;
 
+        double _t0 = tRealSysTimeFloat();
         switch(state){
         case GS_DELETE_GRID:
             // sr_con.autoDisplayAtNewline=true;
@@ -3167,7 +3542,11 @@ void gGame::StateUpdate(){
 
             //				for (unsigned short int mycy = 0; mycy > sg_roundConsoleMessage5.Len(); c++)
 
-            exit_game_objects(grid);
+            {
+                double _t = tRealSysTimeFloat();
+                exit_game_objects(grid);
+                wdbgi("EXIT_OBJ_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
             nNetObject::ClearAllDeleted();
 
             if (goon)
@@ -3209,7 +3588,11 @@ void gGame::StateUpdate(){
                 ePlayerNetID::Update();
 
             // delete game objects again (in case new ones were spawned)
-            exit_game_objects(grid);
+            {
+                double _t = tRealSysTimeFloat();
+                exit_game_objects(grid);
+                wdbgi("EXIT_OBJ2_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
 
             // if the map has changed on the server side, verify it
             static tString lastMapfile( DEFAULT_MAP );
@@ -3254,8 +3637,14 @@ void gGame::StateUpdate(){
 
             tAdvanceFrame();
 
-            exit_game_grid(grid);
-            init_game_grid(grid, aParser);
+            {
+                double _t = tRealSysTimeFloat();
+                exit_game_grid(grid);
+                wdbgi("EXIT_GRID_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+                _t = tRealSysTimeFloat();
+                init_game_grid(grid, aParser);
+                wdbgi("INIT_GRID_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
 
             nNetObject::ClearAllDeleted();
 
@@ -3271,7 +3660,11 @@ void gGame::StateUpdate(){
             if ( synced_ )
                 ePlayerNetID::Update();
 
-            init_game_objects(grid);
+            {
+                double _t = tRealSysTimeFloat();
+                init_game_objects(grid);
+                wdbgi("INIT_OBJ_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
 
             ePlayerNetID::RankingLadderLog();
             eTeam::WriteLaunchPositions();
@@ -3290,9 +3683,17 @@ void gGame::StateUpdate(){
             }
 
             // do the first analysis of the round, now is the time to get it used to the number of teams
-            Analysis( -1000 );
+            {
+                double _t = tRealSysTimeFloat();
+                Analysis( -1000 );
+                wdbgi("ANALYSIS_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
 
-            s_Timestep(grid, se_GameTime(), false);
+            {
+                double _t = tRealSysTimeFloat();
+                s_Timestep(grid, se_GameTime(), false);
+                wdbgi("TSTEP_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
             SetState(GS_TRANSFER_OBJECTS,GS_CAMERA);
 
             if (sn_GetNetState() == nCLIENT && just_connected){
@@ -3304,7 +3705,11 @@ void gGame::StateUpdate(){
             break;
         case GS_TRANSFER_OBJECTS:
             // con << "Transferring objects...\n";
-            rITexture::LoadAll();
+            {
+                double _t = tRealSysTimeFloat();
+                rITexture::LoadAll();
+                wdbgi("LOADALL1_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
             // se_ResetGameTimer();
             // se_PauseGameTimer(true);
 
@@ -3358,15 +3763,23 @@ void gGame::StateUpdate(){
             break;
         case GS_CAMERA:
             // con << "Setting camera position...\n";
-            rITexture::LoadAll();
-            // se_ResetGameTimer(-PREPARE_TIME);
-            // se_PauseGameTimer(true);
-            init_game_camera(grid);
+            {
+                double _t = tRealSysTimeFloat();
+                rITexture::LoadAll();
+                wdbgi("LOADALL2_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+                _t = tRealSysTimeFloat();
+                init_game_camera(grid);
+                wdbgi("INIT_CAM_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
             SetState(GS_SYNCING,GS_PLAY);
             break;
         case GS_SYNCING:
             // con << "Syncing timer...\n";
-            rITexture::LoadAll();
+            {
+                double _t = tRealSysTimeFloat();
+                rITexture::LoadAll();
+                wdbgi("LOADALL3_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
             SetState(GS_PLAY,GS_PLAY);
             if (sn_GetNetState()!=nCLIENT){
                 if (rounds<=0){
@@ -3467,15 +3880,33 @@ void gGame::StateUpdate(){
 
             // sr_con.autoDisplayAtNewline=true;
 
-            gHighscoresBase::SaveAll();
+            {
+                double _t = tRealSysTimeFloat();
+                gHighscoresBase::SaveAll();
+                wdbgi("SAVE_HL_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
             con << tOutput("$gamestate_deleting_objects");
-            exit_game_objects(grid);
+            {
+                double _t = tRealSysTimeFloat();
+                exit_game_objects(grid);
+                wdbgi("EXIT_OBJ3_MS", (int)((tRealSysTimeFloat()-_t)*1000.0));
+            }
             st_ToDo( sg_VoteMenuIdle );
             nNetObject::ClearAllDeleted();
             SetState(GS_DELETE_GRID,GS_TRANSFER_SETTINGS);
             break;
         default:
             break;
+        }
+        {
+            static char _s1[40], _s2[24];
+            double _dt = tRealSysTimeFloat() - _t0;
+            if (_dt > .002)
+            {
+                snprintf(_s1, sizeof(_s1), "STATE state=%d", (int)state);
+                snprintf(_s2, sizeof(_s2), "ms=%d", (int)(_dt*1000.0));
+                wdbg2(_s1, _s2);
+            }
         }
 
         // now would be a good time to tend for pending tasks
@@ -4530,7 +4961,44 @@ void gameloop_idle()
 static eSoundPlayer introPlayer(intro);
 static eSoundPlayer extroPlayer(extro);
 
-static void sg_EnterGameCleanup();
+void sg_EnterGameCleanup();
+#ifdef __EMSCRIPTEN__
+static nNetState sg_enterGameState = nSTANDALONE;
+
+
+// one game frame: advance the simulation and run the round loop body
+static bool sgEnterGameFrame( void * )
+{
+    if ( !sg_currentGame || sn_GetNetState() != sg_enterGameState )
+        return false;
+
+    // do the regular simulation
+    tAdvanceFrame();
+
+    bool goon = GameLoop();
+    st_DoToDo();
+
+    return goon;
+}
+
+// run when the game loop ends: sg_EnterGameCore cleanup, then the tail
+static void sgEnterGameLoopExit( void * )
+{
+    sg_SoundPause( false, false );
+
+    extroPlayer.MakeGlobal();
+    extroPlayer.Reset();
+
+    sg_EnterGameCleanup();
+
+    void (* fn)( void * ) = sg_gameTailFn;
+    void * arg = sg_gameTailArg;
+    sg_gameTailFn = 0;
+    sg_gameTailArg = 0;
+    if ( fn )
+        fn( arg );
+}
+#endif
 
 void sg_EnterGameCore( nNetState enter_state ){
     se_UserShowScores( false );
@@ -4558,6 +5026,12 @@ void sg_EnterGameCore( nNetState enter_state ){
 
     uMenu::SetIdle(gameloop_idle);
     sr_con.autoDisplayAtSwap=true;
+#ifdef __EMSCRIPTEN__
+    // the loop is driven by the JS event loop (one iteration per animation
+    // frame); cleanup and the deferred tail run when it ends
+    sg_enterGameState = enter_state;
+    tWasmLoop::Start( &sgEnterGameFrame, &sgEnterGameLoopExit );
+#else
     bool goon=true;
     while (bool(sg_currentGame) && goon && sn_GetNetState()==enter_state){
 #ifdef DEDICATED // read input
@@ -4597,6 +5071,7 @@ void sg_EnterGameCore( nNetState enter_state ){
     extroPlayer.Reset();
 
     sg_EnterGameCleanup();
+#endif
 }
 
 void sg_EnterGameCleanup()

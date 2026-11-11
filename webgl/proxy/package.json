@@ -1,0 +1,13 @@
+{
+  "name": "armagetronad-web-proxy",
+  "version": "1.0.0",
+  "description": "WebSocket <-> UDP bridge so the WebAssembly client can reach Armagetron servers",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "license": "GPL-2.0-or-later",
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}

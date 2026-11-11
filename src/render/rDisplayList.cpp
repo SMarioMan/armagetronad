@@ -229,6 +229,9 @@ void rDisplayListFiller::Start( bool respectBlacklist )
 {
 #ifndef DEDICATED
     bool useList = sr_useDisplayLists != rDisplayList_Off && list_.inhibit_ == 0 && !sr_currentFiller;
+#ifdef __EMSCRIPTEN__
+    useList = false;
+#endif
 
     // don't ever use display lists if they are blacklisted
 #ifndef DEBUG_X

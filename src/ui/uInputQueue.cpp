@@ -106,9 +106,60 @@ bool su_StoreSDLEvent(const SDL_Event &tEvent){
 // read and write operators for keysyms
 tRECORDING_ENUM( SDLKey );
 tRECORDING_ENUM( SDLMod );
+#ifdef __EMSCRIPTEN__
+tRECORDING_ENUM( SDL_Scancode );
+#endif
 #endif
 
 static char const * recordingSection = "INPUT";
+
+// (wasm build) the emscripten SDL port exposes SDL2-style event type values
+// (SDL_KEYDOWN=0x300, SDL_ACTIVEEVENT=0x7000, ...), while the .adr recording
+// format stores the original SDL 1.2 values (SDL_KEYDOWN=2, SDL_ACTIVEEVENT=1,
+// ...). Translate between the two at the archive boundary so recordings made
+// on any platform interoperate.
+#ifdef __EMSCRIPTEN__
+enum
+{
+    kSdl12ActiveEvent     = 1,
+    kSdl12KeyDown         = 2,
+    kSdl12KeyUp           = 3,
+    kSdl12MouseMotion     = 4,
+    kSdl12MouseButtonDown = 5,
+    kSdl12MouseButtonUp   = 6,
+    kSdl12Quit            = 11
+};
+
+static Uint32 atFileToRuntimeEventType( Uint32 t )
+{
+    switch ( t )
+    {
+    case kSdl12ActiveEvent:     return SDL_ACTIVEEVENT;
+    case kSdl12KeyDown:         return SDL_KEYDOWN;
+    case kSdl12KeyUp:           return SDL_KEYUP;
+    case kSdl12MouseMotion:     return SDL_MOUSEMOTION;
+    case kSdl12MouseButtonDown: return SDL_MOUSEBUTTONDOWN;
+    case kSdl12MouseButtonUp:   return SDL_MOUSEBUTTONUP;
+    case kSdl12Quit:            return SDL_QUIT;
+    default:                    return t;
+    }
+}
+
+static Uint32 atRuntimeToFileEventType( Uint32 t )
+{
+    switch ( t )
+    {
+    case SDL_ACTIVEEVENT:     return kSdl12ActiveEvent;
+    case SDL_KEYDOWN:         return kSdl12KeyDown;
+    case SDL_KEYUP:           return kSdl12KeyUp;
+    case SDL_MOUSEMOTION:     return kSdl12MouseMotion;
+    case SDL_MOUSEBUTTONDOWN: return kSdl12MouseButtonDown;
+    case SDL_MOUSEBUTTONUP:   return kSdl12MouseButtonUp;
+    case SDL_QUIT:            return kSdl12Quit;
+    default:                  return t;
+    }
+}
+#endif
 
 //! Read or write event data
 template< class Archiver > class EventArchiver
@@ -133,7 +184,24 @@ public:
                 return false;
 
             // write or read data
-            archive.Archive(time).Archive(event.type);
+            archive.Archive( time );
+#ifdef __EMSCRIPTEN__
+            if ( tRecorder::IsPlayingBack() )
+            {
+                // file stores SDL 1.2 event types; convert to runtime values
+                Uint32 wireType = 0;
+                archive.Archive( wireType );
+                event.type = atFileToRuntimeEventType( wireType );
+            }
+            else
+            {
+                // file must hold SDL 1.2 event types for native compatibility
+                Uint32 wireType = atRuntimeToFileEventType( event.type );
+                archive.Archive( wireType );
+            }
+#else
+            archive.Archive( event.type );
+#endif
             switch ( event.type )
             {
             case SDL_ACTIVEEVENT:
@@ -203,7 +271,11 @@ void EventArchiver< tRecordingBlock >::ArchiveKey( tRecordingBlock & archive, SD
         default:
             key.keysym.mod = KMOD_NONE;
             key.keysym.sym = SDLK_x;
+#ifdef __EMSCRIPTEN__
+            key.keysym.scancode = (SDL_Scancode)0;
+#else
             key.keysym.scancode = 0;
+#endif
             key.keysym.unicode = '*';
         }
     }

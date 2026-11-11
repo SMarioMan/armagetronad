@@ -61,17 +61,24 @@ void sg_LanguageMenu()
     if (!tLanguage::FirstLanguage())
         return;
 
-    uMenu menu("$language_menu_title", false);
+    uMenu menu_dummy("$language_menu_title", false);
     //  uMenu menu("Sprach Menu", false);
+    uMenu * menu;
+#ifdef __EMSCRIPTEN__
+    menu = uMenu::WasmNew( "$language_menu_title", false );
+    menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    menu = &menu_dummy;
+#endif
 
-    uMenuItemExit exit(&menu, "$menuitem_accept", "$menuitem_accept_help");
+    uMenuItemExit * exit = new uMenuItemExit(menu, "$menuitem_accept", "$menuitem_accept_help");
 
-    uMenuItemSelection<tString> second(&menu,
+    uMenuItemSelection<tString> * second = new uMenuItemSelection<tString>(menu,
                                        "$language_menu_item_second",
                                        "$language_menu_item_second_help",
                                        sg_SecondLanguage);
 
-    uMenuItemSelection<tString> first(&menu,
+    uMenuItemSelection<tString> * first = new uMenuItemSelection<tString>(menu,
                                       "$language_menu_item_fist",
                                       "$language_menu_item_first_help",
                                       sg_FirstLanguage);
@@ -79,12 +86,12 @@ void sg_LanguageMenu()
     tLanguage* run = tLanguage::FirstLanguage();
     while (run)
     {
-        first.NewChoice(run->Name(),"", run->Name());
-        second.NewChoice(run->Name(),"", run->Name());
+        first->NewChoice(run->Name(),"", run->Name());
+        second->NewChoice(run->Name(),"", run->Name());
         run = run->Next();
     }
 
-    menu.Enter();
+    menu->Enter();
 
     sg_LanguageInit();
 }
@@ -124,26 +131,35 @@ private:
 
 void sg_StartupLanguageMenu()
 {
-    uMenu menu("$language_menu_title", false);
+    uMenu menu_dummy("$language_menu_title", false);
+    uMenu * menu;
+#ifdef __EMSCRIPTEN__
+    menu = uMenu::WasmNew( "$language_menu_title", false );
+    menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    menu = &menu_dummy;
+#endif
 
     std::vector< uMenuItem * > items;
-    
+
     tLanguage* run = tLanguage::FirstLanguage();
     while (run)
     {
-        uMenuItem * item = tNEW(uMenuItemLanguage)( &menu, *run );
+        uMenuItem * item = tNEW(uMenuItemLanguage)( menu, *run );
         items.push_back( item );
 
         run = run->Next();
     }
 
-    menu.ReverseItems();
-    menu.Enter();
+    menu->ReverseItems();
+    menu->Enter();
 
+#ifndef __EMSCRIPTEN__
     for( std::vector< uMenuItem * >::iterator i = items.begin(); i != items.end(); ++i )
     {
         delete *i;
     }
+#endif
 }
 
 

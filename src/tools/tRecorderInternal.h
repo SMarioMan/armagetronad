@@ -67,6 +67,7 @@ class tPlayback
     friend class tPlaybackBlockBase;
 
 public:
+
     tPlayback              ()        ;   //!< default constructor
 
     typedef std::istream STREAM      ;   //!< stream typedef

@@ -292,28 +292,35 @@ public:
 
 static void sg_ScreenModeMenu()
 {
-    uMenu screen_menu_mode("$screen_mode_menu");
+    uMenu screen_menu_mode_dummy("$screen_mode_menu");
+    uMenu * screen_menu_mode;
+#ifdef __EMSCRIPTEN__
+    screen_menu_mode = uMenu::WasmNew( "$screen_mode_menu" );
+    screen_menu_mode->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    screen_menu_mode = &screen_menu_mode_dummy;
+#endif
 
-    uMenuItemFunction appl
-    (&screen_menu_mode,
+    uMenuItemFunction * appl = new uMenuItemFunction
+    (screen_menu_mode,
      "$screen_apply_changes_text",
      "$screen_apply_changes_help",
      &sr_ReinitDisplay);
 
-    uMenuItemToggle kwa_t(
-        &screen_menu_mode,
+    uMenuItemToggle * kwa_t = new uMenuItemToggle(
+        screen_menu_mode,
         "$screen_keep_window_active_text",
         "$screen_keep_window_active_help",
         sr_keepWindowActive);
 
-    uMenuItemToggle ie_t
-    (&screen_menu_mode,
+    uMenuItemToggle * ie_t = new uMenuItemToggle
+    (screen_menu_mode,
      "$screen_check_errors_text",
      "$screen_check_errors_help",
      currentScreensetting.checkErrors);
 
     // frame rate limit
-    std::unique_ptr<uMenuItem> zfm_t;
+    uMenuItem * zfm_t = 0;
     {
         // list of hand-picked MAX_FPS values
         std::array<int, 17> pickableLimits{0, 20, 30, 40, 60, 80, 100, 120, 180, 240, 300, 360, 480, 600, 720, 900, 1200};
@@ -327,11 +334,11 @@ static void sg_ScreenModeMenu()
         if (pickable)
         {
             // current value is in pickable list. create selection menu item
-            auto zmf_t_p = new uMenuItemSelection<int>(&screen_menu_mode,
+            auto zmf_t_p = new uMenuItemSelection<int>(screen_menu_mode,
                                                        "$screen_max_fps_text",
                                                        "$max_fps_help",
                                                        sr_maxFPS);
-            zfm_t.reset(zmf_t_p);
+            zfm_t = zmf_t_p;
 
             zmf_t_p->NewChoice("$screen_max_fps_off_text", "$screen_max_fps_off_help", 0);
             for (auto const limit : pickableLimits)
@@ -346,70 +353,79 @@ static void sg_ScreenModeMenu()
         else
         {
             // fallback to ranged item
-            zfm_t.reset(new uMenuItemInt(&screen_menu_mode, "$screen_max_fps_text", "$max_fps_help", sr_maxFPS, 0, 9990, 10));
+            zfm_t = new uMenuItemInt(screen_menu_mode, "$screen_max_fps_text", "$max_fps_help", sr_maxFPS, 0, 9990, 10);
         }
     }
 
 #ifdef SDL_OPENGL
 #ifdef DIRTY
-    uMenuItemToggle sdl_t
-    (&screen_menu_mode,
+    uMenuItemToggle * sdl_t = new uMenuItemToggle
+    (screen_menu_mode,
      "$screen_use_sdl_text",
      "$screen_use_sdl_help",
      currentScreensetting.useSDL);
 #endif // dirty
 
 #if SDL_VERSION_ATLEAST(1, 2, 10)
-    uMenuItemSelection<rVSync> zvs_t
-    (&screen_menu_mode,
+    uMenuItemSelection<rVSync> * zvs_t = new uMenuItemSelection<rVSync>
+    (screen_menu_mode,
      "$screen_vsync_text",
      "$screen_vsync_help",
      currentScreensetting.vSync);
 
-    uSelectEntry<rVSync> zvs_on(zvs_t,"$screen_vsync_on_text","$screen_vsync_on_help",ArmageTron_VSync_On);
-    uSelectEntry<rVSync> zvs_d(zvs_t,"$screen_vsync_default_text","$screen_vsync_default_help",ArmageTron_VSync_Default);
-    uSelectEntry<rVSync> zvs_off(zvs_t,"$screen_vsync_off_text","$screen_vsync_off_help",ArmageTron_VSync_Off);
+    uSelectEntry<rVSync> zvs_on(*zvs_t,"$screen_vsync_on_text","$screen_vsync_on_help",ArmageTron_VSync_On);
+    uSelectEntry<rVSync> zvs_d(*zvs_t,"$screen_vsync_default_text","$screen_vsync_default_help",ArmageTron_VSync_Default);
+    uSelectEntry<rVSync> zvs_off(*zvs_t,"$screen_vsync_off_text","$screen_vsync_off_help",ArmageTron_VSync_Off);
 #ifdef HAVE_GLEW
-    uSelectEntry<rVSync> zvs_blur(zvs_t,"$screen_vsync_motionblur_text","$screen_vsync_motionblur_help",ArmageTron_VSync_MotionBlur);
+    uSelectEntry<rVSync> zvs_blur(*zvs_t,"$screen_vsync_motionblur_text","$screen_vsync_motionblur_help",ArmageTron_VSync_MotionBlur);
 #endif // HAVE_GLEW
 #endif // SDL_GL_SWAP_CONTROL
 #endif // SDL_OPENGL
 
-    uMenuItemToggle gm(
-        &screen_menu_mode,
+    uMenuItemToggle * gm = new uMenuItemToggle(
+        screen_menu_mode,
         "$screen_grab_mouse_text",
         "$screen_grab_mouse_help",
         su_mouseGrab);
 
-    uMenuItemSelection<rColorDepth> zd_t
-    (&screen_menu_mode,
+    uMenuItemSelection<rColorDepth> * zd_t = new uMenuItemSelection<rColorDepth>
+    (screen_menu_mode,
      "$screen_zdepth_text",
      "$screen_zdepth_help",
      currentScreensetting.zDepth);
 
-    uSelectEntry<rColorDepth> zd_16(zd_t,"$screen_zdepth_16_text","$screen_zdepth_16_help",ArmageTron_ColorDepth_16);
-    uSelectEntry<rColorDepth> zd_d(zd_t,"$screen_zdepth_desk_text","$screen_zdepth_desk_help",ArmageTron_ColorDepth_Desktop);
-    uSelectEntry<rColorDepth> zd_32(zd_t,"$screen_zdepth_32_text","$screen_zdepth_32_help",ArmageTron_ColorDepth_32);
+    uSelectEntry<rColorDepth> zd_16(*zd_t,"$screen_zdepth_16_text","$screen_zdepth_16_help",ArmageTron_ColorDepth_16);
+    uSelectEntry<rColorDepth> zd_d(*zd_t,"$screen_zdepth_desk_text","$screen_zdepth_desk_help",ArmageTron_ColorDepth_Desktop);
+    uSelectEntry<rColorDepth> zd_32(*zd_t,"$screen_zdepth_32_text","$screen_zdepth_32_help",ArmageTron_ColorDepth_32);
 
-    uMenuItemSelection<rColorDepth> cd_t
-    (&screen_menu_mode,
+    uMenuItemSelection<rColorDepth> * cd_t = new uMenuItemSelection<rColorDepth>
+    (screen_menu_mode,
      "$screen_colordepth_text",
      "$screen_colordepth_help",
      currentScreensetting.colorDepth);
 
-    uSelectEntry<rColorDepth> cd_16(cd_t,"$screen_colordepth_16_text","$screen_colordepth_16_help",ArmageTron_ColorDepth_16);
-    uSelectEntry<rColorDepth> cd_d(cd_t,"$screen_colordepth_desk_text","$screen_colordepth_desk_help",ArmageTron_ColorDepth_Desktop);
-    uSelectEntry<rColorDepth> cd_32(cd_t,"$screen_colordepth_32_text","$screen_colordepth_32_help",ArmageTron_ColorDepth_32);
+    uSelectEntry<rColorDepth> cd_16(*cd_t,"$screen_colordepth_16_text","$screen_colordepth_16_help",ArmageTron_ColorDepth_16);
+    uSelectEntry<rColorDepth> cd_d(*cd_t,"$screen_colordepth_desk_text","$screen_colordepth_desk_help",ArmageTron_ColorDepth_Desktop);
+    uSelectEntry<rColorDepth> cd_32(*cd_t,"$screen_colordepth_32_text","$screen_colordepth_32_help",ArmageTron_ColorDepth_32);
 
-    uMenuItemToggle fs_t
-    (&screen_menu_mode,
+    uMenuItemToggle * fs_t = new uMenuItemToggle
+    (screen_menu_mode,
      "$screen_fullscreen_text",
      "$screen_fullscreen_help",
      currentScreensetting.fullscreen);
 
 
-    gResMenEntry res( screen_menu_mode, currentScreensetting.res, "$screen_resolution_text", "$screen_resolution_help", false );
-    gResMenEntry winsize( screen_menu_mode, currentScreensetting.windowSize, "$window_size_text", "$window_size_help", true );
+#ifdef __EMSCRIPTEN__
+    // the wrappers own menu items that the tree frees on loop end;
+    // leaking the small wrappers avoids removing items from the live menu
+    gResMenEntry * res = new gResMenEntry( *screen_menu_mode, currentScreensetting.res, "$screen_resolution_text", "$screen_resolution_help", false );
+    gResMenEntry * winsize = new gResMenEntry( *screen_menu_mode, currentScreensetting.windowSize, "$window_size_text", "$window_size_help", true );
+    (void) res;
+    (void) winsize;
+#else
+    gResMenEntry res( *screen_menu_mode, currentScreensetting.res, "$screen_resolution_text", "$screen_resolution_help", false );
+    gResMenEntry winsize( *screen_menu_mode, currentScreensetting.windowSize, "$window_size_text", "$window_size_help", true );
+#endif
 
     /*
     uMenuItemSelection<rResolution> res_men
@@ -435,7 +451,7 @@ static void sg_ScreenModeMenu()
     				    ,ArmageTron_Custom);
     */
 
-    screen_menu_mode.Enter();
+    screen_menu_mode->Enter();
 }
 
 
@@ -740,12 +756,19 @@ void do_con(){
     se_SetShowScoresAuto(false);
     tString c;
 
-    uMenu con_menu("",false);
-    gMemuItemConsole s(&con_menu,c);
-    con_menu.SetCenter(-.75);
-    con_menu.SetBot(-2);
-    con_menu.SetTop(-.7);
-    con_menu.Enter();
+    uMenu con_menu_dummy(tOutput(""),false);
+    uMenu * con_menu;
+#ifdef __EMSCRIPTEN__
+    con_menu = uMenu::WasmNew( tOutput(""), false );
+    con_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    con_menu = &con_menu_dummy;
+#endif
+    gMemuItemConsole * s = new gMemuItemConsole(con_menu,c);
+    con_menu->SetCenter(-.75);
+    con_menu->SetBot(-2);
+    con_menu->SetTop(-.7);
+    con_menu->Enter();
 
     se_ChatState( ePlayerNetID::ChatFlags_Console, false );
 
@@ -909,6 +932,9 @@ public:
         REAL b = rgb[2]/15.0;
         se_MakeColorValid(r, g, b, 1.0f);
         RenderEnd();
+#ifdef __EMSCRIPTEN__
+        glDisable(GL_TEXTURE_2D);
+#endif
         glColor3f(r, g, b);
         glRectf(.8,-.8,.98,-.98);
 #endif
@@ -924,19 +950,30 @@ void sg_PlayerMenu(int Player){
 
     name << "$player_menu_text";
 
-
-    uMenu playerMenu(name);
-
-    uMenu camera_menu("$player_camera_text");
-    uMenu chat_menu("$player_chat_text");
-    //  name.Clear();
-    chat_menu.SetCenter(-.5);
-
-    uMenuItemString *ic[MAX_INSTANT_CHAT];
-
     ePlayer *p = ePlayer::PlayerConfig(Player);
     if (!p)
         return;
+
+    uMenu playerMenu_dummy(name);
+    uMenu * playerMenu;
+    uMenu camera_menu_dummy("$player_camera_text");
+    uMenu * camera_menu;
+    uMenu chat_menu_dummy("$player_chat_text");
+    uMenu * chat_menu;
+#ifdef __EMSCRIPTEN__
+    playerMenu = uMenu::WasmNew( name );
+    playerMenu->SetOnLoopExit( &uMenu::WasmFreeTree );
+    camera_menu = uMenu::WasmNew( "$player_camera_text" );
+    chat_menu = uMenu::WasmNew( "$player_chat_text" );
+#else
+    playerMenu = &playerMenu_dummy;
+    camera_menu = &camera_menu_dummy;
+    chat_menu = &chat_menu_dummy;
+#endif
+    //  name.Clear();
+    chat_menu->SetCenter(-.5);
+
+    uMenuItemString *ic[MAX_INSTANT_CHAT];
 
     int i;
     for(i=MAX_INSTANT_CHAT-1;i>=0;i--){
@@ -944,160 +981,162 @@ void sg_PlayerMenu(int Player){
         name.SetTemplateParameter(1, i+1);
         name << "$player_chat_chat";
         ic[i]=new uMenuItemString
-              (&chat_menu,name,
+              (chat_menu,name,
                "$player_chat_chat_help",
                p->instantChatString[i], se_SpamMaxLen);
     }
 
-    uMenuItemToggle al
-    (&playerMenu,"$player_autologin_text",
+    uMenuItemToggle * al = new uMenuItemToggle
+    (playerMenu,"$player_autologin_text",
      "$player_autologin_help",
      p->autoLogin);
 
-    uMenuItemString gid(&playerMenu,
+    uMenuItemString * gid = new uMenuItemString(playerMenu,
                       "$player_global_id_text",
                       "$player_global_id_help",
                       p->globalID, 400);
-    gid.SetColorMode( rTextField::COLOR_IGNORE );
+    gid->SetColorMode( rTextField::COLOR_IGNORE );
 
-    uMenuItemToggle st
-    (&playerMenu,"$player_stealth_text",
+    uMenuItemToggle * st = new uMenuItemToggle
+    (playerMenu,"$player_stealth_text",
      "$player_stealth_help",
      p->stealth);
 
-    uMenuItemToggle sp
-    (&playerMenu,"$player_spectator_text",
+    uMenuItemToggle * sp = new uMenuItemToggle
+    (playerMenu,"$player_spectator_text",
      "$player_spectator_help",
      p->spectate);
 
-    uMenuItemToggle pnt
-    (&playerMenu,"$player_name_team_text",
+    uMenuItemToggle * pnt = new uMenuItemToggle
+    (playerMenu,"$player_name_team_text",
      "$player_name_team_help",
      p->nameTeamAfterMe);
 
-    uMenuItemInt npt
-    (&playerMenu,"$player_num_per_team_text",
+    uMenuItemInt * npt = new uMenuItemInt
+    (playerMenu,"$player_num_per_team_text",
      "$player_num_per_team_help",
      p->favoriteNumberOfPlayersPerTeam, 1, 16, 1);
 
-    ArmageTron_color_menuitem B(&playerMenu,"$player_blue_text",
+    ArmageTron_color_menuitem * B = new ArmageTron_color_menuitem(playerMenu,"$player_blue_text",
                                 "$player_blue_help",
                                 p->rgb,2);
 
-    ArmageTron_color_menuitem G(&playerMenu,"$player_green_text",
+    ArmageTron_color_menuitem * G = new ArmageTron_color_menuitem(playerMenu,"$player_green_text",
                                 "$player_green_help",
                                 p->rgb,1);
 
-    ArmageTron_color_menuitem R(&playerMenu,"$player_red_text",
+    ArmageTron_color_menuitem * R = new ArmageTron_color_menuitem(playerMenu,"$player_red_text",
                                 "$player_red_help",
                                 p->rgb,0);
 
 
 
-    uMenuItemSubmenu chm(&playerMenu,&chat_menu,
+    uMenuItemSubmenu * chm = new uMenuItemSubmenu(playerMenu,chat_menu,
                          "$player_chat_chat_help");
 
-    uMenuItemSubmenu cm(&playerMenu,&camera_menu,
+    uMenuItemSubmenu * cm = new uMenuItemSubmenu(playerMenu,camera_menu,
                         "$player_camera_help");
 
-    uMenuItemFunctionInt icc(&playerMenu,"$player_camera_input_text",
+    uMenuItemFunctionInt * icc = new uMenuItemFunctionInt(playerMenu,"$player_camera_input_text",
                              "$player_camera_input_help",
                              &su_InputConfigCamera,Player);
 
-    uMenuItemFunctionInt inc(&playerMenu,"$player_input_text",
+    uMenuItemFunctionInt * inc = new uMenuItemFunctionInt(playerMenu,"$player_input_text",
                              "$player_input_help",
                              &su_InputConfig,Player);
 
 
-    camera_menu.SetCenter(.3);
+    camera_menu->SetCenter(.3);
 
-    uMenuItemToggle cam_glance
-    (&camera_menu,
+    uMenuItemToggle * cam_glance = new uMenuItemToggle
+    (camera_menu,
      "$camera_smart_glance_custom_text",
      "$camera_smart_glance_custom_help",
      p->smartCustomGlance);
 
-    uMenuItemToggle cis(&camera_menu,
+    uMenuItemToggle * cis = new uMenuItemToggle(camera_menu,
                         "$player_camera_autoin_text",
                         "$player_camera_autoin_help",
                         p->autoSwitchIncam);
 
-    uMenuItemToggle cim(&camera_menu,
+    uMenuItemToggle * cim = new uMenuItemToggle(camera_menu,
                         "$player_camera_wobble_text",
                         "$player_camera_wobble_help",
                         p->wobbleIncam);
 
-    uMenuItemToggle cic(&camera_menu,
+    uMenuItemToggle * cic = new uMenuItemToggle(camera_menu,
                         "$player_camera_center_int_text",
                         "$player_camera_center_int_help",
                         p->centerIncamOnTurn);
 
-    uMenuItemToggle al_s
-    (&camera_menu,
+    uMenuItemToggle * al_s = new uMenuItemToggle
+    (camera_menu,
      "$player_camera_smartcam_text",
      "$player_camera_smartcam_help",
      p->allowCam[CAMERA_SMART]);
 
-    uMenuItemToggle al_f
-    (&camera_menu,
+    uMenuItemToggle * al_f = new uMenuItemToggle
+    (camera_menu,
      "$player_camera_fixed_text",
      "$player_camera_fixed_help",
      p->allowCam[CAMERA_FOLLOW]);
 
 
-    uMenuItemToggle al_fr
-    (&camera_menu,
+    uMenuItemToggle * al_fr = new uMenuItemToggle
+    (camera_menu,
      "$player_camera_free_text",
      "$player_camera_free_help",
      p->allowCam[CAMERA_FREE]);
 
-    uMenuItemToggle al_c
-    (&camera_menu,
+    uMenuItemToggle * al_c = new uMenuItemToggle
+    (camera_menu,
      "$player_camera_custom_text",
      "$player_camera_custom_help",
      p->allowCam[CAMERA_CUSTOM]);
 
-    uMenuItemToggle al_sc
-    (&camera_menu,
+    uMenuItemToggle * al_sc = new uMenuItemToggle
+    (camera_menu,
      "$player_camera_server_custom_text",
      "$player_camera_server_custom_help",
      p->allowCam[CAMERA_SERVER_CUSTOM]);
 
-    uMenuItemToggle al_i
-    (&camera_menu,
+    uMenuItemToggle * al_i = new uMenuItemToggle
+    (camera_menu,
      "$player_camera_incam_text",
      "$player_camera_incam_help",
      p->allowCam[CAMERA_IN]);
 
 
-    uMenuItemInt cam_fov
-    (&camera_menu,
+    uMenuItemInt * cam_fov = new uMenuItemInt
+    (camera_menu,
      "$player_camera_fov_text",
      "$player_camera_fov_help",
      p->startFOV,30,160,5);
 
-    uMenuItemSelection<eCamMode> cam_s
-    (&camera_menu,
+    uMenuItemSelection<eCamMode> * cam_s = new uMenuItemSelection<eCamMode>
+    (camera_menu,
      "$player_camera_initial_text",
      "$player_camera_initial_help",
      p->startCamera);
 
-    cam_s.NewChoice("$player_camera_initial_scust_text","$player_camera_initial_scust_help",CAMERA_SERVER_CUSTOM);
-    cam_s.NewChoice("$player_camera_initial_cust_text","$player_camera_initial_cust_help",CAMERA_CUSTOM);
-    cam_s.NewChoice("$player_camera_initial_int_text","$player_camera_initial_int_help",CAMERA_IN);
-    cam_s.NewChoice("$player_camera_initial_smrt_text","$player_camera_initial_smrt_help",CAMERA_SMART);
-    cam_s.NewChoice("$player_camera_initial_ext_text","$player_camera_initial_ext_help",CAMERA_FOLLOW);
-    cam_s.NewChoice("$player_camera_initial_free_text","$player_camera_initial_free_help",CAMERA_FREE);
+    cam_s->NewChoice("$player_camera_initial_scust_text","$player_camera_initial_scust_help",CAMERA_SERVER_CUSTOM);
+    cam_s->NewChoice("$player_camera_initial_cust_text","$player_camera_initial_cust_help",CAMERA_CUSTOM);
+    cam_s->NewChoice("$player_camera_initial_int_text","$player_camera_initial_int_help",CAMERA_IN);
+    cam_s->NewChoice("$player_camera_initial_smrt_text","$player_camera_initial_smrt_help",CAMERA_SMART);
+    cam_s->NewChoice("$player_camera_initial_ext_text","$player_camera_initial_ext_help",CAMERA_FOLLOW);
+    cam_s->NewChoice("$player_camera_initial_free_text","$player_camera_initial_free_help",CAMERA_FREE);
 
-    uMenuItemString n(&playerMenu,
+    uMenuItemString * n = new uMenuItemString(playerMenu,
                       "$player_name_text",
                       "$player_name_help",
                       p->name, 16);
 
-    playerMenu.Enter();
+    playerMenu->Enter();
 
+#ifndef __EMSCRIPTEN__
     for(i=MAX_INSTANT_CHAT-1; i>=0; i--)
         delete ic[i];
+#endif
 
 
     // request network synchronisation if the server can handle it
@@ -1134,15 +1173,22 @@ VOIDFUNC viewport_menu_x;
 
 
 void sg_PlayerMenu(){
-    uMenu Player_men("$player_mainmenu_text");
+    uMenu Player_men_dummy("$player_mainmenu_text");
+    uMenu * Player_men;
+#ifdef __EMSCRIPTEN__
+    Player_men = uMenu::WasmNew( "$player_mainmenu_text" );
+    Player_men->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    Player_men = &Player_men_dummy;
+#endif
 
 
-    uMenuItemFunction vp_selec(&Player_men,
+    uMenuItemFunction * vp_selec = new uMenuItemFunction(Player_men,
                                "$viewport_assign_text",
                                "$viewport_assign_help",
                                &viewport_menu_x);
 
-    ArmageTron_viewport_menuitem vp(&Player_men);
+    ArmageTron_viewport_menuitem * vp = new ArmageTron_viewport_menuitem(Player_men);
     uMenuItemFunctionInt  *names[MAX_PLAYERS];
 
     int i;
@@ -1156,41 +1202,52 @@ void sg_PlayerMenu(){
         help.SetTemplateParameter(1, i+1);
         help << "$player_menu_help";
 
-        names[i]=new uMenuItemFunctionInt(&Player_men,
+        names[i]=new uMenuItemFunctionInt(Player_men,
                                           title,
                                           help,
                                           sg_PlayerMenu,i);
     }
 
 
-    Player_men.Enter();
+    Player_men->Enter();
 
     //  ePlayerNetID::Update();
+#ifndef __EMSCRIPTEN__
     for(i=MAX_VIEWPORTS-1;i>=0;i--){
         delete names[i];
     }
+#endif
 }
 
 
 
 
 void viewport_menu_x(void){
-    uMenu sg_PlayerMenu("$viewport_assign_text");
+    uMenu sg_PlayerMenu_dummy("$viewport_assign_text");
+    uMenu * sg_PlayerMenu;
+#ifdef __EMSCRIPTEN__
+    sg_PlayerMenu = uMenu::WasmNew( "$viewport_assign_text" );
+    sg_PlayerMenu->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    sg_PlayerMenu = &sg_PlayerMenu_dummy;
+#endif
 
     ArmageTronPlayer_to_viewport_menuitem *select[MAX_VIEWPORTS];
 
     int i;
     for(i=rViewportConfiguration::s_viewportConfigurations[rViewportConfiguration::next_conf_num]->num_viewports-1;i>=0;i--){
-        select[i]=new ArmageTronPlayer_to_viewport_menuitem(&sg_PlayerMenu,i);
+        select[i]=new ArmageTronPlayer_to_viewport_menuitem(sg_PlayerMenu,i);
     }
 
     // ArmageTron_viewport_menuitem vp(&sg_PlayerMenu);
 
-    sg_PlayerMenu.Enter();
+    sg_PlayerMenu->Enter();
 
+#ifndef __EMSCRIPTEN__
     for(i=rViewportConfiguration::s_viewportConfigurations[rViewportConfiguration::next_conf_num]->num_viewports-1;i>=0;i--){
         delete select[i];
     }
+#endif
 }
 
 

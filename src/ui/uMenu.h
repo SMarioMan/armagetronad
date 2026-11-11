@@ -57,6 +57,22 @@ protected:
     REAL menuBot;
     REAL yOffset;
 
+#ifdef __EMSCRIPTEN__
+    // state that persists across frames of the menu loop (the loop is
+    // driven by the JS event loop in the wasm build, so the locals of the
+    // classic while loop live here)
+    bool        loop_localRepeat;
+    float       loop_nextrepeat;
+    SDL_Event   loop_tEventRepeat;
+    REAL        loop_lastt;
+    bool        loop_snapScroll;
+    // (wasm build) runs once when the menu loop ends; the menu tree is
+    // heap-allocated there and freed by this callback (may delete the menu)
+    void ( *m_onLoopExit )( uMenu *, void * );
+    void * m_onLoopExitArg;
+    bool m_wasmOwned;
+#endif // __EMSCRIPTEN__
+
     bool                 exitFlag;
 
     REAL                 spaceBelow;
@@ -123,6 +139,29 @@ public:
     // print a big message and a small interpretation
     static bool Message(const tOutput& message, const tOutput& interpretation, REAL timeout = -1);
 
+#ifdef __EMSCRIPTEN__
+    // (wasm build) run fn(menu, arg) once when the menu's loop ends; the
+    // menu tree is heap-allocated there, so fn typically deletes it
+    void SetOnLoopExit( void (*fn)( uMenu *, void * ), void * arg = 0 );
+
+    // (wasm build) frees a heap-allocated menu tree: child menus first,
+    // then this one (which deletes its items).  Register on the root via
+    // SetOnLoopExit.
+    static void WasmFreeTree( uMenu * m, void * );
+
+    // (wasm build) heap-allocates a menu owned by a wasm menu tree
+    static uMenu * WasmNew( const tOutput &t, bool exit_item = true );
+
+    // (wasm build) true when the menu is heap-allocated by WasmNew
+    bool WasmOwned() const { return m_wasmOwned; }
+
+    // (wasm build) one iteration of the menu loop, as driven by tWasmLoop
+    bool WasmFrame() { return OnEnterFrame(); }
+
+    // (wasm build) run the registered loop-exit callback
+    void WasmLoopExit() { if ( m_onLoopExit ) m_onLoopExit( this, m_onLoopExitArg ); }
+#endif // __EMSCRIPTEN__
+
     //! returns whether there is currently an active menu
     static bool MenuActive();
 protected:
@@ -131,6 +170,11 @@ protected:
 
     //! enters the menu; calls idle_func before rendering every frame
     virtual void OnEnter();
+
+#ifdef __EMSCRIPTEN__
+    //! one iteration of the menu loop (main-loop driven); true to continue
+    bool OnEnterFrame();
+#endif // __EMSCRIPTEN__
 
     //! marks the menu for exit
     virtual void OnExit();
@@ -203,10 +247,14 @@ public:
 
     int GetID(){return idnum;}
 
+#ifdef __EMSCRIPTEN__
+    //! the submenu of a submenu item (if any)
+    virtual uMenu * Submenu() const { return 0; }
+#endif // __EMSCRIPTEN__
+
 protected:
     void SetColor( bool selected, REAL alpha );            //!< Sets the color of text output for this menuitem
 };
-
 
 // *****************************************************
 // Menu Exit
@@ -269,7 +317,6 @@ public:
                        const tOutput &tit,const tOutput &help,
                        T &targ)
             :uMenuItem(m,help),title(tit),select(0),target(&targ){}
-
     ~uMenuItemSelection(){
         Clear();
     }
@@ -475,6 +522,10 @@ public:
     virtual void Render(REAL x,REAL y,REAL alpha=1,bool selected=0);
 
     virtual void Enter();
+
+#ifdef __EMSCRIPTEN__
+    virtual uMenu * Submenu() const { return submenu; }
+#endif // __EMSCRIPTEN__
 };
 
 

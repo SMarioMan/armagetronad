@@ -31,6 +31,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <iostream>
 #include "tConfiguration.h"
 #include <stdlib.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include <ctype.h>
 #include <string>
 #include <sstream>
@@ -1011,6 +1014,11 @@ void st_SaveConfig()
     if ( tDirectories::Var().Open( s, "user.cfg", std::ios::out, true ) )
     {
         tConfItemBase::SaveAll(s);
+#ifdef __EMSCRIPTEN__
+        // push user.cfg into IndexedDB (IDBFS volume mounted in index.html)
+        // so the config survives page reloads
+        emscripten_run_script( "__persistConfig()" );
+#endif
     }
     else
     {

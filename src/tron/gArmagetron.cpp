@@ -37,6 +37,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "rScreen.h"
 #include "rSysdep.h"
 #include "uInputQueue.h"
+#include "wdbg.h"
+#include "tWasmLoop.h"
 //#include "eTess.h"
 #include "rTexture.h"
 #include "tConfiguration.h"
@@ -148,84 +150,155 @@ enum gConnection
     // gT1
 };
 
-// initial setup menu
+#ifdef __EMSCRIPTEN__
+// Browser build: the startup flow (language menu -> first setup ->
+// welcome message -> first game -> main menu) cannot run straight
+// through - control is handed to the JS event loop at the first menu
+// loop (tWasmLoop) and the C++ stack below it is never resumed.  The
+// flow is re-run as a chain of steps (WasmStep_* below): each step
+// ends by starting a trampoline loop and registering the next step
+// with tWasmLoop::SetContinuation.
+//
+// The variables below are the durable storage the startup menu items
+// write their selections into: the items keep pointers to the values,
+// and the stack frame that owned the original locals is unwound when
+// the first loop starts.
+static bool s_chainTextOutBack = false;
+static REAL s_splashTimeout = 0;
+
+struct WasmFirstUseSettings
+{
+    bool autoNum;
+    REAL speedFactor;
+    REAL sizeFactor;
+    REAL wallsLength;
+    REAL rubber;
+    REAL delayCycle;
+};
+static WasmFirstUseSettings s_firstUseSettings;
+
+static gConnection s_playerMenuConnection = gLeave;
+static tColor s_playerMenuColor( 0, 0, 0, 0 );
+static tString s_playerMenuKeyboardTemplate;
+
+static void WasmStep_LanguageMenu( void );
+static void WasmStep_PlayerMenu( void );
+static void WasmStep_WelcomeMessage( void );
+static void WasmStep_FirstGame( void );
+static void WasmStep_AfterGame( void );
+static void WasmStep_MainTail( void );
+#endif
+
 void sg_StartupPlayerMenu()
 {
-    uMenu firstSetup("$first_setup", false);
-    firstSetup.SetBot(-.2);
-    
-    uMenuItemExit e2(&firstSetup, "$menuitem_accept", "$menuitem_accept_help");
-    
+    uMenu firstSetup_dummy(tOutput("$first_setup"), false);
+    uMenu * firstSetup;
+#ifdef __EMSCRIPTEN__
+    firstSetup = uMenu::WasmNew( tOutput("$first_setup"), false );
+    firstSetup->SetOnLoopExit( &uMenu::WasmFreeTree );
+#else
+    firstSetup = &firstSetup_dummy;
+#endif
+    firstSetup->SetBot(-.2);
+
+    uMenuItemExit * e2 = new uMenuItemExit(firstSetup, "$menuitem_accept", "$menuitem_accept_help");
+
     ePlayer * player = ePlayer::PlayerConfig(0);
     tASSERT( player );
 
+#ifdef __EMSCRIPTEN__
+    // browser: the menu items write their selections through pointers,
+    // and this stack frame is unwound when the menu loop starts - the
+    // values must live in storage that outlives it (WasmStep_WelcomeMessage
+    // reads them when the loop ends)
+    s_playerMenuConnection = gDSL;
+    gConnection & connection = s_playerMenuConnection;
+#else
     gConnection connection = gDSL;
+#endif
 
-    uMenuItemSelection<gConnection> net(&firstSetup, "$first_setup_net", "$first_setup_net_help", connection );
+    uMenuItemSelection<gConnection> * net = new uMenuItemSelection<gConnection>(firstSetup, "$first_setup_net", "$first_setup_net_help", connection );
     if ( !st_FirstUse )
     {
-        net.NewChoice( "$first_setup_leave", "$first_setup_leave_help", gLeave );
+        net->NewChoice( "$first_setup_leave", "$first_setup_leave_help", gLeave );
         connection = gLeave;
     }
-    net.NewChoice( "$first_setup_net_dialup", "$first_setup_net_dialup_help", gDialup );
-    net.NewChoice( "$first_setup_net_isdn", "$first_setup_net_isdn_help", gISDN );
-    net.NewChoice( "$first_setup_net_dsl", "$first_setup_net_dsl_help", gDSL );
+    net->NewChoice( "$first_setup_net_dialup", "$first_setup_net_dialup_help", gDialup );
+    net->NewChoice( "$first_setup_net_isdn", "$first_setup_net_isdn_help", gISDN );
+    net->NewChoice( "$first_setup_net_dsl", "$first_setup_net_dsl_help", gDSL );
 
+#ifdef __EMSCRIPTEN__
+    s_playerMenuKeyboardTemplate = "keys_cursor.cfg";
+    tString & keyboardTemplate = s_playerMenuKeyboardTemplate;
+#else
     tString keyboardTemplate("keys_cursor.cfg");
-    uMenuItemSelection<tString> k(&firstSetup, "$first_setup_keys", "$first_setup_keys_help", keyboardTemplate );
+#endif
+    uMenuItemSelection<tString> * k = new uMenuItemSelection<tString>(firstSetup, "$first_setup_keys", "$first_setup_keys_help", keyboardTemplate );
     if ( !st_FirstUse )
     {
-        k.NewChoice( "$first_setup_leave", "$first_setup_leave_help", tString("") );
+        k->NewChoice( "$first_setup_leave", "$first_setup_leave_help", tString("") );
         keyboardTemplate="";
     }
-    k.NewChoice( "$first_setup_keys_cursor", "$first_setup_keys_cursor_help", tString("keys_cursor.cfg") );
-    k.NewChoice( "$first_setup_keys_wasd", "$first_setup_keys_wasd_help", tString("keys_wasd.cfg") );
-    k.NewChoice( "$first_setup_keys_zqsd", "$first_setup_keys_zqsd_help", tString("keys_zqsd.cfg") );
-    k.NewChoice( "$first_setup_keys_cursor_single", "$first_setup_keys_cursor_single_help", tString("keys_cursor_single.cfg") );
-    // k.NewChoice( "$first_setup_keys_both", "$first_setup_keys_both_help", tString("keys_twohand.cfg") );
-    k.NewChoice( "$first_setup_keys_x", "$first_setup_keys_x_help", tString("keys_x.cfg") );
+    k->NewChoice( "$first_setup_keys_cursor", "$first_setup_keys_cursor_help", tString("keys_cursor.cfg") );
+    k->NewChoice( "$first_setup_keys_wasd", "$first_setup_keys_wasd_help", tString("keys_wasd.cfg") );
+    k->NewChoice( "$first_setup_keys_zqsd", "$first_setup_keys_zqsd_help", tString("keys_zqsd.cfg") );
+    k->NewChoice( "$first_setup_keys_cursor_single", "$first_setup_keys_cursor_single_help", tString("keys_cursor_single.cfg") );
+    // k->NewChoice( "$first_setup_keys_both", "$first_setup_keys_both_help", tString("keys_twohand.cfg") );
+    k->NewChoice( "$first_setup_keys_x", "$first_setup_keys_x_help", tString("keys_x.cfg") );
 
     tColor leave(0,0,0,0);
+#ifdef __EMSCRIPTEN__
+    s_playerMenuColor = tColor(1,0,0);
+    tColor & color = s_playerMenuColor;
+#else
     tColor color(1,0,0);
-    uMenuItemSelection<tColor> c(&firstSetup,
+#endif
+    uMenuItemSelection<tColor> * c = new uMenuItemSelection<tColor>(firstSetup,
                                  "$first_setup_color",
                                  "$first_setup_color_help",
-                                 color);   
+                                 color);
 
     if ( !st_FirstUse )
     {
         color = leave;
-        c.NewChoice( "$first_setup_leave", "$first_setup_leave_help", leave );
+        c->NewChoice( "$first_setup_leave", "$first_setup_leave_help", leave );
     }
 
-    c.NewChoice( "$first_setup_color_red", "", tColor(1,0,0) );
-    c.NewChoice( "$first_setup_color_blue", "", tColor(0,0,1) );
-    c.NewChoice( "$first_setup_color_green", "", tColor(0,1,0) );
-    c.NewChoice( "$first_setup_color_yellow", "", tColor(1,1,0) );
-    c.NewChoice( "$first_setup_color_orange", "", tColor(1,.5,0) );
-    c.NewChoice( "$first_setup_color_purple", "", tColor(.5,0,1) );
-    c.NewChoice( "$first_setup_color_magenta", "", tColor(1,0,1) );
-    c.NewChoice( "$first_setup_color_cyan", "", tColor(0,1,1) );
-    c.NewChoice( "$first_setup_color_white", "", tColor(1,1,1) );
-    c.NewChoice( "$first_setup_color_dark", "", tColor(0,0,0) );
-    
+    c->NewChoice( "$first_setup_color_red", "", tColor(1,0,0) );
+    c->NewChoice( "$first_setup_color_blue", "", tColor(0,0,1) );
+    c->NewChoice( "$first_setup_color_green", "", tColor(0,1,0) );
+    c->NewChoice( "$first_setup_color_yellow", "", tColor(1,1,0) );
+    c->NewChoice( "$first_setup_color_orange", "", tColor(1,.5,0) );
+    c->NewChoice( "$first_setup_color_purple", "", tColor(.5,0,1) );
+    c->NewChoice( "$first_setup_color_magenta", "", tColor(1,0,1) );
+    c->NewChoice( "$first_setup_color_cyan", "", tColor(0,1,1) );
+    c->NewChoice( "$first_setup_color_white", "", tColor(1,1,1) );
+    c->NewChoice( "$first_setup_color_dark", "", tColor(0,0,0) );
+
     if ( st_FirstUse )
     {
         for(int i=tRandomizer::GetInstance().Get(4); i>=0; --i)
         {
-            c.LeftRight(1);
+            c->LeftRight(1);
         }
     }
 
-    uMenuItemString n(&firstSetup,
+    uMenuItemString * n = new uMenuItemString(firstSetup,
                       "$player_name_text",
                       "$player_name_help",
                       player->name, 16);
-    
-    uMenuItemExit e(&firstSetup, "$menuitem_accept", "$menuitem_accept_help");
-    
-    firstSetup.Enter();
 
+    uMenuItemExit * e = new uMenuItemExit(firstSetup, "$menuitem_accept", "$menuitem_accept_help");
+
+#ifdef __EMSCRIPTEN__
+    // browser: when this menu's loop ends, the tail below (network
+    // rates, color, keyboard layout) runs as a continuation
+    tWasmLoop::SetContinuation( &WasmStep_WelcomeMessage );
+#endif
+
+    firstSetup->Enter();
+
+#ifndef __EMSCRIPTEN__
     // apply network rates
     switch(connection)
     {
@@ -263,9 +336,182 @@ void sg_StartupPlayerMenu()
             tConfItemBase::ReadFile( s );
         }
     }
+#endif
 }
 
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+// (the startup chain: storage and forward declarations are above,
+// outside the DEDICATED guard; the step definitions live here next
+// to welcome())
+
+// one frame of the splash screen (non-first-run); returns false when
+// the splash ends (key press or timeout)
+static bool WasmSplashFrame( void * )
+{
+    static int iter = 0;
+    SDL_Event tEvent;
+    bool hasEvent = false;
+    {
+        uInputProcessGuard inputProcessGuard;
+        hasEvent = su_GetSDLInput(tEvent);
+    }
+    if ( (hasEvent && tEvent.type==SDL_KEYDOWN) || tSysTimeFloat() >= s_splashTimeout )
+    {
+        if ( hasEvent && tEvent.type==SDL_KEYDOWN )
+            wdbgi("splash loop exit: KEYDOWN scancode", tEvent.key.keysym.scancode);
+        else
+            wdbgi("splash loop exit: timeout", (int)s_splashTimeout);
+        return false;
+    }
+
+    if ( sr_glOut )
+    {
+        sr_ResetRenderState(true);
+        rViewport::s_viewportFullscreen.Select();
+
+        rSysDep::ClearGL();
+
+        uMenu::GenericBackground();
+
+        rSysDep::SwapGL();
+    }
+
+    tAdvanceFrame();
+    if ( iter < 5 || (iter % 120) == 0 )
+        wdbgi("splash loop iter", iter);
+    ++iter;
+    return true;
+}
+
+// step 1: language selection menu
+static void WasmStep_LanguageMenu( void )
+{
+    sr_textOut = s_chainTextOutBack;
+    tWasmLoop::SetContinuation( &WasmStep_PlayerMenu );
+    sg_StartupLanguageMenu();
+}
+
+// step 2: first-setup (player) menu
+static void WasmStep_PlayerMenu( void )
+{
+    sr_textOut = s_chainTextOutBack;
+    tWasmLoop::SetContinuation( &WasmStep_WelcomeMessage );
+    sg_StartupPlayerMenu();
+}
+
+// step 3: the tail of sg_StartupPlayerMenu (which normally follows its
+// menu), then the welcome message
+static void WasmStep_WelcomeMessage( void )
+{
+    // apply network rates
+    switch( s_playerMenuConnection )
+    {
+    case gDialup:
+        sn_maxRateIn  = 6;
+        sn_maxRateOut = 4;
+        break;
+    case gISDN:
+        sn_maxRateIn  = 8;
+        sn_maxRateOut = 8;
+        break;
+    case gDSL:
+        sn_maxRateIn  = 64;
+        sn_maxRateOut = 16;
+        break;
+    case gLeave:
+        break;
+    }
+
+    // store color
+    {
+        ePlayer * player = ePlayer::PlayerConfig(0);
+        tColor leave(0,0,0,0);
+        if ( player && !( s_playerMenuColor == leave ) )
+        {
+            player->rgb[0] = int(s_playerMenuColor.r_*15);
+            player->rgb[1] = int(s_playerMenuColor.g_*15);
+            player->rgb[2] = int(s_playerMenuColor.b_*15);
+        }
+    }
+
+    // load keyboard layout
+    if( s_playerMenuKeyboardTemplate.Len() > 1 )
+    {
+        std::ifstream s;
+        if( tConfItemBase::OpenFile( s, s_playerMenuKeyboardTemplate, tConfItemBase::Config ) )
+        {
+            tCurrentAccessLevel level( tAccessLevel_Owner, true );
+            tConfItemBase::ReadFile( s );
+        }
+    }
+
+    st_FirstUse = false;
+#ifdef __EMSCRIPTEN__
+    // persist FIRST_USE=0 (and the first-use choices) immediately; the
+    // exit-time st_SaveConfig may never run in the browser (tab closed,
+    // crash) and the IDBFS volume is only as fresh as the last save
+    st_SaveConfig();
+#endif
+
+    sr_textOut = s_chainTextOutBack;
+    tWasmLoop::SetContinuation( &WasmStep_FirstGame );
+    uMenu::Message( tOutput("$welcome_message_heading"), tOutput("$welcome_message"), 300 );
+}
+
+// step 4: the first single-player game
+static void WasmStep_FirstGame( void )
+{
+    s_firstUseSettings.speedFactor = sg_currentSettings->speedFactor;
+    s_firstUseSettings.autoNum = sg_currentSettings->autoNum;
+    s_firstUseSettings.sizeFactor = sg_currentSettings->sizeFactor;
+    s_firstUseSettings.wallsLength = sg_currentSettings->wallsLength;
+    s_firstUseSettings.rubber = sg_rubberCycle;
+    s_firstUseSettings.delayCycle = sg_delayCycle;
+
+    sg_currentSettings->speedFactor = -2;
+    sg_currentSettings->autoNum = 0;
+    sg_currentSettings->sizeFactor -= 2;
+    sg_currentSettings->wallsLength = 400;
+    sg_rubberCycle = 5;
+    sg_delayCycle = 0.05;
+
+    sr_textOut = s_chainTextOutBack;
+    tWasmLoop::SetContinuation( &WasmStep_AfterGame );
+    sg_SinglePlayerGame();
+}
+
+// step 5: after the first game: restore the settings, second welcome message
+static void WasmStep_AfterGame( void )
+{
+    sg_currentSettings->autoNum = s_firstUseSettings.autoNum;
+    sg_currentSettings->speedFactor = s_firstUseSettings.speedFactor;
+    sg_currentSettings->sizeFactor = s_firstUseSettings.sizeFactor;
+    sg_currentSettings->wallsLength = s_firstUseSettings.wallsLength;
+    sg_rubberCycle = s_firstUseSettings.rubber;
+    sg_delayCycle = s_firstUseSettings.delayCycle;
+
+    sr_textOut = s_chainTextOutBack;
+    tWasmLoop::SetContinuation( &WasmStep_MainTail );
+    uMenu::Message( tOutput("$welcome_message_2_heading"), tOutput("$welcome_message_2"), 300 );
+}
+
+// step 6: the tail of the main flow (which normally sits between
+// welcome() and MainMenu()), then the main menu.  Ending the main menu
+// ends the chain (the pump then idles).
+static void WasmStep_MainTail( void )
+{
+    sr_con.autoDisplayAtSwap=false;
+    se_SoundPause(false);
+    gLogo::SetBig(false);
+    gLogo::SetSpinning(true);
+    sn_bigBrotherString = renderer_identification + "VER=" + sn_programVersion + "\n\n";
+
+    tWasmLoop::SetContinuation( 0 );
+    MainMenu();
+}
+#endif
+
 static void welcome(){
     bool textOutBack = sr_textOut;
     sr_textOut = false;
@@ -291,6 +537,7 @@ static void welcome(){
 
     REAL timeout = tSysTimeFloat() + .2;
     SDL_Event tEvent;
+    wdbgi("welcome: st_FirstUse", st_FirstUse ? 1 : 0);
 
     if (st_FirstUse)
     {
@@ -319,27 +566,54 @@ static void welcome(){
         }
         tRecorder::Record( splashSection, showSplash );
 
+#ifdef __EMSCRIPTEN__
+        // browser: the splash loop can't block the JS event loop; run
+        // it as a trampoline loop, and the main flow's tail
+        // (WasmStep_MainTail) runs when it ends
+        s_chainTextOutBack = textOutBack;
+        s_splashTimeout = showSplash ? tSysTimeFloat() + 6 : 0;
+        tWasmLoop::SetContinuation( &WasmStep_MainTail );
+        tWasmLoop::Start( &WasmSplashFrame );
+        return;
+#else
         if ( showSplash )
         {
             timeout = tSysTimeFloat() + 6;
 
             uInputProcessGuard inputProcessGuard;
-            while ((!su_GetSDLInput(tEvent) || tEvent.type!=SDL_KEYDOWN) &&
-                    tSysTimeFloat() < timeout)
             {
-                if ( sr_glOut )
+                int iter = 0;
+                bool hasEvent = false;
+                while (true)
                 {
-                    sr_ResetRenderState(true);
-                    rViewport::s_viewportFullscreen.Select();
+                    hasEvent = su_GetSDLInput(tEvent);
+                    if ( (hasEvent && tEvent.type==SDL_KEYDOWN) || tSysTimeFloat() >= timeout )
+                        break;
 
-                    rSysDep::ClearGL();
+                    if ( sr_glOut )
+                    {
+                        sr_ResetRenderState(true);
+                        rViewport::s_viewportFullscreen.Select();
 
-                    uMenu::GenericBackground();
+                        rSysDep::ClearGL();
 
-                    rSysDep::SwapGL();
+                        uMenu::GenericBackground();
+
+                        rSysDep::SwapGL();
+                    }
+
+                    tAdvanceFrame();
+                    if ( iter < 5 || (iter % 120) == 0 )
+                        wdbgi("splash loop iter", iter);
+                    ++iter;
                 }
-
-                tAdvanceFrame();
+                // log why we exited (tEvent holds the event that broke the loop)
+                if ( hasEvent && tEvent.type==SDL_KEYDOWN )
+                    wdbgi("splash loop exit: KEYDOWN scancode", tEvent.key.keysym.scancode);
+                else if ( tSysTimeFloat() >= timeout )
+                    wdbgi("splash loop exit: timeout", (int)timeout);
+                else
+                    wdbgi("splash loop exit: other", (int)iter);
             }
         }
 
@@ -351,6 +625,7 @@ static void welcome(){
 
         sr_textOut = textOutBack;
         return;
+#endif
     }
 
     if ( sr_glOut )
@@ -363,6 +638,14 @@ static void welcome(){
     }
     rSysDep::SwapGL();
 
+#ifdef __EMSCRIPTEN__
+    // browser: the straight-line tail below can't run - control is
+    // handed to the JS event loop at the first menu; the steps
+    // re-run it as a continuation chain
+    s_chainTextOutBack = textOutBack;
+    WasmStep_LanguageMenu();
+    return;
+#else
     sr_textOut = textOutBack;
     sg_StartupLanguageMenu();
 
@@ -400,6 +683,7 @@ static void welcome(){
     uMenu::Message( tOutput("$welcome_message_2_heading"), tOutput("$welcome_message_2"), 300 );
 
     sr_textOut = textOutBack;
+#endif
 }
 #endif
 
@@ -462,7 +746,12 @@ static void sg_DelayedActivation()
     Activate( sg_active );
 }
 
-int filter(const SDL_Event *tEvent){
+#ifdef __EMSCRIPTEN__
+int filter(void *userdata, SDL_Event *tEvent)
+#else
+int filter(const SDL_Event *tEvent)
+#endif
+{
     // recursion avoidance
     static bool recursion = false;
     if ( !recursion )
@@ -606,13 +895,20 @@ tConfItem<tString> sn_configurationSavedInVersionConf("SAVED_IN_VERSION",sn_conf
 #ifndef DEDICATED
 struct SDLCleanup
 {
-    // no init, that requires parameters and gives a return 
+    // no init, that requires parameters and gives a return
+    // in the browser build the page (not main) owns the SDL lifetime;
+    // tearing down here would kill the canvas/GL context while the
+    // JS event loop is still driving the game
+#ifndef __EMSCRIPTEN__
     ~SDLCleanup(){SDL_Quit();}
+#endif
 };
 struct SDLSoundCleanup
 {
     SDLSoundCleanup(){se_SoundInit();}
+#ifndef __EMSCRIPTEN__
     ~SDLSoundCleanup(){se_SoundExit();}
+#endif
 };
 #endif
 }
@@ -811,7 +1107,11 @@ int main(int argc,char **argv){
 
             sr_glRendererInit();
 
+#ifdef __EMSCRIPTEN__
+            SDL_SetEventFilter(&filter, NULL);
+#else
             SDL_SetEventFilter(&filter);
+#endif
 
             //std::cout << "set filter\n";
 
@@ -843,7 +1143,8 @@ int main(int argc,char **argv){
                     //std::cout << "init sound\n";
 
                     welcome();
-
+                    wdbg("welcome() returned, about to call MainMenu()");
+#ifndef __EMSCRIPTEN__
                     //std::cout << "atexit\n";
 
                     sr_con.autoDisplayAtSwap=false;
@@ -858,7 +1159,16 @@ int main(int argc,char **argv){
                     sn_bigBrotherString = renderer_identification + "VER=" + sn_programVersion + "\n\n";
 
                     MainMenu();
-
+#else
+                    // browser: welcome() never returns - the startup
+                    // chain (WasmStep_*) runs the tail above and the
+                    // main menu as trampoline loops; when the main menu
+                    // ends the chain ends (continuation cleared) and the
+                    // pump idles.  main() returns and the page stays
+                    // alive (Module.noExitRuntime), so nothing may be
+                    // torn down here.
+#endif
+#ifndef __EMSCRIPTEN__
                     // remove all players
                     for ( int i = se_PlayerNetIDs.Len()-1; i>=0; --i )
                         se_PlayerNetIDs(i)->RemoveFromGame();
@@ -866,6 +1176,7 @@ int main(int argc,char **argv){
                     nNetObject::ClearAll();
 
                     rITexture::UnloadAll();
+#endif
                 }
                 catch (tException const & e)
                 {
@@ -875,8 +1186,10 @@ int main(int argc,char **argv){
 
                     // inform user of generic errors
                     tConsole::Message( e.GetName(), e.GetDescription(), 20 );
+                    // wasm: the dialog runs on the JS event loop; main returns
                 }
 
+#ifndef __EMSCRIPTEN__
                 sr_ExitDisplay();
                 sr_RendererCleanup();
 
@@ -888,6 +1201,7 @@ int main(int argc,char **argv){
 
                 //    cleanup(grid);
                 SDL_QuitSubSystem(SDL_INIT_VIDEO);
+#endif
             }
 #else
             sr_glOut=0;
@@ -897,11 +1211,15 @@ int main(int argc,char **argv){
             while (!uMenu::quickexit)
                 sg_HostGame();
 #endif
+#ifndef __EMSCRIPTEN__
             nNetObject::ClearAll();
             nServerInfo::DeleteAll();
+#endif
         }
 
+#ifndef __EMSCRIPTEN__
         ePlayer::Exit();
+#endif
 
 
         //	tLocale::Clear();

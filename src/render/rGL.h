@@ -11,6 +11,10 @@
 #define NO_SDL_GLEXT
 #include <SDL_opengl.h>
 
+#ifdef __EMSCRIPTEN__
+#include "rEmscriptenGLU.h"
+#endif
+
 /*
 // include OpenGL header
 #ifdef HAVE_SDL_OPENGL_H
