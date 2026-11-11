@@ -15,12 +15,14 @@ every relink.
 """
 import pathlib
 import sys
+import re
 
 p = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'src/armagetronad_main.js')
 src = p.read_text(encoding='utf-8', errors='surrogateescape')
 
-start = src.find('var _SDL_ConvertSurface=')
-assert start != -1, '_SDL_ConvertSurface definition not found'
+m = re.compile(r'var _SDL_ConvertSurface\s*=\s*\(').search(src)
+assert m, '_SDL_ConvertSurface definition not found'
+start = m.start()
 end = src.find('};', start)
 assert end != -1, 'end of _SDL_ConvertSurface definition not found'
 end += 2
