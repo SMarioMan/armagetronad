@@ -2007,7 +2007,6 @@ static tSettingItem<REAL> sn_sumulateReceivePacketLossConfig( "SIMULATE_RECEIVE_
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
-#include <cstdio>
 
 EM_JS( char * , arm_ws_proxy_base , ( ) , {
     var b = "";
@@ -2199,6 +2198,16 @@ int ws_recv( uint8_t * buf, int maxlen, nAddress & src )
         }
     }
     return -1;
+}
+
+// true when any session has already buffered an incoming datagram
+bool ws_any_data()
+{
+    WsGlobal & g = ws_g();
+    for ( size_t i = 0; i < g.conns.size(); ++i )
+        if ( !g.conns[ i ].rx.empty() )
+            return true;
+    return false;
 }
 
 } // namespace
@@ -2876,6 +2885,17 @@ nSocket * nBasicNetworkSystem::Init()
 //!
 // *******************************************************************************
 
+#ifdef __EMSCRIPTEN__
+bool nBasicNetworkSystem::Select( REAL dt )
+{
+    // The browser transport has no socket descriptors to watch: WebSocket
+    // callbacks queue datagrams per session, so readiness is simply whether a
+    // queue holds data. Returning without blocking is also what keeps the
+    // handshake loops alive -- every sn_Delay() call advances one frame.
+    ( void ) dt;
+    return ws_any_data();
+}
+#else
 bool nBasicNetworkSystem::Select( REAL dt )
 {
     int retval = 0;
@@ -2923,6 +2943,8 @@ bool nBasicNetworkSystem::Select( REAL dt )
     // return result
     return ( retval > 0 );
 }
+#endif
+
 
 // *******************************************************************************************
 // *
