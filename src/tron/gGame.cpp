@@ -2823,6 +2823,21 @@ void sg_StartupPlayerMenu();
 // work the native build does after MainMenu(true) returns
 static void WasmIngameMenuLoopExit( uMenu * m, void * );
 
+#ifdef __EMSCRIPTEN__
+// (wasm) loop-exit action for the top level main menu.  The native build
+// returns from MainMenu() here and the process terminates; a web page has
+// no process to terminate.  Leaving the last loop instead left the pump
+// with nothing to run: the canvas froze on its last frame, every key was
+// dead and only a reload helped (reachable with a few ESC presses at the
+// main menu).  Re-enter the main menu: the pump keeps working and ESC
+// simply brings the menu back.
+static void WasmMainMenuLoopExit( uMenu * m, void * )
+{
+    uMenu::WasmFreeTree( m, 0 );
+    MainMenu( false );
+}
+#endif
+
 void MainMenu(bool ingame){
     wdbgi("MainMenu: enter", ingame ? 1 : 0);
     //	update_settings();
@@ -2900,7 +2915,7 @@ void MainMenu(bool ingame){
     if (ingame)
         MainMenu->SetOnLoopExit( &WasmIngameMenuLoopExit );
     else
-        MainMenu->SetOnLoopExit( &uMenu::WasmFreeTree );
+        MainMenu->SetOnLoopExit( &WasmMainMenuLoopExit );
 #else
     MainMenu = &MainMenu_dummy;
 #endif
@@ -2918,8 +2933,14 @@ void MainMenu(bool ingame){
         exhelp="$ingame_menu_exit_help";
     }
 
-    uMenuItemExit * exx = new uMenuItemExit(MainMenu,extitle,
-                      exhelp);
+#ifdef __EMSCRIPTEN__
+    // (wasm) the top level menu gets no exit item: there is no process to
+    // exit into (the ingame menu keeps its exit item, which resumes the
+    // round).
+    uMenuItemExit * exx = ingame ? new uMenuItemExit(MainMenu,extitle,exhelp) : 0;
+#else
+    uMenuItemExit * exx = new uMenuItemExit(MainMenu,extitle,exhelp);
+#endif
 
     uMenuItemFunction *return_to_main=NULL;
     if (ingame){
