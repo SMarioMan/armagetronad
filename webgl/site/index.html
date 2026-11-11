@@ -96,13 +96,57 @@
     // /home/web_user deterministically, so we mount IDBFS on the whole
     // user home: user.cfg, scorelog, recordings all persist across reloads.
     var ARMA_HOME_DIR = '/home/web_user';
+    // The game calls __persistConfig() after every config save; a burst of
+    // saves (boot, menu navigation, setting changes) would fire many
+    // overlapping FS.syncfs() calls on the one IDBFS mount.  IDBFS warns
+    // about that ("N FS.syncfs operations in flight at once") and repeats the
+    // whole directory walk for each of them.  Serialize and coalesce: one
+    // sync at a time, one follow-up if a save arrived while busy, and a short
+    // debounce so a burst costs a single write.
+    var __syncInFlight = false;
+    var __syncAgain = false;
+    var __syncTimer = 0;
+    function __flushUserData() {
+      if (__syncInFlight) {
+        __syncAgain = true;
+        return;
+      }
+      __syncInFlight = true;
+      try {
+        FS.syncfs(false, function (err) {
+          __syncInFlight = false;
+          if (err) console.error('IDBFS save failed:', err);
+          if (__syncAgain) {
+            __syncAgain = false;
+            __flushUserData();
+          }
+        });
+      } catch (e) {
+        __syncInFlight = false;
+        console.error(e);
+      }
+    }
     function __persistConfig() {
-      try { FS.syncfs(false, function (err) {
-        if (err) console.error('IDBFS save failed:', err);
-      }); } catch (e) { console.error(e); }
+      if (__syncInFlight) {
+        __syncAgain = true;
+        return;
+      }
+      if (__syncTimer) return;
+      __syncTimer = setTimeout(function () {
+        __syncTimer = 0;
+        __flushUserData();
+      }, 400);
     }
     window.__persistConfig = __persistConfig;
-    window.addEventListener('beforeunload', __persistConfig);
+    window.addEventListener('beforeunload', function () {
+      // No room for a debounce while unloading: drop the pending timer and
+      // push the newest state out on a best effort basis.
+      if (__syncTimer) {
+        clearTimeout(__syncTimer);
+        __syncTimer = 0;
+      }
+      __flushUserData();
+    });
     var statusElement = document.getElementById('status');
     var progressElement = document.getElementById('progress');
     var progressElementBar = document.getElementById('progressbar');
