@@ -3975,6 +3975,21 @@ void se_ChatState(ePlayerNetID::ChatFlags flag, bool cs){
 static ePlayer * se_chatterPlanned=NULL;
 static ePlayer * se_chatter =NULL;
 static tString se_say;
+#ifdef __EMSCRIPTEN__
+//! runs when the chat menu loop ends. Like the console (see
+//! WasmConsoleLoopExit), uMenu::Enter() returns as soon as the loop is
+//! started, so the chat state must be undone here and not at the end of
+//! do_chat().
+static void WasmChatLoopExit(uMenu *m, void *)
+{
+    uMenu::WasmFreeTree(m, 0);
+
+    se_ChatState( ePlayerNetID::ChatFlags_Chat, false );
+    sr_con.SetHeight(7,false);
+    se_SetShowScoresAuto(true);
+}
+#endif
+
 static void do_chat(){
     if (se_chatterPlanned){
         su_ClearKeys();
@@ -3990,7 +4005,7 @@ static void do_chat(){
         uMenu * chat_menu;
 #ifdef __EMSCRIPTEN__
         chat_menu = uMenu::WasmNew( tOutput(""), false );
-        chat_menu->SetOnLoopExit( &uMenu::WasmFreeTree );
+        chat_menu->SetOnLoopExit( &WasmChatLoopExit, 0 );
 #else
         chat_menu = &chat_menu_dummy;
 #endif
@@ -4000,10 +4015,12 @@ static void do_chat(){
         chat_menu->SetTop(-.7);
         chat_menu->Enter();
 
+#ifndef __EMSCRIPTEN__
         se_ChatState( ePlayerNetID::ChatFlags_Chat, false );
 
         sr_con.SetHeight(7,false);
         se_SetShowScoresAuto(true);
+#endif
     }
     se_chatter=NULL;
     se_chatterPlanned=NULL;
