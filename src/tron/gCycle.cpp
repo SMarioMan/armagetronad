@@ -3071,6 +3071,20 @@ bool gCycle::TimestepCore(REAL currentTime, bool calculateAcceleration ){
         // generate sparks
         eCoord sparkpos,sparkdir;
 
+        // The frame on which a cycle touches a wall runs TimestepCore twice:
+        // the first pass advances the animation clock, so the pass that
+        // actually sees the contact arrives with animts == 0 and the gate
+        // below suppressed the spark shower completely (the browser build
+        // never created a single gSpark, while the native build spawns the
+        // shower with a radius of ~2.6 world units at 3s of age). ts is the
+        // simulation delta and stays positive, so gate on that whenever the
+        // animation step is empty.
+        REAL sparkts = animts;
+#ifdef __EMSCRIPTEN__
+        if (sparkts <= 0)
+            sparkts = ts;
+#endif
+
         if (fl.ehit && fl.hit<=sparksDistance){
             sparkpos=pos+dirDrive.Turn(1,1)*fl.hit;
             sparkdir=dirDrive.Turn(0,-1);
@@ -3082,7 +3096,7 @@ bool gCycle::TimestepCore(REAL currentTime, bool calculateAcceleration ){
 
         if (fabs(skew)<fabs(lr*.8) ){
             skewDot-=lr*1000*animts;
-            if (crash_sparks && animts>0)
+            if (crash_sparks && sparkts>0)
             {
                 gPlayerWall *tmpplayerWall=0;
 
@@ -3105,7 +3119,7 @@ bool gCycle::TimestepCore(REAL currentTime, bool calculateAcceleration ){
 
         if (fabs(skew)<fabs(lr*.9) ){
             skewDot-=lr*100*animts;
-            if (crash_sparks && animts>0)
+            if (crash_sparks && sparkts>0)
             {
                 gPlayerWall *tmpplayerWall=0;
 
