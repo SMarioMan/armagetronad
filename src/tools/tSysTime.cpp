@@ -202,6 +202,25 @@ void usleep(int x)
 
 #include <sys/time.h>
 
+// The browser wall clock is the wrong source for frame pacing: gettimeofday()
+// only has millisecond resolution here and it can step backwards (NTP
+// correction, host suspend/resume).  That tripped the hiccup detector at boot
+// ("Timer hiccup of -2.0x seconds detected." right over the title screen) and
+// hands bogus frame deltas to the game timer and to the FPS counter.  Use the
+// monotonic page clock, which is what the native builds get from the high
+// performance counter.
+#ifdef __EMSCRIPTEN__
+void GetTime( tTime & time )
+{
+    double const millis = emscripten_get_now();
+
+    time.seconds = (int)(millis / 1000.0);
+    time.microseconds = (int)((millis - time.seconds * 1000.0) * 1000.0);
+
+    time.Normalize();
+}
+#else
+
 void GetTime( tTime & time )
 {
     struct timeval tp;
@@ -214,6 +233,7 @@ void GetTime( tTime & time )
 
     time.Normalize();
 }
+#endif
 
 //! returns true if a timer with more than millisecond accuracy is available
 bool tTimerIsAccurate()
