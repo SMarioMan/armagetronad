@@ -125,17 +125,38 @@ TLS_CERT=... TLS_KEY=... PROXY_PORT=8443 node proxy.js   # wss://
 Then open the game page with `?proxy=ws://host:8091/` (or
 `?proxy=wss://host:8443/`). The https deployment requires `wss://`, otherwise
 the browser blocks the connection as mixed content. The bridge maps each
-WebSocket session to the UDP socket of one server. This path is not covered by
-CI — it was verified against a native dedicated server of the same version
-running next to the dev site.
+WebSocket session to the UDP socket of one server; the target can be an
+address or a host name (`?target=host:port`), names are resolved by the
+bridge, not by the client. This path is not covered by CI — it was verified
+against a native dedicated server of the same version running next to the
+dev site.
 
 Join from the menu: Play Game → Multiplayer → Custom Connect (or a Server
-Bookmark) and give the address and the port of the server. Joining by address
-is the supported path: LAN browse sends a broadcast, which the bridge does not
-forward. The login handshake and the two sync rounds of a join are stepped one
-iteration per animation frame (`sn_ConnectPump`, `sn_SyncStart`/`sn_SyncStep`)
-because the browser only delivers the server answer while the frame function is
-off the JS stack.
+Bookmark) and give the address and the port of the server. The login
+handshake and the two sync rounds of a join are stepped one iteration per
+animation frame (`sn_ConnectPump`, `sn_SyncStart`/`sn_SyncStep`) because the
+browser only delivers the server answer while the frame function is off the
+JS stack.
+
+### Server browser
+
+Both browse modes work through the bridge; the blocking native browse loops
+are stepped per animation frame instead (`nServerInfo::PumpBrowse()`, called
+from the browser menu's redraw).
+
+- *Online Multiplayer* talks to the master servers in the master list: the
+  list is `config/master.srv` from the data bundle plus every
+  `ADD_MASTER_SERVER <name> <port>` (config file or console). Master names
+  are resolved by the bridge. The connect, the list request and the answer
+  collection all run on the frame clock; a master that does not answer is
+  retried, then the list is sorted and shown.
+- *LAN Multiplayer* sends a `RequestSmallServerInfo` broadcast to ports
+  4534-4540, one port per 0.25 s. The bridge turns each sweep session into a
+  real UDP broadcast and prefixes every answer with the answering
+  server's address, which is what lets the client query and join the servers
+  it just discovered. Hosts a broadcast cannot reach (separate machine,
+  loopback) are added with `LAN_EXTRA=host[:port][,host[:port]]` on the
+  bridge: every sweep datagram is replayed to them as a unicast.
 
 ## Debug hooks
 

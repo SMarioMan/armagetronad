@@ -199,6 +199,11 @@ void gServerBrowser::BrowseMaster()
 
 // the currently active master
 static nServerInfoBase * sg_currentMaster = 0;
+#ifdef __EMSCRIPTEN__
+// (wasm) the browse menu and its answers outlive the function that opened it,
+// so the server info creator has to be restored by the menu's exit action.
+static sn_ServerInfoCreator * sg_wasmCreatorBack = 0;
+#endif
 nServerInfoBase * gServerBrowser::CurrentMaster()
 {
     return sg_currentMaster;
@@ -212,6 +217,10 @@ void gServerBrowser::BrowseSpecialMaster( nServerInfoBase * master, char const *
     sg_RequestLANcontinuously = false;
 
     sn_ServerInfoCreator *cback = nServerInfo::SetCreator(&CreateGServer);
+
+#ifdef __EMSCRIPTEN__
+    sg_wasmCreatorBack = cback;
+#endif
 
     sr_con.autoDisplayAtNewline=true;
     sr_con.fullscreen=true;
@@ -251,7 +260,11 @@ void gServerBrowser::BrowseSpecialMaster( nServerInfoBase * master, char const *
 
     sg_TalkToMaster = false;
 
+#ifdef __EMSCRIPTEN__
+    // done by WasmBrowseServersExit() once the menu loop is over
+#else
     nServerInfo::SetCreator(cback);
+#endif
 
     sg_currentMaster = master;
 }
@@ -263,6 +276,10 @@ void gServerBrowser::BrowseLAN()
     //	sg_RequestLANcontinuously = false;
 
     sn_ServerInfoCreator *cback = nServerInfo::SetCreator(&CreateGServer);
+
+#ifdef __EMSCRIPTEN__
+    sg_wasmCreatorBack = cback;
+#endif
 
     sr_con.autoDisplayAtNewline=true;
     sr_con.fullscreen=true;
@@ -294,7 +311,11 @@ void gServerBrowser::BrowseLAN()
 
     BrowseServers();
 
+#ifdef __EMSCRIPTEN__
+    // done by WasmBrowseServersExit() once the menu loop is over
+#else
     nServerInfo::SetCreator(cback);
+#endif
 }
 
 #ifdef __EMSCRIPTEN__
@@ -305,6 +326,7 @@ void gServerBrowser::BrowseLAN()
 static void WasmBrowseServersExit( uMenu * m, void * )
 {
     nServerInfo::GetFromLANContinuouslyStop();
+    nServerInfo::SetCreator(sg_wasmCreatorBack);
     uMenu::WasmFreeTree( m, 0 );
 }
 #endif // __EMSCRIPTEN__
@@ -902,6 +924,12 @@ void gBrowserMenuItem::RenderBackground()
 
     sn_Receive();
     sn_SendPlanned();
+
+#ifdef __EMSCRIPTEN__
+    // the master query and the LAN sweep are stepped per frame, next to the
+    // network pump of the browser menu
+    nServerInfo::PumpBrowse();
+#endif
 
     menu->GenericBackground();
     if (continuePoll)

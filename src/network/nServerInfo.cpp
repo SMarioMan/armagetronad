@@ -1498,6 +1498,48 @@ tString MasterFile( char const * suffix )
     return tString( filename.str().c_str() );
 }
 
+#ifdef __EMSCRIPTEN__
+namespace
+{
+// A browser cannot block inside a menu waiting for answers, so both browse
+// rounds - the master query and the LAN sweep - are started by the functions
+// below and then stepped once per animation frame by nServerInfo::PumpBrowse()
+// (called from the browser menu, which pumps the network every frame anyway).
+const REAL WASM_MASTER_CONNECT_TIMEOUT = 12;
+const REAL WASM_MASTER_COLLECT = 12;
+const REAL WASM_LAN_PORT_DELAY = 0.25;
+const int  WASM_MASTER_RETRIES = 3;
+
+struct WasmBrowse
+{
+    // master query: 0 idle, 1 handshake, 2 waiting for the list
+    int masterPhase;
+    nServerInfoBase *master;
+    bool multiMaster;
+    std::string suffix;
+    unsigned int latest;
+    int retries;
+    int err;            // stored Connect() result, -1 while still pending
+    REAL deadline;
+    // LAN sweep
+    bool sweepActive;
+    bool sweepContinuous;
+    unsigned int sweepPort, sweepEnd;
+    REAL sweepNext;
+
+    WasmBrowse() : masterPhase(0), master(0), multiMaster(false), latest(0), retries(0),
+        err(-1), deadline(0), sweepActive(false), sweepContinuous(false),
+        sweepPort(0), sweepEnd(0), sweepNext(0) { }
+};
+
+WasmBrowse & wasmBrowse()
+{
+    static WasmBrowse b;
+    return b;
+}
+} // namespace
+#endif // __EMSCRIPTEN__
+
 void nServerInfo::GetFromMaster(nServerInfoBase *masterInfo, char const * fileSuffix )
 {
     sn_AcceptingFromMaster = true;
@@ -1537,6 +1579,21 @@ void nServerInfo::GetFromMaster(nServerInfoBase *masterInfo, char const * fileSu
         }
     }
 
+#ifdef __EMSCRIPTEN__
+    // send the login and hand the rest of the round to the frame pump
+    con << tOutput("$network_master_connecting", masterInfo->GetName() );
+
+    WasmBrowse & b = wasmBrowse();
+    b.master      = masterInfo;
+    b.multiMaster = multiMaster;
+    b.suffix      = fileSuffix ? fileSuffix : "";
+    b.latest      = latest;
+    b.retries     = 0;
+    b.err         = int(masterInfo->Connect( Login_Post0252 ));
+    b.masterPhase = 1;
+    b.deadline    = tSysTimeFloat() + WASM_MASTER_CONNECT_TIMEOUT;
+    return;
+#else
     // connect to the master server
     con << tOutput("$network_master_connecting", masterInfo->GetName() );
     switch(masterInfo->Connect( Login_Post0252 ))
@@ -1644,6 +1701,7 @@ void nServerInfo::GetFromMaster(nServerInfoBase *masterInfo, char const * fileSu
     sn_AcceptingFromMaster = false;
 
     tAdvanceFrame();
+#endif
 }
 
 void nServerInfo::GetFromLAN(unsigned int pollBeginPort, unsigned int pollEndPort)
@@ -1658,6 +1716,17 @@ void nServerInfo::GetFromLAN(unsigned int pollBeginPort, unsigned int pollEndPor
 
     // prepare the request message and broadcast is
     con << tOutput("$network_master_reqlist");
+
+#ifdef __EMSCRIPTEN__
+    // sweep one port per frame instead of blocking for a second per port
+    WasmBrowse & b = wasmBrowse();
+    b.sweepActive     = true;
+    b.sweepContinuous = false;
+    b.sweepPort       = pollBeginPort;
+    b.sweepEnd        = pollEndPort;
+    b.sweepNext       = tSysTimeFloat();
+    return;
+#else
     for (unsigned int port = pollBeginPort; port <= pollEndPort; port++)
     {
         nMessage *m=tNEW(nMessage)(RequestSmallServerInfoDescriptor);
@@ -1696,6 +1765,7 @@ void nServerInfo::GetFromLAN(unsigned int pollBeginPort, unsigned int pollEndPor
     sn_AcceptingFromBroadcast = false;
 
     sn_SetNetState(nSTANDALONE);
+#endif
 }
 
 void nServerInfo::GetFromLANContinuously(unsigned int pollBeginPort, unsigned int pollEndPort)
@@ -1709,6 +1779,20 @@ void nServerInfo::GetFromLANContinuously(unsigned int pollBeginPort, unsigned in
         sn_SetNetState(nCLIENT);
 
     // prepare the request message and broadcast it
+
+#ifdef __EMSCRIPTEN__
+    // the periodic LAN refresh also sweeps per frame, not with a delay per port
+    WasmBrowse & b = wasmBrowse();
+    if ( !b.sweepActive )
+    {
+        b.sweepActive     = true;
+        b.sweepContinuous = true;
+        b.sweepPort       = pollBeginPort;
+        b.sweepEnd        = pollEndPort;
+        b.sweepNext       = tSysTimeFloat();
+    }
+    return;
+#else
     for (unsigned int port = pollBeginPort; port <= pollEndPort; port++)
     {
         nMessage *m=tNEW(nMessage)(RequestSmallServerInfoDescriptor);
@@ -1717,14 +1801,173 @@ void nServerInfo::GetFromLANContinuously(unsigned int pollBeginPort, unsigned in
         nMessage::BroadcastCollected(0, port);
         tDelay(1000);
     }
+#endif
 }
 
 void nServerInfo::GetFromLANContinuouslyStop()
 {
     sn_AcceptingFromBroadcast = false;
 
+#ifdef __EMSCRIPTEN__
+    // leaving the browser: drop rounds that have not finished
+    WasmBrowse & b = wasmBrowse();
+    if ( b.masterPhase == 1 )
+        sn_ConnectCancel();
+    b.masterPhase = 0;
+    b.master = 0;
+    b.sweepActive = false;
+#endif
+
     sn_SetNetState(nSTANDALONE);
 }
+
+#ifdef __EMSCRIPTEN__
+// One step of the browse rounds.  The browser menu calls this every frame,
+// right after it pumped the network, so answers are handled as they arrive.
+void nServerInfo::PumpBrowse()
+{
+    WasmBrowse & b = wasmBrowse();
+
+    if ( b.masterPhase == 1 )
+    {
+        if ( tSysTimeFloat() > b.deadline )
+        {
+            b.masterPhase = 0;
+            b.master = 0;
+            sn_ConnectCancel();
+            sn_SetNetState(nSTANDALONE);
+            sn_AcceptingFromMaster = false;
+            tConsole::Message("$network_master_timeout_title", "$network_master_timeout_inter", 3600);
+            return;
+        }
+
+        nConnectError err = ( b.err >= 0 ) ? nConnectError(b.err) : sn_ConnectPump();
+        b.err = -1;
+        if ( err == nPENDING )
+            return;
+
+        if ( err != nOK )
+        {
+            if ( err == nTIMEOUT && b.multiMaster && b.retries < WASM_MASTER_RETRIES )
+            {
+                // same fallback as the native build: drop this master and take
+                // another one, bounded so the browser does not retry forever
+                ++b.retries;
+                nServerInfoBase *m = b.master;
+                b.masterPhase = 0;
+                b.master = 0;
+                if ( m )
+                    delete m;
+                con << tOutput("$network_master_timeout_retry");
+                GetFromMaster();
+                return;
+            }
+
+            b.masterPhase = 0;
+            b.master = 0;
+            if ( err == nDENIED )
+                tConsole::Message("$network_master_denied_title", "$network_master_denied_inter", 20);
+            else
+                tConsole::Message("$network_master_timeout_title", "$network_master_timeout_inter", 3600);
+            sn_SetNetState(nSTANDALONE);
+            sn_AcceptingFromMaster = false;
+            return;
+        }
+
+        // connected: ask for the server list
+        con << tOutput("$network_master_reqlist");
+
+        nMessage *m=tNEW(nMessage)(RequestSmallServerInfoDescriptor);
+        if (GetFirstServer())
+            *m << b.latest;
+        m->BroadCast();
+
+        b.masterPhase = 2;
+        b.deadline    = tSysTimeFloat() + WASM_MASTER_COLLECT;
+        return;
+    }
+
+    if ( b.masterPhase == 2 )
+    {
+        if ( tSysTimeFloat() <= b.deadline )
+            return;
+
+        b.masterPhase = 0;
+        b.master = 0;
+
+        tOutput o;
+        o.SetTemplateParameter(1, sn_ServerCount);
+        o << "$network_master_finish";
+        con << o;
+
+        // remove servers that are no longer listed on the master
+        nServerInfo *run = GetFirstServer();
+        while (run)
+        {
+            nServerInfo * next = run->Next();
+            if ( !run->stillOnMasterServer )
+            {
+                // if the server has still positive score bias, just reduce that
+                if ( run->scoreBias_ > 0 )
+                {
+                    run->scoreBias_ -= 10;
+                }
+                else
+                {
+                    delete run;
+                }
+            }
+            run = next;
+        }
+
+        Save(tDirectories::Var(), MasterFile( b.suffix.c_str() ));
+
+        sn_SetNetState(nSTANDALONE);
+        sn_AcceptingFromMaster = false;
+        return;
+    }
+
+    if ( !b.sweepActive )
+        return;
+
+    if ( !sn_AcceptingFromBroadcast || sn_GetNetState() != nCLIENT )
+    {
+        b.sweepActive = false;
+        return;
+    }
+
+    if ( tSysTimeFloat() < b.sweepNext )
+        return;
+
+    nMessage *m=tNEW(nMessage)(RequestSmallServerInfoDescriptor);
+    m->ClearMessageID();
+    m->SendImmediately(0, false);
+    nMessage::BroadcastCollected(0, b.sweepPort);
+
+    if ( b.sweepPort < b.sweepEnd )
+    {
+        ++b.sweepPort;
+        b.sweepNext = tSysTimeFloat() + WASM_LAN_PORT_DELAY;
+    }
+    else if ( !b.sweepContinuous )
+    {
+        // the one-shot LAN round ends the way the native blocking round does
+        b.sweepActive = false;
+
+        tOutput o;
+        o.SetTemplateParameter(1, sn_ServerCount);
+        o << "$network_master_finish";
+        con << o;
+
+        sn_AcceptingFromBroadcast = false;
+        sn_SetNetState(nSTANDALONE);
+    }
+    else
+    {
+        b.sweepActive = false;
+    }
+}
+#endif // __EMSCRIPTEN__
 
 extern bool sn_supportRemoteLogins; // nAuthentication.cpp
 

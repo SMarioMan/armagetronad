@@ -282,6 +282,11 @@ public:
 
     static void GetFromLANContinuously(unsigned int pollBeginPort=4534, unsigned int pollEndPort=4544);                            // get all the basic infos from a LAN broadcast; return immediately, servers will accumulate later
     static void GetFromLANContinuouslyStop();       // stop accepting servers from the LAN
+#ifdef __EMSCRIPTEN__
+    // A browser cannot block waiting for answers: GetFromMaster() and
+    // GetFromLAN() only start the round, and this steps it once per frame.
+    static void PumpBrowse();
+#endif
 
     // enum describing the query type logic ( all non-queried servers are queried once indirectly over the master server )
     enum QueryType
