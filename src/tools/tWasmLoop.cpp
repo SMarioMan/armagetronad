@@ -207,6 +207,36 @@ void Stop()
         s_exits[s_depth]( s_args[s_depth] );
 }
 
+bool DropArg( void * arg )
+{
+    if ( !arg )
+        return false;
+
+    bool dropped = false;
+    for ( int i = 0; i < s_depth; )
+    {
+        if ( s_args[i] != arg )
+        {
+            ++i;
+            continue;
+        }
+        // remove the entry; the loops nested inside it move down one step
+        for ( int j = i; j < s_depth - 1; ++j )
+        {
+            s_frames[j] = s_frames[j + 1];
+            s_exits[j]  = s_exits[j + 1];
+            s_args[j]   = s_args[j + 1];
+        }
+        --s_depth;
+        s_frames[s_depth] = 0;
+        s_exits[s_depth]  = 0;
+        s_args[s_depth]   = 0;
+        dropped = true;
+        wdbgi("DropArg: dropped a loop entry, depth now", s_depth);
+    }
+    return dropped;
+}
+
 
 bool Active()
 {
@@ -288,6 +318,12 @@ void Start( Frame frameFn, Exit exitFn, void * arg )
 
 void Stop()
 {
+}
+
+bool DropArg( void * )
+{
+    // native menu loops block, so a loop can never outlive its menu
+    return false;
 }
 
 void SetContinuation( Continuation fn )

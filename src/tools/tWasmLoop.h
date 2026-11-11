@@ -45,6 +45,11 @@ namespace tWasmLoop
     // returning false is the normal way out; this is for aborting a loop
     // externally.
     void Stop();
+    // Remove any registered loop whose argument is this pointer (a menu loop
+    // whose menu object is being destroyed).  The exit action is deliberately
+    // NOT run - it belongs to the dying object.  Returns true if an entry was
+    // removed.  No-op in the native build (loops run inline, blocking).
+    bool DropArg( void * arg );
     // Register the continuation that runs when the outermost loop ends
     // (after that loop's exit action).  Pass 0 to clear it.  (no-op in
     // the native build)

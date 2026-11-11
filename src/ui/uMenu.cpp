@@ -100,7 +100,18 @@ uMenu::uMenu(const tOutput &t,bool exit_item)
 #endif // __EMSCRIPTEN__
 }
 
+#ifdef __EMSCRIPTEN__
+// (wasm build) the JS event loop can still be pumping a menu when the menu is
+// destroyed: the native function that opened it returns as soon as the loop is
+// *started*, so anything it owned (and any early free) is gone while frames
+// keep running.  Defined below, next to the menu bookkeeping it mirrors.
+static void su_WasmDropMenuLoop( uMenu * m );
+#endif // __EMSCRIPTEN__
+
 uMenu::~uMenu(){
+#ifdef __EMSCRIPTEN__
+    su_WasmDropMenuLoop( this );
+#endif
     for (int i=items.Len()-1;i>=0;i--)
         delete items[i];
 }
@@ -165,6 +176,23 @@ bool uMenu::MenuActive()
 }
 static rNoAutoDisplayAtNewlineCallback su_noNewline( uMenu::MenuActive );
 // static rSmallConsoleCallback su_smallConsole( su_InMenu );
+
+#ifdef __EMSCRIPTEN__
+// (wasm build) take any tWasmLoop entry driving this menu away and finish the
+// bookkeeping the normal loop exit would have done.  Without this, a menu
+// freed early (double free of the tree, or a creator that still frees the
+// menu it only *started*) gets called through the frame loop and the wasm
+// trap kills the whole page.
+static void su_WasmDropMenuLoop( uMenu * m )
+{
+    if ( !tWasmLoop::DropArg( m ) )
+        return;
+
+    s_globalRepeat = false;
+    uCallbackMenuLeave::MenuLeave();
+    su_inMenu = false;
+}
+#endif // __EMSCRIPTEN__
 
 #ifdef __EMSCRIPTEN__
 static const float menu_repeatdelay = 0.2f;
