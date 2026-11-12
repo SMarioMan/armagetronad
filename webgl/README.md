@@ -95,9 +95,24 @@ these patches on `src/armagetronad_main.js` after every link:
 - `patch_emulation_fixes.py` — the fixed-function fragment shader is hardcoded
   to `precision mediump float`, which bands fog, trail fades, floor lighting
   and per-vertex wall alpha on desktop WebGL; promoted to `highp`.
+- `patch_texture_projective_coords.py` — the emulation samples textures with
+  `(textureMatrix * texCoord).xy` and discards the coordinate's fourth
+  component, but the infinite floor and sky planes in `src/engine/eDisplay.cpp`
+  encode their perspective falloff in exactly that component (`glTexCoord4f`
+  with `w=1` at the near vertex, `w=0` along the rim). Without the divide the
+  floor grid lands about six times too coarse near the camera, its lines lose
+  contrast, and it dissolves past mid distance.
+- `patch_light_colormaterial.py` — desktop GL enables `GL_COLOR_MATERIAL` by
+  default, so a cycle's per-vertex colours *are* its material ambient and
+  diffuse; the emulation lights the raw material state instead. In
+  `src/tron/gCycle.cpp` that material is plain white, so the two lights next to
+  the bike blew the body out to flat saturated yellow and flattened its shading
+  gradient. Ambient and diffuse now come from the vertex colour; specular stays
+  on the material, which is what colour material leaves alone.
 
-The patches assert on the code they expect, so a toolchain bump fails loudly
-instead of shipping a broken page.
+The patches assert on the code they expect and `build.sh` aborts on the first
+failure, so a toolchain bump fails the build instead of shipping a page that
+silently lost a fix.
 
 ## Page options
 
