@@ -135,15 +135,15 @@ silently lost a fix.
   is singleplayer by default.
 - User data (settings, scores, recordings) persists in IndexedDB: the page
   mounts IDBFS over `/home/web_user`. Clearing site data resets the game.
-- Render-quality defaults follow what a desktop install picks on first run, not
-  the compiled-in fallbacks: `sr_LoadDefaultConfig()` -- the "high detail
-  defaults; no problem for your ordinary 3d-card" block in `rScreen.cpp` -- runs
-  only on first use, and a browser profile's saved config carries no
-  mip-mapped texture where a desktop build draws the two line textures.  The
-  two builds were therefore drawing different floor modes; "Visual parity
-  against the native build" below records what changing that did and did not
-  change.  It stays a normal option: the video menu, or `FLOOR_DETAIL 0..3` on
-  the console, and it persists in IndexedDB with the other settings.
+- Floor detail: the port runs the compiled-in `rFLOOR_TEXTURE`, because
+  `sr_LoadDefaultConfig()` -- the "high detail defaults; no problem for your
+  ordinary 3d-card" block in `rScreen.cpp` -- runs on first use only and a
+  browser profile's saved config carries no `FLOOR_DETAIL` line (the port's own
+  probe reports `FLOOR_DETAIL 2` with the setting never assigned), while a
+  desktop install ends up on the two line textures.  Raising the wasm default to
+  match was tried and measured: it came out *worse* in every band of the frame,
+  so it was reverted (numbers below).  It is a normal option either way: the
+  video menu, or `FLOOR_DETAIL 0..3` on the console, persisted in IndexedDB.
 - The page creates the canvas' WebGL context in `preRun`, before SDL asks for
   one, because SDL 1.2 requests neither multisampling nor a stencil buffer: the
   context comes up with `antialias:false, stencil:false` and every 1 px light
@@ -159,45 +159,66 @@ silently lost a fix.
 
 ## Visual parity against the native build
 
-Parity is measured, not eyeballed.  A round is recorded on a native Linux
-build (`--record`), the same recording is replayed on both builds
-(`--playback`), and captures are taken at fixed game-time gates.  The recorder
-stores SDL 1.2 keysyms, which the port's SDL 2 event layer has to translate
+Parity is measured, not eyeballed.  A round is recorded on a native Linux build
+(`--record`), the same recording is replayed on both builds (`--playback`), and
+captures are taken at fixed game-time gates.  The recorder stores SDL 1.2
+keysyms, which the port's SDL 2 event layer has to translate
 (`src/ui/uInputQueue.cpp`); both builds print a per-frame stamp with game time,
-camera position and view direction, so pairs of frames are matched by pose
+frame number, camera position and view direction, so pairs are matched by pose
 rather than by wall clock.
 
-One pose-matched pair at 1280x800 (camera positions 0.05 world units apart,
-game times 0.08 s apart).  Grid metrics come from horizontal scan lines inside
-bands of the frame: 0.70-0.85 is mid-distance floor, 0.85-1.00 the nearest
-floor; `peak` is the brightness a line reaches above its row median and `ink`
-the total excess over that median.  The lit rows give the fraction of pixels
-above a luminance threshold and the mean colour of those pixels, which is
-where a shading error shows up directly.
+The reference native run uses llvmpipe (`LIBGL_ALWAYS_SOFTWARE=1`), a software
+rasterizer, which is closer to the browser's SwiftShader than to a desktop GPU
+is; treat the numbers as one named reference rather than as "the machine the
+player owns".  The pair below is frame-identical: both builds on frame `n331`,
+game time 2.2876 against 2.2885, camera position identical to four decimals.
 
-| | native | port before | port after |
+Grid metrics come from horizontal scan lines inside bands of the frame, given
+as a fraction of frame height from the top: 0.55-0.70 is the band nearest the
+horizon, 0.70-0.85 mid-distance floor, 0.85-1.00 the floor nearest the camera.
+`ink` is the summed excess over the row median, `peak` the brightness a line
+reaches above it, `width` the mean extent of a bright run in pixels.  The lit
+rows give the share of pixels above a luminance threshold and the mean colour
+of those pixels, which is where a shading error shows up directly.
+
+| | native | port as published | port + floor 3 (reverted) |
 |---|---|---|---|
-| mid band ink / peak | 17439 / 195 | 16047 / 217 | 15559 / 172 |
-| near band ink / peak | 2293 / 86 | 1441 / 31 | 1330 / 22 |
-| lit >128 %, mean R/G/B | 3.89 / 109,224,101 | 3.22 / 172,208,132 | 3.13 / 173,208,134 |
-| lit >64 %, mean R/G/B | 11.75 / 91,130,80 | 12.68 / 95,124,80 | 12.12 / 95,124,80 |
+| horizon ink / peak / width | 9744 / 152 / 4.8 | 6135 / 103 / 3.4 | 4841 / 73 / 2.7 |
+| mid ink / peak / width | 17439 / 195 / 4.5 | 14805 / 194 / 7.4 | 15559 / 172 / 6.5 |
+| near ink / peak / width | 2293 / 86 / 2.1 | 1478 / 32 / 4.8 | 1330 / 22 / 1.7 |
+| crossings per scan line | 15.6 / 17.7 / 7.4 | 16.2 / 10.3 / 7.2 | 23.4 / 12.0 / 21.4 |
+| lit >128 %, mean R/G/B | 3.89 / 109,224,101 | 3.17 / 171,208,132 | 3.13 / 173,208,134 |
+| lit >64 %, mean R/G/B | 11.75 / 91,130,80 | 12.37 / 94,124,79 | 12.12 / 95,124,80 |
 
-"Before" is the published build; "after" adds the positional-light patch and
-the floor-mode default described above.  Still open, and measured:
+Measured state of the browser GL context, from a hook on the page's own GL
+calls: renderer "WebKit WebGL", 4 sample buffers, max texture 8192,
+`EXT_texture_filter_anisotropic` present with a maximum of 16 and 8x in use,
+`ALIASED_LINE_WIDTH_RANGE` 1..1, and the floor's line textures uploaded as
+1x256 and 256x1 with a full nine-level mip chain under
+`GL_LINEAR_MIPMAP_LINEAR`.
 
-- The nearest floor band is far below native (peak 22 against 86) and the port
-  resolves many more, thinner line crossings there (21 per scan line against
-  7), so its near grid reads as a fine dense comb rather than native's broader
-  lines.  Changing the floor mode did not close this.
-- The light cycle body still reads washed out: over its brightest pixels the
-  port averages R173 G208 B134 where native averages R109 G224 B101.  The
-  green is roughly held while red and blue are lifted by about 60 and 30, so
-  something is adding white to the body that native does not.  The two lights
-  in `gCycle.cpp` are positional and are now treated as such; this residual
-  cast is not yet explained.
-- Only the first gates of a playback pair are pose-comparable.  A few seconds
+What is still different, and measurable today:
+
+- The distance grid.  In the band nearest the horizon the port's lines reach a
+  peak of 103 against the native's 152 and carry 63 % of its ink; in the
+  nearest band 32 against 86.  Switching to the desktop's two-texture floor
+  mode made this worse (73, and 50 % of the ink), which is why that default
+  change was reverted.  One plausible mechanism, not yet proven: a 1x256 line
+  texture mipped down to 1x1 is a flat average, so the line simply averages
+  away at high lod, whereas the native path keeps a resolvable mip.
+- The light cycle body and the wall strip.  Over the frame's brightest pixels
+  the port averages R171 G208 B132 against native R109 G224 B101: the green is
+  roughly held while red and blue are lifted by about 60 and 30.  The same
+  over-bright, low-detail wash is visible on the wall texture in the horizon
+  band.  Two lighting patches are in (vertex colour as material, positional
+  lights); neither moved this metric, so the cause is still open.
+- Native-side context parameters -- aliased line width range, the anisotropy
+  the driver actually applies, the filter the game ends up using -- are not
+  measured yet: this environment has no mesa development headers, so the
+  equivalent probe cannot be built here.  The port side is measured, above.
+- Only the first gates of a playback pair are pose-comparable: a few seconds
   in, the spectator camera follows a different cycle on the two builds (a
-  176-degree view-direction difference at the 4.4 s gate), so later captures
+  178-degree view-direction difference at the 4.4 s gate), so later captures
   show different scenes and cannot be paired.
 
 An earlier commit here claimed the projective texture-coordinate fix explained
