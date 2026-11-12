@@ -125,6 +125,17 @@ void gSpark::Render(const eCamera *cam){
         if (ago>se_GameTime()-lastBreak[i])
             ago=se_GameTime()-  lastBreak[i];
 
+        // The browser build drives its local server with several fixed
+        // simulation steps per animation frame, so lastBreak[i] (the
+        // simulation clock) can run ahead of se_GameTime() (the render
+        // clock). ago went negative, which flipped the sign further down and
+        // drew the segment forward along the velocity instead of trailing it,
+        // arbitrarily long after a lag spike. The render clock never runs
+        // ahead of the simulation clock, so clamping changes nothing else.
+        if (ago<0)
+            ago=0;
+
+
         REAL a=heat[i]+1.5;
         if (a>1) a=1;
         if (a<0) a=0;
