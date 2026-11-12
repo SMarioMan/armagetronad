@@ -3071,6 +3071,32 @@ bool gCycle::TimestepCore(REAL currentTime, bool calculateAcceleration ){
         // generate sparks
         eCoord sparkpos,sparkdir;
 
+        // Both sensor branches below assign the contact point only when the
+        // obstacle is closer than sparksDistance, yet the shower is created
+        // whenever the scrape gate passes: with both contacts further away
+        // sparkpos/sparkdir were read uninitialized and the shower landed at
+        // a stale stack coordinate (in the browser build, sparks reaching into
+        // a corner of the map). Seed them with the nearest contact, clamped to
+        // sparksDistance, so the shower always sits on the wall being ground.
+        // A branch that does assign writes the very same expression, so the
+        // usual case is untouched.
+        REAL sparkhit = fl.hit <= fr.hit ? fl.hit : fr.hit;
+        if (sparkhit > sparksDistance)
+            sparkhit = sparksDistance;
+        if (sparkhit < 0)
+            sparkhit = 0;
+        if (fl.hit <= fr.hit)
+        {
+            sparkpos = pos + dirDrive.Turn(1,1) * sparkhit;
+            sparkdir = dirDrive.Turn(0,-1);
+        }
+        else
+        {
+            sparkpos = pos + dirDrive.Turn(1,-1) * sparkhit;
+            sparkdir = dirDrive.Turn(0,1);
+        }
+
+
         // The frame on which a cycle touches a wall runs TimestepCore twice:
         // the first pass advances the animation clock, so the pass that
         // actually sees the contact arrives with animts == 0 and the gate
