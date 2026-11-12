@@ -272,6 +272,24 @@ public:
 #ifndef DEDICATED
     static void ArchiveKey( Archiver & archive, SDL_KeyboardEvent & key )
     {
+#ifdef __EMSCRIPTEN__
+        if ( !tRecorder::IsPlayingBack() )
+        {
+            // Writing: the file format is defined by the SDL 1.2 numbers the
+            // desktop build stores, so a browser recording has to emit those.
+            // The live event keeps its runtime key: only the archived number
+            // is converted.  Without this a recording made in the browser is
+            // unreadable everywhere else -- the desktop build reads
+            // SDLK_DOWN == 1105, matches nothing, and silently drops it.
+            Uint32 fileSym = atRuntimeToFileKeySym( key.keysym.sym );
+            archive.Archive(key.state)
+                .Archive(key.keysym.scancode)
+                .Archive(fileSym)
+                .Archive(key.keysym.mod)
+                .Archive(key.keysym.unicode);
+            return;
+        }
+#endif
         archive.Archive(key.state).Archive(key.keysym.scancode).Archive(key.keysym.sym).Archive(key.keysym.mod).Archive(key.keysym.unicode);
 #ifdef __EMSCRIPTEN__
         // reading back: the stored SDL 1.2 keysym becomes this build's key

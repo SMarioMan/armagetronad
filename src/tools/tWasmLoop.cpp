@@ -47,17 +47,14 @@ namespace
 
         // (wasm build) A recording made by a native session stores the config
         // and file-read prefix of that session (user.cfg, autoexec.cfg, the
-        // first-run wizard, ...). The port's own set of config files can never
-        // match that prefix, so playback always starts out of sync here. AA's
-        // desynced mode matches sections by scanning rather than by strict
-        // order, which is what lets the clock, the world and the frame stamps
-        // advance at all.
-        static bool s_desyncActivated = false;
-        if ( !s_desyncActivated && tRecorder::IsPlayingBack() )
-        {
-            s_desyncActivated = true;
-            tRecorder::ActivateDesyncedPlayback();
-        }
+        // first-run wizard, ...).  Desynced playback used to be switched on
+        // here unconditionally as a workaround for that prefix never
+        // matching.  It is not switched on any more: desynced mode relaxes
+        // the cycle-movement replay match (gCycleMovement.cpp) and changes
+        // the time-archive path (tSysTime.cpp), so a port run that turns it
+        // on is no longer running the same logic as the native run it is
+        // being compared with.  If a strict section check fails, the recorder
+        // switches the mode on by itself and the digest line says so.
         bool stepping = false;
         if ( s_paused )
         {

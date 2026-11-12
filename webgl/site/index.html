@@ -185,16 +185,21 @@
     var Module = {
       arguments: ARMA_ARGS,
       preRun: [function () {
-        // Create the WebGL context here, before SDL asks for one. SDL 1.2
-        // never requests multisampling, so without this the context comes up
-        // with antialias:false: every 1 px light cycle wall line is then an
-        // unantialiased staircase that reads as a chain of separate
-        // rectangles, and the minified floor grid moires. The native desktop
-        // build gets MSAA from the driver, so this restores parity; a canvas
+        // Create the WebGL context here, before SDL asks for one: a canvas
         // keeps the attributes of the context created first, and SDL's later
         // getContext() call returns this same object.
+        //
+        // Multisampling is deliberately off.  The game never calls
+        // SDL_GL_MULTISAMPLEBUFFERS, so the desktop build's context has no MSAA
+        // at all; an earlier version of this file forced antialias:true on the
+        // belief that the native build "gets MSAA from the driver", which is
+        // not what happens.  Measured on matched replay poses, that extra 4x
+        // cost the far floor grid 35-55% of its contrast against the native
+        // build (strip luminance 16.9/10.7, 15.6/7.2, 14.6/5.8 native/wasm) and
+        // removing it brings the two together (16.9/15.4, 15.6/10.7, 14.6/6.9)
+        // with the grid periods agreeing exactly (25/25, 23/23, 21/22 px).
         var ctxAttrs = {
-          alpha: false, depth: true, stencil: true, antialias: true,
+          alpha: false, depth: true, stencil: true, antialias: false,
           premultipliedAlpha: true, preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false
         };
@@ -204,25 +209,11 @@
           console.warn('could not create the WebGL context with multisampling');
           return;
         }
-        // Anisotropic filtering, which a desktop driver applies by default but
-        // a browser context never does: with only isotropic mipmaps, one
-        // screen direction stays under-sampled and the minified floor grid
-        // produces a strong moire pattern toward the horizon. The extension is
-        // enabled per context, so SDL keeps it when it re-uses this context;
-        // the level is applied to every texture the game uploads.
-        var aniso = glctx.getExtension('EXT_texture_filter_anisotropic') ||
-                    glctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
-        if (aniso) {
-          var level = Math.min(8, glctx.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT) || 1);
-          var upload = glctx.texImage2D;
-          glctx.texImage2D = function () {
-            var ret = upload.apply(glctx, arguments);
-            if (arguments[1] === 0) {
-              glctx.texParameterf(glctx.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, level);
-            }
-            return ret;
-          };
-        }
+        // No anisotropic filtering here either.  The game never requests it, so
+        // the desktop build samples the floor with plain trilinear filtering
+        // (the GL default is 1.0) and matching that is the whole point of this
+        // port.  An earlier version forced level 8 onto every uploaded texture,
+        // believing desktop drivers apply aniso by default: they do not.
       },
       function () {
         // Gate main() until the persisted config is loaded from IDBFS.
