@@ -252,7 +252,12 @@ public:
     {
         // start archive block if archiving is active
         Archiver archive;
-        if ( archive.Initialize( recordingSection ) )
+        // Match strictly while the stream is in sync; once it is known to be
+        // desynced, scan forward for the next T section instead. Without the
+        // scan a single unexpected section in the archive freezes the playback
+        // clock forever, because timeRelative is never updated outside the
+        // archive while playing back.
+        if ( archive.Initialize( recordingSection, tRecorder::DesyncedPlayback() ) )
         {
             archive.Archive( time.seconds ).Archive( time.microseconds );
             return true;

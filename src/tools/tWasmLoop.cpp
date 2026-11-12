@@ -45,6 +45,19 @@ namespace
         if ( s_depth <= 0 )
             return false;
 
+        // (wasm build) A recording made by a native session stores the config
+        // and file-read prefix of that session (user.cfg, autoexec.cfg, the
+        // first-run wizard, ...). The port's own set of config files can never
+        // match that prefix, so playback always starts out of sync here. AA's
+        // desynced mode matches sections by scanning rather than by strict
+        // order, which is what lets the clock, the world and the frame stamps
+        // advance at all.
+        static bool s_desyncActivated = false;
+        if ( !s_desyncActivated && tRecorder::IsPlayingBack() )
+        {
+            s_desyncActivated = true;
+            tRecorder::ActivateDesyncedPlayback();
+        }
         bool stepping = false;
         if ( s_paused )
         {
