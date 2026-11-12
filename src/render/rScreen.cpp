@@ -1046,7 +1046,23 @@ bool    sr_smoothShading=true;
 
 
 int sr_floorMirror=0;
+#ifdef __EMSCRIPTEN__
+// A desktop install reaches rFLOOR_TWOTEXTURE through sr_LoadDefaultConfig(),
+// the "high detail defaults; no problem for your ordinary 3d-card" block,
+// which runs on first use only.  This platform's saved config carries no
+// FLOOR_DETAIL line at all -- the port's own floor probe reported
+// FLOOR_DETAIL 2 with that setting never assigned -- so the value that
+// actually gets used is this one, and the two builds were then drawing
+// different floor modes: a single mip-mapped texture here, where a desktop
+// build draws the two line textures (textures/floor_a.png, floor_b.png).  The
+// single texture is the one whose baked grid washes out at grazing angles,
+// which is the reported "grid lines fade at a distance".  Measured numbers for
+// both modes are in webgl/README.md.  The hardware assumption holds here: the
+// page reports WebKit WebGL with 4x multisampling and anisotropy up to 16.
+int sr_floorDetail=rFLOOR_TWOTEXTURE;
+#else
 int sr_floorDetail=rFLOOR_TEXTURE;
+#endif
 bool sr_highRim=true;
 bool sr_upperSky=false;
 bool sr_lowerSky=false;

@@ -139,11 +139,11 @@ silently lost a fix.
   the compiled-in fallbacks: `sr_LoadDefaultConfig()` -- the "high detail
   defaults; no problem for your ordinary 3d-card" block in `rScreen.cpp` -- runs
   only on first use, and a browser profile's saved config carries no
-  `FLOOR_DETAIL` line, so left alone the port draws the floor from one
-  mip-mapped texture where a desktop build draws the two line textures, and the
-  grid fades toward the horizon. It stays a normal option: the video menu, or
-  `FLOOR_DETAIL 0..3` on the console, and it persists in IndexedDB with the
-  other settings.
+  mip-mapped texture where a desktop build draws the two line textures.  The
+  two builds were therefore drawing different floor modes; "Visual parity
+  against the native build" below records what changing that did and did not
+  change.  It stays a normal option: the video menu, or `FLOOR_DETAIL 0..3` on
+  the console, and it persists in IndexedDB with the other settings.
 - The page creates the canvas' WebGL context in `preRun`, before SDL asks for
   one, because SDL 1.2 requests neither multisampling nor a stencil buffer: the
   context comes up with `antialias:false, stencil:false` and every 1 px light
@@ -156,6 +156,53 @@ silently lost a fix.
   rather than adding detail. The extension state and the buffer attributes
   belong to the context created first, and SDL's own `getContext()` call
   returns this same object.
+
+## Visual parity against the native build
+
+Parity is measured, not eyeballed.  A round is recorded on a native Linux
+build (`--record`), the same recording is replayed on both builds
+(`--playback`), and captures are taken at fixed game-time gates.  The recorder
+stores SDL 1.2 keysyms, which the port's SDL 2 event layer has to translate
+(`src/ui/uInputQueue.cpp`); both builds print a per-frame stamp with game time,
+camera position and view direction, so pairs of frames are matched by pose
+rather than by wall clock.
+
+One pose-matched pair at 1280x800 (camera positions 0.05 world units apart,
+game times 0.08 s apart).  Grid metrics come from horizontal scan lines inside
+bands of the frame: 0.70-0.85 is mid-distance floor, 0.85-1.00 the nearest
+floor; `peak` is the brightness a line reaches above its row median and `ink`
+the total excess over that median.  The lit rows give the fraction of pixels
+above a luminance threshold and the mean colour of those pixels, which is
+where a shading error shows up directly.
+
+| | native | port before | port after |
+|---|---|---|---|
+| mid band ink / peak | 17439 / 195 | 16047 / 217 | 15559 / 172 |
+| near band ink / peak | 2293 / 86 | 1441 / 31 | 1330 / 22 |
+| lit >128 %, mean R/G/B | 3.89 / 109,224,101 | 3.22 / 172,208,132 | 3.13 / 173,208,134 |
+| lit >64 %, mean R/G/B | 11.75 / 91,130,80 | 12.68 / 95,124,80 | 12.12 / 95,124,80 |
+
+"Before" is the published build; "after" adds the positional-light patch and
+the floor-mode default described above.  Still open, and measured:
+
+- The nearest floor band is far below native (peak 22 against 86) and the port
+  resolves many more, thinner line crossings there (21 per scan line against
+  7), so its near grid reads as a fine dense comb rather than native's broader
+  lines.  Changing the floor mode did not close this.
+- The light cycle body still reads washed out: over its brightest pixels the
+  port averages R173 G208 B134 where native averages R109 G224 B101.  The
+  green is roughly held while red and blue are lifted by about 60 and 30, so
+  something is adding white to the body that native does not.  The two lights
+  in `gCycle.cpp` are positional and are now treated as such; this residual
+  cast is not yet explained.
+- Only the first gates of a playback pair are pose-comparable.  A few seconds
+  in, the spectator camera follows a different cycle on the two builds (a
+  176-degree view-direction difference at the 4.4 s gate), so later captures
+  show different scenes and cannot be paired.
+
+An earlier commit here claimed the projective texture-coordinate fix explained
+the fading grid.  Paired measurement disproved that; it stays as a conformance
+fix and is not counted as a visual fix.
 
 ## Multiplayer
 
