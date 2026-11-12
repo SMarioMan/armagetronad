@@ -161,6 +161,20 @@ extern REAL lower_height,upper_height;
 #ifndef DEDICATED
 
 
+
+// The WebGL layer only applies glPolygonOffset to polygon fills: the wall
+// detail lines that the game pulls towards the camera with
+// GL_POLYGON_OFFSET_LINE end up exactly in the plane of the quad they edge
+// (the light wall band and its begin cap) and the depth buffer eats them at
+// grazing view angles. Lifting them by a fraction of the wall height removes
+// the coplanarity instead of masking it, and native GL, which offsets the
+// lines as well, is untouched.
+#ifdef __EMSCRIPTEN__
+static const REAL rWALL_LINE_LIFT = 0.02;
+#else
+static const REAL rWALL_LINE_LIFT = 0;
+#endif
+
 static void gWallRim_helper(eCoord p1,eCoord p2,REAL tBeg,REAL tEnd,REAL h,
                             REAL Z_SCALE,bool sw){
 
@@ -374,6 +388,7 @@ void gWallRim::RenderReal(const eCamera *cam){
                 // determine shadow extension
                 REAL extension = heightForShadow*sg_arenaWallShadowSize * sign/( 1 + abs/sg_arenaWallShadowNear );
                 extension *= ( 1 - abs/sg_arenaWallShadowSideDist );
+
 
                 // get two more vertices for teh shadow
                 eCoord P3=P1+normal*extension;
@@ -1102,9 +1117,10 @@ void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL
             BeginLines();
 
             upperlinecolor(r,g,b,a);
-            glVertex3f(p1.x,p1.y,h*hfrac);
+            glVertex3f(p1.x,p1.y,h*hfrac + rWALL_LINE_LIFT);
             upperlinecolor(r,g,b,a);
-            glVertex3f(p2.x,p2.y,h*hfrac);
+            glVertex3f(p2.x,p2.y,h*hfrac + rWALL_LINE_LIFT);
+
         }
 
         //glColor4f(r,g,b,a);
@@ -1230,7 +1246,8 @@ void gNetPlayerWall::RenderBegin(const eCoord &p1,const eCoord &pp2,REAL ta,REAL
                 upperlinecolor(r,g,b,a*afunc(rat));
                 glVertex3f(x+H*cycle_->skew*sfunc(rat)*cycle_->dir.y,
                            y-H*cycle_->skew*sfunc(rat)*cycle_->dir.x,
-                           H);//+se_cameraZ*.005);
+                           H + rWALL_LINE_LIFT);//+se_cameraZ*.005);
+
             }
         }
     }
