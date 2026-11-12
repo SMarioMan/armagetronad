@@ -387,6 +387,20 @@ void sr_WasmWindowResized(int w, int h)
     {
         sr_wasmWinW = w;
         sr_wasmWinH = h;
+
+        // The canvas IS the window in a browser.  With a fixed render size the
+        // page has to rescale the framebuffer through CSS: at a non-integer
+        // factor, nearest-neighbour upscaling duplicates some 1 px lines and
+        // skips others, which is exactly what made the floor grid and the
+        // light-cycle walls look chunky in places and thin or broken in
+        // others.  Track the canvas the way a desktop window tracks its
+        // frame.  Configs written by earlier builds pinned 800x600, so this
+        // also migrates them; ArmageTron_Desktop dominates the stored
+        // width/height in rScreenSize::UpdateSize.
+        if (currentScreensetting.windowSize.res != ArmageTron_Desktop)
+            currentScreensetting.windowSize.res = ArmageTron_Desktop;
+        if (currentScreensetting.res.res != ArmageTron_Desktop)
+            currentScreensetting.res.res = ArmageTron_Desktop;
     }
 
     if (sr_screen && w > 0 && h > 0)
@@ -470,6 +484,20 @@ static void sr_SetGLAttributes( int rDepth, int gDepth, int bDepth, int zDepth )
 
 static bool lowlevel_sr_InitDisplay(){
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+    // A browser canvas has no resolution of its own: the page letterboxes it,
+    // so any fixed render size gets rescaled by CSS.  At a non-integer factor
+    // nearest-neighbour rescaling duplicates some 1 px lines and skips others,
+    // which is what made the floor grid and the light-cycle walls read as
+    // chunky in places and thin or broken in others.  The native build draws
+    // 1:1 into its window; do the same here by drawing 1:1 into the canvas.
+    // This also migrates configs written by earlier builds, which pinned
+    // 800x600.
+    if (currentScreensetting.windowSize.res != ArmageTron_Desktop)
+        currentScreensetting.windowSize.res = ArmageTron_Desktop;
+    if (currentScreensetting.res.res != ArmageTron_Desktop)
+        currentScreensetting.res.res = ArmageTron_Desktop;
+#endif
     rScreenSize & res = currentScreensetting.fullscreen ? currentScreensetting.res : currentScreensetting.windowSize;
 
     // update pixel aspect ratio
@@ -1216,6 +1244,17 @@ void sr_DepthOffset(bool offset){
 void sr_Activate(bool active)
 {
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+    // A browser tab has no iconified state, and the SDL1 layer of the
+    // emscripten port reports the app as inactive whenever the window is not
+    // focused (it caches document.hasFocus()).  Taken literally that makes the
+    // port simulate at full speed while drawing nothing at all -- replay
+    // playback ran to its end with FPS 0 and no frame ever rendered -- and the
+    // same happens on the live site the moment a player clicks another window.
+    // Chrome already throttles the main loop when the page is hidden, so on
+    // this platform the app counts as active for as long as it is running.
+    active = true;
+#endif
     if ( !currentScreensetting.fullscreen && !active && sr_keepWindowActive )
     {
         sr_glOut=!active;
