@@ -99,9 +99,11 @@ these patches on `src/armagetronad_main.js` after every link:
   `(textureMatrix * texCoord).xy` and discards the coordinate's fourth
   component, but the infinite floor and sky planes in `src/engine/eDisplay.cpp`
   encode their perspective falloff in exactly that component (`glTexCoord4f`
-  with `w=1` at the near vertex, `w=0` along the rim). Without the divide the
-  floor grid lands about six times too coarse near the camera, its lines lose
-  contrast, and it dissolves past mid distance.
+  with `w=1` at the near vertex, `w=0` along the rim), so the falloff those
+  planes encode in that component was being dropped.  Whether that alone
+  changes the picture is a separate question from conforming to the spec; the
+  shader text the running page emits is the way to check any of these took
+  effect.
 - `patch_light_colormaterial.py` — desktop GL enables `GL_COLOR_MATERIAL` by
   default, so a cycle's per-vertex colours *are* its material ambient and
   diffuse; the emulation lights the raw material state instead. In
@@ -109,6 +111,13 @@ these patches on `src/armagetronad_main.js` after every link:
   the bike blew the body out to flat saturated yellow and flattened its shading
   gradient. Ambient and diffuse now come from the vertex colour; specular stays
   on the material, which is what colour material leaves alone.
+- `patch_light_positional.py` — the emulation always used the directional-light
+  rule, `normalize(u_lightPositionN)`, so the two lights `src/tron/gCycle.cpp`
+  places next to the bike (`w = 1`, default constant-only attenuation) were
+  pointed from the eye-space origin instead: whatever faces the camera got lit
+  and the lamps' actual position was ignored.  The lighting pass runs in eye
+  space, so the positional form is light minus `ecPosition`.  The half-vector
+  is left as emitted, because GL's default is the headlight eye vector.
 
 The patches assert on the code they expect and `build.sh` aborts on the first
 failure, so a toolchain bump fails the build instead of shipping a page that
@@ -126,6 +135,15 @@ silently lost a fix.
   is singleplayer by default.
 - User data (settings, scores, recordings) persists in IndexedDB: the page
   mounts IDBFS over `/home/web_user`. Clearing site data resets the game.
+- Render-quality defaults follow what a desktop install picks on first run, not
+  the compiled-in fallbacks: `sr_LoadDefaultConfig()` -- the "high detail
+  defaults; no problem for your ordinary 3d-card" block in `rScreen.cpp` -- runs
+  only on first use, and a browser profile's saved config carries no
+  `FLOOR_DETAIL` line, so left alone the port draws the floor from one
+  mip-mapped texture where a desktop build draws the two line textures, and the
+  grid fades toward the horizon. It stays a normal option: the video menu, or
+  `FLOOR_DETAIL 0..3` on the console, and it persists in IndexedDB with the
+  other settings.
 - The page creates the canvas' WebGL context in `preRun`, before SDL asks for
   one, because SDL 1.2 requests neither multisampling nor a stencil buffer: the
   context comes up with `antialias:false, stencil:false` and every 1 px light

@@ -151,13 +151,12 @@ python3 webgl/patch_gl_emulation.py src/armagetronad_main.js || exit 1
 # (mediump -> highp) to stop 16-bit fog/color banding in trails, floor
 # lighting and wall alpha. See webgl/patch_emulation_fixes.py.
 python3 webgl/patch_emulation_fixes.py src/armagetronad_main.js || exit 1
-# Restore the projective divide on texture coordinates.  The emulation samples
-# with (textureMatrix * texCoord).xy and throws the coordinate's fourth
-# component away, but the infinite floor/sky planes in src/engine/eDisplay.cpp
-# encode their perspective falloff in exactly that component (glTexCoord4f with
-# w=1 at the near vertex, w=0 at the rim).  Without the divide the floor grid
-# lands about six times too coarse near the camera and dissolves past mid
-# distance.  See webgl/patch_texture_projective_coords.py.
+# Restore the projective divide on texture coordinates.  The emulation sampled
+# with (textureMatrix * texCoord).xy and threw the coordinate's fourth
+# component away, but a plane can encode its perspective falloff in exactly
+# that component: the infinite floor and sky planes in src/engine/eDisplay.cpp
+# pass glTexCoord4f with w=1 at the near vertex and w=0 along the rim, and the
+# falloff was being dropped.  See webgl/patch_texture_projective_coords.py.
 python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exit 1
 # Track GL_COLOR_MATERIAL, which desktop GL enables by default: ambient and
 # diffuse come from the vertex colour, not from the material state.  The cycle
@@ -165,6 +164,13 @@ python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exi
 # geometry per vertex, so lighting a white material instead blows the body out
 # and flattens its shading.  See webgl/patch_light_colormaterial.py.
 python3 webgl/patch_light_colormaterial.py src/armagetronad_main.js || exit 1
+# Tell positional lights from directional ones.  The emulation always used the
+# directional rule, normalize(u_lightPositionN), so the two lights gCycle.cpp
+# places *next to the bike* (w = 1) were pointed from the eye-space origin
+# instead, lighting whatever faces the camera and ignoring where the lamps
+# actually are.  The lighting pass runs in eye space, so the positional form
+# is light minus ecPosition.  See webgl/patch_light_positional.py.
+python3 webgl/patch_light_positional.py src/armagetronad_main.js || exit 1
 # Every patch above edits generated JavaScript in place, so a bad anchor or a
 # mistyped replacement only shows up as a SyntaxError in the browser.  Catch it
 # here instead, where the build fails loudly.
