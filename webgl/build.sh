@@ -147,14 +147,6 @@ python3 webgl/patch_sdl_convert.py src/armagetronad_main.js || exit 1
 # Patch the generated legacy GL emulation: add immediate-mode GL_QUAD_STRIP
 # (mode 8), which Armagetron uses for player walls. See webgl/patch_gl_emulation.py.
 python3 webgl/patch_gl_emulation.py src/armagetronad_main.js || exit 1
-# Map the two line-family primitive enums, which desktop GL and WebGL number
-# the other way round: GL_LINE_STRIP is 2 on the desktop but 0x0003 in WebGL,
-# GL_LINE_LOOP is 3 on the desktop but 0x0002 in WebGL.  The emulation forwards
-# the requested mode verbatim, so every display-list wall rim (gWall.cpp
-# BeginLines draws a GL_LINE_LOOP per wall piece) loses its closing edge on the
-# port and any GL_LINE_STRIP gains a stray one across the piece.
-# See webgl/patch_line_modes.py.
-python3 webgl/patch_line_modes.py src/armagetronad_main.js || exit 1
 
 # Fix the generated legacy GL emulation's FFP fragment shader precision
 # (mediump -> highp) to stop 16-bit fog/color banding in trails, floor
