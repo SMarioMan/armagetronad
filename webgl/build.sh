@@ -162,15 +162,20 @@ python3 webgl/patch_emulation_fixes.py src/armagetronad_main.js || exit 1
 # and left the far floor grid on full base-level detail.
 # See webgl/patch_texture_projective_coords.py.
 python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exit 1
-# Track GL_COLOR_MATERIAL, which desktop GL enables by default: ambient and
-# diffuse then come from the vertex colour, not from the material state.  The
-# cycle body in src/tron/gCycle.cpp sets its material to plain white and colours
-# the geometry per vertex, and the wall polygons in src/tron/gWall.cpp carry
-# only a vertex colour, so lighting a white material instead blows both out: on
-# the frame-identical n814 pair at gt 10.06 the wall strip measured mean bright
-# luminance 162 against the desktop's 88 (250,250,50 against 102,102,20 down a
-# scanline) and the cycle body box 1977 bright px against 40.  An earlier
-# revision of this file dropped this patch; the measurement says it belongs.
+# Track GL_COLOR_MATERIAL, which desktop GL enables by default: ambient,
+# diffuse, emission and the material alpha then come from the vertex colour,
+# not from the material state.  The cycle body in src/tron/gCycle.cpp sets its
+# material to plain white and colours the geometry per vertex, and the wall
+# polygons in src/tron/gWall.cpp carry only a vertex colour, so lighting a
+# white material instead blows both out: on the frame-identical n814 pair at
+# gt 10.06 the wall strip measured mean bright luminance 162 against the
+# desktop's 88 (250,250,50 against 102,102,20 down a scanline) and the cycle
+# body box 1977 bright px against 40.  Emission carries as much of the look as
+# the light terms do: on the frame-exact n363 pair the desktop shows 3865
+# saturated green pixels in the near band below row 520, where the player's own
+# cycle and its rays sit, and a port that tracks only ambient and diffuse shows
+# none there.  An earlier revision of this file dropped this patch; the
+# measurement says it belongs.
 # See webgl/patch_light_colormaterial.py.
 python3 webgl/patch_light_colormaterial.py src/armagetronad_main.js || exit 1
 # Tell positional lights from directional ones, the way desktop GL does: w = 0

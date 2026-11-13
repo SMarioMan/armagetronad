@@ -106,12 +106,21 @@ these patches on `src/armagetronad_main.js` after every link:
   shader text the running page emits is the way to check any of these took
   effect.
 - `patch_light_colormaterial.py` — desktop GL enables `GL_COLOR_MATERIAL` by
-  default, so a cycle's per-vertex colours *are* its material ambient and
-  diffuse; the emulation lights the raw material state instead. In
-  `src/tron/gCycle.cpp` that material is plain white, so the two lights next to
-  the bike blew the body out to flat saturated yellow and flattened its shading
-  gradient. Ambient and diffuse now come from the vertex colour; specular stays
-  on the material, which is what colour material leaves alone.
+  default with the colour components (R,G,B,A) all mapped, so a lit primitive's
+  material ambient, diffuse, *emission* and material alpha come from its vertex
+  colour; the emulation lights the raw `glMaterialfv` state instead and carries
+  no colour-material code at all. In `src/tron/gCycle.cpp` that material is
+  plain white, so the two lights next to the bike blew the body out to flat
+  saturated yellow and flattened its shading gradient. Emission matters as
+  much as the light terms: without it the port has no self-lit colour anywhere,
+  which is what the frame-exact n363 pair shows as 3865 saturated green pixels
+  in the near band below row 520, where the player's own cycle and its rays
+  sit, against none in a port that tracked only ambient and diffuse. Ambient,
+  diffuse, emission and the material alpha now come from the vertex colour;
+  specular colour stays on the material, which is what colour material leaves
+  alone. Tracking emission and alpha moved the far band mean from 30.14 to
+  33.18 against the desktop's 33.17 and the cycle-cluster count from 14814 to
+  17012 against the desktop's 14882.
 - `patch_light_positional.py` — the emulation always used the directional-light
   rule, `normalize(u_lightPositionN)`, so the two lights `src/tron/gCycle.cpp`
   places next to the bike (`w = 1`, default constant-only attenuation) were
