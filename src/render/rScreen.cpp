@@ -1046,19 +1046,20 @@ bool    sr_smoothShading=true;
 
 
 int sr_floorMirror=0;
-// Tried and reverted: matching the desktop's floor mode.  sr_LoadDefaultConfig
-// picks rFLOOR_TWOTEXTURE ("high detail defaults; no problem for your ordinary
-// 3d-card") on first use only, and a browser profile's saved config carries no
-// FLOOR_DETAIL line, so a browser profile has always run this compiled value.
-// Raising the wasm default was measured on a frame-exact replay pair (the same
-// recorded frame on both builds, 1280x800): the two-texture floor comes out
-// *lower* contrast here -- in the band nearest the horizon, grid peak above
-// the row median 73 against 103, ink 4.8k against 6.1k -- so the port would
-// have looked further from native, not closer.  It stays at the compiled
-// value; the distance grid is fainter than native either way (native 151 and
-// 9.7k in that band), which puts the remaining difference in the rendering
-// path rather than in this setting.  Full numbers in webgl/README.md.
-int sr_floorDetail=rFLOOR_TEXTURE;
+// The desktop build's first-run default for the floor is rFLOOR_TWOTEXTURE
+// (set below in sr_LoadDefaultConfig), but a browser profile never runs that
+// function: it is only reached from the desktop software-renderer branch
+// (rScreen.cpp:919), and the WebGL renderer strings match none of the
+// software tests at 869-894.  What is compiled here is therefore what a
+// browser player actually gets.  Keeping the old rFLOOR_TEXTURE value left the
+// port's distant floor grid at 42% of the desktop line contrast: on a
+// pose-matched replay pair at 1280x800 (band 0.55-0.70, floor grid peak above
+// the local floor) the port measured 63 against the desktop's 150, while the
+// two-texture floor reaches 126 (84%) and matches the mid band (227 against
+// 234).  Anisotropic sampling on top of that measured worse -- far band 152
+// (spot on) but mid band down to 102 -- so the mode alone is the change.
+// Full numbers in webgl/README.md.
+int sr_floorDetail=rFLOOR_TWOTEXTURE;
 bool sr_highRim=true;
 bool sr_upperSky=false;
 bool sr_lowerSky=false;
@@ -1110,9 +1111,6 @@ void sr_LoadDefaultConfig(){
 #ifndef DEDICATED
         rTextureGroups::TextureMode[rTextureGroups::TEX_OBJ]=GL_NEAREST_MIPMAP_NEAREST;
         rTextureGroups::TextureMode[rTextureGroups::TEX_FONT]=GL_NEAREST_MIPMAP_NEAREST;
-#endif
-#ifdef __EMSCRIPTEN__
-        rTextureGroups::TextureMode[rTextureGroups::TEX_FLOOR]=GL_LINEAR;
 #endif
 
         sr_highRim=false;

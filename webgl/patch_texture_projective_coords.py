@@ -2,7 +2,8 @@
 """Post-build patch for the emscripten GL legacy emulation in the generated JS.
 
 Restores the projective divide on texture coordinates, which the emulation
-drops entirely.
+drops entirely, in the one form that also keeps the sampler's level-of-detail
+rule intact.
 
 ArmageTron draws its floor (and the sky) as an "infinite" plane:
 src/engine/eDisplay.cpp infinity_xy_plane() emits the near fan vertex as
@@ -17,23 +18,43 @@ The generated FFP shader ignores the coordinate's fourth component:
 
   texture2D(u_texUnit0, (u_textureMatrix0 * v_texCoord0).xy)
 
-so the mapping degenerates to an affine one over the raw (s,t).  Measured on
-a frame-identical pair (same replay, same settings, camera pose d=0.0004):
-the floor grid period 34 px on the port against 6 px on a desktop GL driver,
-line peak 32 against 86, and the grid dissolves entirely past mid distance.
-That is the "grid lines are thin and fade at a distance" symptom.
+so the mapping degenerates to an affine one over the raw (s,t): the grid period
+came out 34 px on the port against 6 px on a desktop GL driver, line peak 32
+against 86, and the grid dissolved past mid distance.
 
-Emscripten never selects texture2DProj here (genTexUnitSampleExpr only ever
-picks texture2D or textureCube), so the divide is simply missing rather than
-delegated.  Clamping the divisor instead of letting it reach zero keeps the
-rim vertices finite: the sample coordinate saturates at ~1e6, the sampler
-picks the top mip level, and the horizon shows the box average of the
-texture -- which is what the hardware LOD clamp produces on desktop GL too.
-Only 1D/2D samplers are touched; cube maps keep the upstream expression.
+Dividing by q *in the expression handed to texture2D* fixes the mapping but
+breaks the mip selection.  WebGL derives the sampler LOD from the screen-space
+partial derivatives of that expression, and a divisor clamped away from zero
+makes the expression locally constant wherever the clamp is active -- right
+along the horizon, where the rim vertices carry q = 0.  Derivative 0 means LOD
+0, so the far floor kept sampling full base-level detail.  Measured on the
+frame-identical pair hpbw5-02 / hppw6-02 (pose delta 0.02 world units, four
+depth bands, mean grid-line run length in px / 95th-percentile line peak):
+
+  band(near..far)   desktop GL        this port, clamped divide
+  0                 1.30 /  82        1.42 / 114
+  1                 1.00 /  96        3.50 / 112
+  2                 2.31 / 152        4.13 / 157
+  3                 0.77 /  24        3.65 /  94
+
+i.e. the far grid stayed 4.7 px wide and nearly as bright as the near grid
+instead of dropping to the box average of the texture.  The same saturation
+also explains the wall body: at grazing angles the bolt pattern sampled mip 0
+and aliased into dark smears instead of fading.
+
+texture2DProj is the form that keeps both halves of the contract: it divides by
+w inside the sampler, and GLSL ES gives it a derivative rule that never
+differentiates through the divide -- the partials are formed from the numerator
+and denominator separately, so q -> 0 drives the LOD to the top mip level
+exactly as the hardware LOD clamp does on desktop GL.  At that level a 256x256
+texture has collapsed to a single texel, so the sample position no longer
+matters and q = 0 is harmless.  Only 1D/2D samplers are touched; cube maps keep
+the upstream expression, and ordinary 2-component coordinates arrive as w = 1
+where texture2DProj is identical to texture2D.
 """
 import sys
 
-MARKER = 'max(abs(${texCoordExpr}.w),0.000001)'
+MARKER = 'var sampler=(func=="texture2D")?"texture2DProj":func;'
 
 ANCHOR = (
     'if(TEX_MATRIX_UNIFORM_PREFIX!=null){'
@@ -44,10 +65,8 @@ ANCHOR = (
 REPLACEMENT = (
     'if(TEX_MATRIX_UNIFORM_PREFIX!=null){'
     'texCoordExpr=`(${TEX_MATRIX_UNIFORM_PREFIX}${texUnitID} * ${texCoordExpr})`}'
-    'var texCoordArg=(func=="texture2D")?'
-    '`(${texCoordExpr}.xy)/max(abs(${texCoordExpr}.w),0.000001)`:'
-    '`${texCoordExpr}.xy`;'
-    'return`${func}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordArg})`'
+    'var sampler=(func=="texture2D")?"texture2DProj":func;'
+    'return`${sampler}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr})`'
 )
 
 
@@ -62,8 +81,8 @@ def main():
                  '(generated shader emitter changed?)')
     data = data.replace(ANCHOR, REPLACEMENT, 1)
     open(path, 'w').write(data)
-    print('patch_texture_projective_coords: applied projective texture '
-          'coordinate divide')
+    print('patch_texture_projective_coords: switched the projective divide to '
+          'texture2DProj so the sampler keeps a usable LOD')
 
 
 if __name__ == '__main__':

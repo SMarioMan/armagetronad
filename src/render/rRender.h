@@ -186,6 +186,42 @@ inline void BeginTriangleFan(){
     renderer->BeginTriangleFan();
 }
 
+#ifdef __EMSCRIPTEN__
+// Draw a vertex list through client arrays instead of the immediate-mode
+// Begin/Vertex/End path.  The port's legacy GL emulation binds a texcoord (or
+// colour) array only when the matching client state is enabled; a primitive
+// that never enabled one gets a single constant generic attribute -- the
+// texcoord one is set to (0,0,0,1) -- so the whole primitive samples one
+// texel of its texture and carries one colour.  The desktop pipeline
+// interpolates the per-vertex values the code supplies, so every textured or
+// per-vertex-coloured primitive whose look matters has to take this path on
+// the port.  rModel.cpp and gCycle.cpp already use client arrays for exactly
+// this reason.
+inline void atglDrawArrays(GLenum mode, GLsizei n, const GLfloat *v,
+                           const GLfloat *t, const GLfloat *c)
+{
+    RenderEnd(true);        // flush anything the renderer is still holding open
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 0, v);
+    if (t)
+    {
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        glTexCoordPointer(2, GL_FLOAT, 0, t);
+    }
+    if (c)
+    {
+        glEnableClientState(GL_COLOR_ARRAY);
+        glColorPointer(4, GL_FLOAT, 0, c);
+    }
+    glDrawArrays(mode, 0, n);
+    if (c)
+        glDisableClientState(GL_COLOR_ARRAY);
+    if (t)
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+}
+#endif
+
 
 inline void Line(REAL x1, REAL y1, REAL z1,
                  REAL x2, REAL y2, REAL z2){

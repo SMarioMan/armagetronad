@@ -190,12 +190,16 @@ of those pixels, which is where a shading error shows up directly.
 | lit >128 %, mean R/G/B | 3.89 / 109,224,101 | 3.17 / 171,208,132 | 3.13 / 173,208,134 |
 | lit >64 %, mean R/G/B | 11.75 / 91,130,80 | 12.37 / 94,124,79 | 12.12 / 95,124,80 |
 
-Measured state of the browser GL context, from a hook on the page's own GL
-calls: renderer "WebKit WebGL", 4 sample buffers, max texture 8192,
-`EXT_texture_filter_anisotropic` present with a maximum of 16 and 8x in use,
-`ALIASED_LINE_WIDTH_RANGE` 1..1, and the floor's line textures uploaded as
-1x256 and 256x1 with a full nine-level mip chain under
-`GL_LINEAR_MIPMAP_LINEAR`.
+Measured from inside the running game, on both builds: the floor's texture
+object carries `GL_LINEAR_MIPMAP_LINEAR` / `GL_LINEAR`, `GL_CLAMP_TO_EDGE` on
+both axes, and `GL_TEXTURE_MAX_ANISOTROPY_EXT = 1.0` -- the desktop build's own
+floor texture reports the same four values, so neither side ever asks for
+anisotropic filtering (`src/` contains no multisample or anisotropy request at
+all). The browser context itself reports `SAMPLES 0`, `SAMPLE_BUFFERS 0` (the
+page does request `antialias: true`; SwiftShader does not deliver it),
+`ALIASED_LINE_WIDTH_RANGE` 1..1 and max texture size 8192. An earlier revision
+of this file listed 4 sample buffers and 8x anisotropy in use; both figures are
+now contradicted by the direct measurements above.
 
 What is still different, and measurable today:
 
@@ -212,10 +216,10 @@ What is still different, and measurable today:
   over-bright, low-detail wash is visible on the wall texture in the horizon
   band.  Two lighting patches are in (vertex colour as material, positional
   lights); neither moved this metric, so the cause is still open.
-- Native-side context parameters -- aliased line width range, the anisotropy
-  the driver actually applies, the filter the game ends up using -- are not
-  measured yet: this environment has no mesa development headers, so the
-  equivalent probe cannot be built here.  The port side is measured, above.
+- Desktop-side context parameters (aliased line width range, sample buffers)
+  are still not probed. Filter, wrap and anisotropy of the floor texture now
+  are, from the same probe in both builds, and they agree -- which removes
+  filtering and anisotropic sampling as candidate causes of the distance grid.
 - Only the first gates of a playback pair are pose-comparable: a few seconds
   in, the spectator camera follows a different cycle on the two builds (a
   178-degree view-direction difference at the 4.4 s gate), so later captures

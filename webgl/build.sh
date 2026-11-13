@@ -155,22 +155,39 @@ python3 webgl/patch_emulation_fixes.py src/armagetronad_main.js || exit 1
 # with (textureMatrix * texCoord).xy and threw the coordinate's fourth
 # component away, but a plane can encode its perspective falloff in exactly
 # that component: the infinite floor and sky planes in src/engine/eDisplay.cpp
-# pass glTexCoord4f with w=1 at the near vertex and w=0 along the rim, and the
-# falloff was being dropped.  See webgl/patch_texture_projective_coords.py.
+# pass glTexCoord4f with w=1 at the near vertex and w=0 along the rim.  The
+# divide goes to texture2DProj, whose sampler LOD rule survives q = 0; the
+# earlier plain divide with a clamped divisor went locally flat at the horizon
+# and left the far floor grid on full base-level detail.
+# See webgl/patch_texture_projective_coords.py.
 python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exit 1
 # Track GL_COLOR_MATERIAL, which desktop GL enables by default: ambient and
-# diffuse come from the vertex colour, not from the material state.  The cycle
-# body in src/tron/gCycle.cpp sets its material to plain white and colours the
-# geometry per vertex, so lighting a white material instead blows the body out
-# and flattens its shading.  See webgl/patch_light_colormaterial.py.
+# diffuse then come from the vertex colour, not from the material state.  The
+# cycle body in src/tron/gCycle.cpp sets its material to plain white and colours
+# the geometry per vertex, and the wall polygons in src/tron/gWall.cpp carry
+# only a vertex colour, so lighting a white material instead blows both out: on
+# the frame-identical n814 pair at gt 10.06 the wall strip measured mean bright
+# luminance 162 against the desktop's 88 (250,250,50 against 102,102,20 down a
+# scanline) and the cycle body box 1977 bright px against 40.  An earlier
+# revision of this file dropped this patch; the measurement says it belongs.
+# See webgl/patch_light_colormaterial.py.
 python3 webgl/patch_light_colormaterial.py src/armagetronad_main.js || exit 1
-# Tell positional lights from directional ones.  The emulation always used the
-# directional rule, normalize(u_lightPositionN), so the two lights gCycle.cpp
-# places *next to the bike* (w = 1) were pointed from the eye-space origin
-# instead, lighting whatever faces the camera and ignoring where the lamps
-# actually are.  The lighting pass runs in eye space, so the positional form
-# is light minus ecPosition.  See webgl/patch_light_positional.py.
+# Tell positional lights from directional ones, the way desktop GL does: w = 0
+# is a direction (normalize(u_lightPositionN)) while w != 0 is a point that has
+# to be measured against the vertex (u_lightPositionN - ecPosition), and the
+# lighting pass runs in eye space.  The emulation always used the directional
+# rule, so any light the game places as a point was lit as if it were at the
+# eye-space origin.  The two lights gCycle.cpp sets for the cycle body are
+# directional (measured w = 0), so this does not change the body; it matters for
+# the point lights elsewhere.  See webgl/patch_light_positional.py.
 python3 webgl/patch_light_positional.py src/armagetronad_main.js || exit 1
+# Suppress the specular term when the shininess is 0, as desktop GL defines it.
+# The emulation approximates the exponent with exp(shininess*log(N.H)), which is
+# 1 at shininess 0, so every vertex facing a light got a full-intensity
+# highlight: gCycle.cpp sets GL_SHININESS 0 with GL_SPECULAR (1,1,1), and the
+# cycle body blew out to white (mean green 254 against the desktop 70 in the
+# body box).  See webgl/patch_light_specular.py.
+python3 webgl/patch_light_specular.py src/armagetronad_main.js || exit 1
 # Every patch above edits generated JavaScript in place, so a bad anchor or a
 # mistyped replacement only shows up as a SyntaxError in the browser.  Catch it
 # here instead, where the build fails loudly.

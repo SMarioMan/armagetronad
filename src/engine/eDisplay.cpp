@@ -113,6 +113,31 @@ static void finite_xy_plane( const eCoord &pos,const eCoord &dir,REAL h, eRectan
     REAL hy = rect.GetHigh().y;
 
     // draw rectangle as triangle fan (good for avoiding artefacts near pos)
+#ifdef __EMSCRIPTEN__
+    // The port's GL layer gives an immediate-mode primitive a *constant*
+    // texture coordinate, so one fan samples one texel everywhere: that is what
+    // turned the whole floor into a flat colour instead of a grid.  Same six
+    // vertices, through the array path, get their own coordinates.
+    {
+        GLfloat vtx[18] = {
+            pos.x - dir.x, pos.y - dir.y, h,
+            lx, ly, h,
+            lx, hy, h,
+            hx, hy, h,
+            hx, ly, h,
+            lx, ly, h
+        };
+        GLfloat txc[12] = {
+            pos.x - dir.x, pos.y - dir.y,
+            lx, ly,
+            lx, hy,
+            hx, hy,
+            hx, ly,
+            lx, ly
+        };
+        atglDrawArrays(GL_TRIANGLE_FAN, 6, vtx, txc, NULL);
+    }
+#else
     BeginTriangleFan();
     TexVertex( pos.x-dir.x, pos.y-dir.y, h );
     TexVertex(lx, ly, h);
@@ -121,6 +146,7 @@ static void finite_xy_plane( const eCoord &pos,const eCoord &dir,REAL h, eRectan
     TexVertex(hx, ly, h);
     TexVertex(lx, ly, h);
     RenderEnd();
+#endif
 }
 
 static void infinity_xy_plane(eCoord const & pos, const eCoord &dir,REAL h=0){

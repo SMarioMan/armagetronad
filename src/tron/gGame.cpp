@@ -1835,11 +1835,6 @@ void RenderAllViewports(eGrid *grid){
 
 
 void Render(eGrid *grid, REAL time, bool swap=true){
-    {
-        static double wlast=0;
-        double wn=tRealSysTimeFloat();
-        if (wn-wlast>2.0) { wlast=wn; wdbg("RENDER_CALLED"); }
-    }
 #ifdef DEBUG
     //  eFace::UpdateVisAll(10);
 #endif

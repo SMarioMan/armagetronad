@@ -547,16 +547,32 @@ static bool UploadMipLevels( const SDL_Surface * tex )
 
         for ( int y = 0; y < nh; y++ )
         {
-            const unsigned char * src0 = &cur[(size_t)(2 * y) * cp];
-            const unsigned char * src1 = &cur[(size_t)(2 * y + 1) * cp];
-            unsigned char * dst = &nxt[(size_t)y * nw * bpp];
-
+            // A level that is already one texel tall cannot be halved
+            // vertically, so the second row is the first row again -- exactly
+            // the box gluBuild2DMipmaps applies to a texture like floor_b.png
+            // (256x1, one set of grid lines): it averages two texels, not four.
+            // Reading row 1 of a one-row image instead ran off the end of the
+            // buffer and every odd mip level of that texture turned into
+            // uninitialised bytes, which is what made one family of far-away
+            // grid lines go black and the other family stay bright.
+            const int y0 = (2 * y < ch) ? 2 * y : ch - 1;
+            const int y1 = (2 * y + 1 < ch) ? 2 * y + 1 : y0;
+            const unsigned char * src0 = &cur[(size_t)y0 * cp];
+            const unsigned char * src1 = &cur[(size_t)y1 * cp];
             for ( int x = 0; x < nw; x++ )
             {
                 const unsigned char * a = &src0[2 * x * bpp];
                 const unsigned char * b = 2 * x + 1 < cw ? &src0[(2 * x + 1) * bpp] : a;
                 const unsigned char * c = &src1[2 * x * bpp];
                 const unsigned char * d = 2 * x + 1 < cw ? &src1[(2 * x + 1) * bpp] : c;
+                // The output texel moves along the row; it used to stay put, so
+                // every level wider than one texel kept one correct pixel and
+                // whatever the reused buffer happened to hold in the rest.  For
+                // the floor grid textures that meant one family of grid lines
+                // (floor_b.png, 256x1) sampled black at most distances while
+                // the other family (floor_a.png, 1x256, one texel wide, so
+                // unaffected) stayed bright.
+                unsigned char * dst = &nxt[((size_t)y * nw + x) * bpp];
 
                 for ( int i = 0; i < bpp; i++ )
                     dst[i] = (unsigned char)((a[i] + b[i] + c[i] + d[i]) / 4);

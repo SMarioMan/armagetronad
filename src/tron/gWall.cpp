@@ -48,6 +48,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "nConfig.h"
 
 #include <fstream>
+#include <cstdio>
 
 /* **********************************************
    Wall
@@ -1084,6 +1085,7 @@ static const bool sg_renderBulkQuads = true;
 void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL te,REAL r,REAL g,REAL b,REAL a, gWallRenderMode mode ){
     REAL hfrac=1;
 
+
     if (bool(cycle_) && !cycle_->Alive() && gCycle::WallsStayUpDelay() >= 0 ){
         REAL dt=(se_GameTime()-cycle_->deathTime-gCycle::WallsStayUpDelay())*2;
 
@@ -1136,6 +1138,36 @@ void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL
 #endif
         if ( mode & gWallRenderMode_Quads && sg_renderBulkQuads )
         {
+#ifdef __EMSCRIPTEN__
+            // Same quad the desktop draws, through client arrays: the port's
+            // immediate-mode path would give it one constant texcoord for all
+            // four corners and it would sample a single texel of the wall
+            // texture instead of the strip between ta and te.
+            {
+                const GLfloat px[4] = { p1.x, p1.x, p2.x, p2.x };
+                const GLfloat py[4] = { p1.y, p1.y, p2.y, p2.y };
+                const GLfloat pz[4] = { extrarise, extrarise + h*hfrac,
+                                        extrarise + h*hfrac, extrarise };
+                const GLfloat tu[4] = { ta, ta, te, te };
+                const GLfloat tv[4] = { hfrac, 0, 0, hfrac };
+                const int q[6] = { 0, 1, 2, 0, 2, 3 };
+                GLfloat vtx[18], txc[12], col[24];
+                for (int i = 0; i < 6; i++)
+                {
+                    int s = q[i];
+                    vtx[i*3+0] = px[s];
+                    vtx[i*3+1] = py[s];
+                    vtx[i*3+2] = pz[s];
+                    txc[i*2+0] = tu[s];
+                    txc[i*2+1] = tv[s];
+                    col[i*4+0] = r;
+                    col[i*4+1] = g;
+                    col[i*4+2] = b;
+                    col[i*4+3] = 1.0f;
+                }
+                atglDrawArrays(GL_TRIANGLES, 6, vtx, txc, col);
+            }
+#else
             BeginQuads();
 
             glColor4f(r,g,b,1);
@@ -1153,6 +1185,7 @@ void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL
             glColor4f(r,g,b,1);
             glTexCoord2f(te,hfrac);
             glVertex3f(p2.x,p2.y,extrarise);
+#endif
         }
     }
 }
@@ -1254,6 +1287,58 @@ void gNetPlayerWall::RenderBegin(const eCoord &p1,const eCoord &pp2,REAL ta,REAL
 
     if( mode & gWallRenderMode_Quads && sg_renderBeginQuads )
     {
+#ifdef __EMSCRIPTEN__
+        // The fading cap of a turning wall is a quad strip whose per-vertex
+        // colour and texture coordinate both change along the segment; on the
+        // port an immediate-mode strip carries one colour and samples one
+        // texel, so the fade and the wall texture disappear.  Emit the same
+        // triangles GL_QUAD_STRIP would have produced, through client arrays.
+        {
+            const int ns = segs + 1;
+            REAL sx[7], sy[7], sH[7], sfrag[7], srat[7];
+            for (int i = 0; i < ns; i++)
+            {
+                sfrag[i] = i * seginv;
+                srat[i] = ra + sfrag[i] * (re - ra);
+                sx[i] = (p1.x + sfrag[i]*(p2.x - p1.x)) * (1 - xfunc(srat[i]))
+                        + ppos.x * xfunc(srat[i]);
+                sy[i] = (p1.y + sfrag[i]*(p2.y - p1.y)) * (1 - xfunc(srat[i]))
+                        + ppos.y * xfunc(srat[i]);
+                sH[i] = h * hfrac * hfunc(srat[i]);
+            }
+            const int nv = 6 * segs;
+            GLfloat vtx[nv * 3], txc[nv * 2], col[nv * 4];
+            const int order[6] = { 0, 1, 2, 2, 1, 3 };   // a quad strip's two triangles
+            int k = 0;
+            for (int s = 0; s < segs; s++)
+            {
+                for (int j = 0; j < 6; j++)
+                {
+                    int o  = order[j];
+                    int i  = s + (o >> 1);
+                    int up = o & 1;
+                    GLfloat x = sx[i], y = sy[i], z = 0;
+                    if (up)
+                    {
+                        x += sH[i] * cycle_->skew * sfunc(srat[i]) * cycle_->dir.y;
+                        y -= sH[i] * cycle_->skew * sfunc(srat[i]) * cycle_->dir.x;
+                        z  = sH[i];
+                    }
+                    vtx[k*3+0] = x;
+                    vtx[k*3+1] = y;
+                    vtx[k*3+2] = z;
+                    txc[k*2+0] = ta + (te - ta) * sfrag[i];
+                    txc[k*2+1] = up ? 0 : hfrac;
+                    col[k*4+0] = r + cfunc(srat[i]);
+                    col[k*4+1] = g + cfunc(srat[i]);
+                    col[k*4+2] = b + cfunc(srat[i]);
+                    col[k*4+3] = a * afunc(srat[i]);
+                    k++;
+                }
+            }
+            atglDrawArrays(GL_TRIANGLES, nv, vtx, txc, col);
+        }
+#else
         BeginQuadStrip();
 
         for (int i=0;i<=segs;i++){
@@ -1276,6 +1361,7 @@ void gNetPlayerWall::RenderBegin(const eCoord &p1,const eCoord &pp2,REAL ta,REAL
                        y-H*cycle_->skew*sfunc(rat)*cycle_->dir.x,
                        H);
         }
+#endif
     }
 
     // don't mix strips of different wall segments

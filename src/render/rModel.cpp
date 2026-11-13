@@ -328,7 +328,6 @@ void rModel::Render(){
 
             rDisplayListFiller filler( displayList_, false );
             glEnable(GL_CULL_FACE);
-
             glDrawElements(GL_TRIANGLES,
                            modelFaces.Len()*3,
                            GL_UNSIGNED_INT,

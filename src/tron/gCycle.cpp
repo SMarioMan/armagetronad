@@ -4267,6 +4267,7 @@ void gCycleWallsDisplayListManager::RenderAll( eCamera const * camera, gCycle * 
     RenderAll( camera, cycle, wallList_ );
 }
 
+
 void gCycle::Render(const eCamera *cam){
     /*
     // for use when there's rendering problems on one specific occasion
@@ -4627,6 +4628,26 @@ void gCycle::Render(const eCamera *cam){
         if(!blinking && sr_floorDetail>rFLOOR_GRID && rTextureGroups::TextureMode[rTextureGroups::TEX_FLOOR]>0 && sr_alphaBlend){
             glColor3f(0,0,0);
             cycle_shad.Select();
+#ifdef __EMSCRIPTEN__
+            // The port's immediate-mode path does not carry the per-vertex
+            // colour: an un-enabled colour array leaves the generic attribute at
+            // its default (1,1,1,1), so the black that the desktop build multiplies
+            // the shadow texture down to never arrives and the quad paints the
+            // texture at its own brightness instead -- a light wedge in front of
+            // the bike where the desktop build paints a dark smudge.  Same four
+            // corners, through the array path, with the colour that the desktop
+            // build is sending.  Drawn as a strip: WebGL1 has no GL_QUADS.
+            {
+                GLfloat vtx[12] = {-.6,.4,h, -.6,-.4,h, 2.1,.4,h, 2.1,-.4,h};
+                GLfloat txc[8]  = {0,1, 1,1, 0,0, 1,0};
+                GLfloat col[16];
+                for (int k = 0; k < 4; k++)
+                {
+                    col[k*4+0] = 0; col[k*4+1] = 0; col[k*4+2] = 0; col[k*4+3] = 1;
+                }
+                atglDrawArrays(GL_TRIANGLE_STRIP, 4, vtx, txc, col);
+            }
+#else
             BeginQuads();
             glTexCoord2f(0,1);
             glVertex3f(-.6,.4,h);
@@ -4641,6 +4662,7 @@ void gCycle::Render(const eCamera *cam){
             glVertex3f(2.1,.4,h);
 
             RenderEnd();
+#endif
         }
 
         glDisable(GL_CULL_FACE);
