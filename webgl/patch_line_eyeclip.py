@@ -49,7 +49,8 @@ can toggle the patch without rebuilding it (same convention as the projection
 switch in patch_texture_projective_coords):
   window.arma_lineclip_debug  print the vertex layout found at the first draws
                               plus a keep/drop/split tally per draw
-  window.arma_lineclip_off    run without the cut, for the A/B
+  window.arma_lineclip_off    run without the cut, for the A/B; a live page
+  can ask for the same thing with &nolineclip=1 in its URL
 """
 import sys
 
@@ -160,7 +161,9 @@ GLImmediate.atglClipLinePrimitives=function(){
 };
 """
 
-CALL = "if(!window.arma_lineclip_off){GLImmediate.atglClipLinePrimitives();}"
+CALL = ("if(!(window.arma_lineclip_off||(window.location&&"
+        "/[?&]nolineclip/.test(window.location.href)))){"
+        "GLImmediate.atglClipLinePrimitives();}")
 
 
 def main():

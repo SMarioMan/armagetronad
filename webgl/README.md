@@ -116,11 +116,13 @@ these patches on `src/armagetronad_main.js` after every link:
   frame-exact `n363` pair of the perimeter replay (desktop pose 107.8338
   69.5185, camera height 16.4540; port 107.8338 69.5183, 16.4542):
   green-dominant pixels below row 520 go from 258 to 3008 against the
-  desktop's 5307, saturated green over the lower half of the frame from 3046
-  to 10178 against the desktop's 10684, while whole-frame agreement with the
-  desktop stays flat (mean absolute channel difference 3.45 to 3.47, pixels
-  differing by more than 32 from 3.65 % to 3.48 %). `&nolineclip=1` in the
-  page URL switches the cut off again, so one build measures both states.
+  desktop's 5307, saturated green over the lower half of the frame from 2936
+  to 10283 against the desktop's 10684. Both states come from a single build
+  with nothing but the page URL differing: `&nolineclip=1` switches the cut
+  off, so a live page can measure the pair itself. Whole-frame agreement with
+  the desktop sits in the 3.5 to 3.9 mean-channel-difference band either way
+  -- each build re-simulates the ten AI players locally, so run-to-run world
+  differences move that figure more than this cut does.
 - `patch_emulation_fixes.py` — the fixed-function fragment shader is hardcoded
   to `precision mediump float`, which bands fog, trail fades, floor lighting
   and per-vertex wall alpha on desktop WebGL; promoted to `highp`.
