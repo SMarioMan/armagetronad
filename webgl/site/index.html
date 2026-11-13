@@ -209,6 +209,22 @@
           console.warn('could not create the WebGL context with multisampling');
           return;
         }
+        // 32-bit triangle indices, requested for correctness.  src/render/
+        // rModel.cpp:331 draws every model with glDrawElements (GL_TRIANGLES,
+        // faces*3, GL_UNSIGNED_INT, ...), and WebGL 1 rejects that index type
+        // unless OES_element_index_uint has been requested on the context.  The
+        // emscripten immediate-mode path re-bases the type to GL_UNSIGNED_SHORT
+        // whenever the index count fits, which is what the port's own GL trace
+        // records (1440 drawElements calls, every one type 0x1403, GL error
+        // 0x0), so the reported mangled lightbike is not a rejected model draw.
+        // The request still matters for any model that would exceed 65535
+        // indices, and without it a rejected draw would leave an uncleared
+        // error attached to the next wall quad or line strip, as an earlier
+        // trace showed.
+        if (!glctx.getExtension('OES_element_index_uint')) {
+          console.warn('OES_element_index_uint unavailable: WebGL will reject the ' +
+                       '32-bit indices the models use and they will not draw');
+        }
         // No anisotropic filtering here either.  The game never requests it, so
         // the desktop build samples the floor with plain trilinear filtering
         // (the GL default is 1.0) and matching that is the whole point of this

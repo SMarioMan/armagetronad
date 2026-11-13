@@ -62,6 +62,15 @@ ANCHOR = (
     'return`${func}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr}.xy)`'
 )
 
+# Note on level-of-detail: the optional bias argument of texture2D/texture2DProj
+# is not part of GLSL ES 1.00 (it arrived in ES 3.00).  Emitting it makes every
+# textured program fail to link and the whole scene render black; measured on a
+# replay frame, mean frame luminance dropped from 10.06 to 0.14.  Bias is not
+# the lever here anyway: the engine never asks for anisotropic filtering (no
+# anisotropy code exists in src/) and never asks for multisampling, so neither
+# build has either, and the port's remaining coarser floor sampling is mip
+# selection inside the WebGL sampler, not a missing filter request.
+
 REPLACEMENT = (
     'if(TEX_MATRIX_UNIFORM_PREFIX!=null){'
     'texCoordExpr=`(${TEX_MATRIX_UNIFORM_PREFIX}${texUnitID} * ${texCoordExpr})`}'

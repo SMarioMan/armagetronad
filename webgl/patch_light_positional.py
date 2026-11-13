@@ -44,7 +44,7 @@ import sys
 
 PATCHES = [
     ('vsLightingPass+="    vec3 lightDirection = normalize(u_lightPosition"+lightId+").xyz;";',
-     'vsLightingPass+="    vec3 lightDirection = (u_lightPosition"+lightId+".w == 0.0) '
+     'vsLightingPass+="    vec3 lightDirection = (u_lightPosition"+lightId+".w < 0.5) '
      '? normalize(u_lightPosition"+lightId+".xyz) '
      ': normalize(u_lightPosition"+lightId+".xyz - ecPosition.xyz);";'),
 ]
