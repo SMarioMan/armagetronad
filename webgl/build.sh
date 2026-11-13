@@ -210,6 +210,12 @@ cp src/armagetronad_main.js src/armagetronad_main.wasm src/armagetronad_main.dat
 # The browser always asks for a favicon; without one every page load logs a
 # 404.  Ship the game's own 32x32 icon.
 cp textures/icon.png webgl/dist/favicon.png
+# The reference replay every parity measurement in webgl/README.md is taken
+# from.  It ships so the published page can be aimed at it
+# (index.html?args=--playback,perp2.aarec): the same recording the native build
+# recorded and both builds are measured against.  It is a harness artefact, not
+# part of the game.
+cp webgl/harness/perp2.aarec webgl/dist/perp2.aarec
 
 echo "=== Build complete: webgl/dist ==="
 ls -la webgl/dist

@@ -130,6 +130,13 @@ silently lost a fix.
 - `?args=--playback,/path.rec` — command-line arguments; files named by
   `--playback`/`--record`/`--playback-bench` are fetched from the web root and
   written into the virtual FS before `main()`.
+  Every parity measurement in this file replays one reference recording,
+  `webgl/harness/perp2.aarec` (265 KB, one single-player round, capped to 60 fps
+  by `MAX_FPS`); `build.sh` copies it into the deployed site, so the published
+  build can be replayed in the browser at
+  `https://smarioman.github.io/armagetronad/?args=--playback,perp2.aarec`.
+  Viewer-side settings still come from the player's own configuration; the
+  published numbers were taken with `webgl/harness/autoexec.cfg`.
 - `?proxy=wss://host/` — WebSocket bridge base for network play, remembered in
   `localStorage` (`arma_proxy_base`). Without a proxy the client tries direct
   `ws(s)://ip:port`, which the stock server does not speak, so the hosted page
@@ -168,10 +175,13 @@ keysyms, which the port's SDL 2 event layer has to translate
 frame number, camera position and view direction, so pairs are matched by pose
 rather than by wall clock.
 
-Frame counters are not comparable across the two builds: the port plays the
-recording at up to twice the recorded rate because its clock advances faster, so
-a pair is matched by game-time gate and by pose (typically within 0.1 world
-units), never by `n`.
+Frame counters are not a reliable key.  The current builds land within one
+rendered frame of each other at game time 2.46 (341 against 342, both capped at
+60 fps), but port builds from before playback was made to render every frame
+reached that same game time on frame 2068 -- and the native's counter runs at
+its own uncapped rate unless `MAX_FPS` is set.  A pair is therefore matched by
+game-time gate and by camera pose, which measured 0.00 world units apart at
+that gate, never by `n`.
 
 The reference native run uses llvmpipe (`LIBGL_ALWAYS_SOFTWARE=1`), a software
 rasterizer, which is closer to the browser's SwiftShader than to a desktop GPU
@@ -240,8 +250,9 @@ What has been closed since that table was written:
   not counted as a measured visual fix, only as a patch that now does what it
   claims.
 
-What is still open, with today's numbers from a frame-matched pair at game time
-2.46 (camera 107.83, 69.69 on the port against 107.83, 69.60 native):
+What is still open, with today's numbers from a game-time-matched pair at 2.46
+(port pose 107.8338, 69.6826, camera height 16.3236; native 107.8338, 69.6817,
+16.3234 -- 0.00 world units apart, so what follows is not a pose difference):
 
 - The floor and the trail nearest the camera.  In the band from 0.61 to 0.86 of
   frame height the native has 8.9 % of its pixels above luminance 120, the port
@@ -254,14 +265,17 @@ What is still open, with today's numbers from a frame-matched pair at game time
   volume against the port's own projection matrix, the projection matrix agrees
   with the native's to two decimals, and a depth-test tie is not the cause - the
   engine already compares with `GL_LEQUAL`, so the small lift the line carries
-  does not have to beat a depth step.  Still open is the `glPolygonOffset(-2,-5)`
-  both builds use around floor-adjacent geometry (`rScreen.cpp:1228`): those
-  numbers are depth-buffer steps, so on the WebGL context's 16-bit depth buffer
-  the same call moves a fragment about 256 times as far in depth as on the
-  reference's 24-bit one (7.6e-5 against 3.0e-7 at these view distances).  That
-  is an over-lift, which would carry near geometry through the floor's own
-  layers rather than hold it back.  A page-side hook meant to neutralize the
-  offset never produced a frame, so this stays arithmetic rather than measurement.
+  does not have to beat a depth step.  Measured at the same gate: a port build
+  (`glPolygonOffset(0,0)` plus all three `GL_POLYGON_OFFSET_*` enables off,
+  `__EMSCRIPTEN__` only) puts 9.5 % of the far wall band above luminance 40
+  where the same build with the offset puts 23.8 % and the native puts 24.1 %,
+  and its saturated-green coverage over the lower half falls from 2356 px to 0;
+  433 641 of the frame's pixels move.  The offset is therefore load-bearing,
+  not a lift that carries near geometry through the floor, and in the near band
+  it changes almost nothing (6.9 % to 7.3 % above luminance 40, 2.8 % to 2.7 %
+  above 120).  The mechanism behind the near-field deficit is still
+  unexplained; what remains untested is the wall quad strip's own coverage and
+  the trail's per-vertex alpha.
 - A page-side probe once reported `GL_INVALID_ENUM` on quad-family
   immediate-mode draws.  The client-array draws described above report no GL
   error (checked with `glGetError` around every `glDrawArrays` in the helper),
@@ -317,8 +331,10 @@ Captures are paired by a stamp that a comparison working tree adds to
 `gGame::Render`; it is deliberately not committed because it prints every
 eleventh rendered frame and would flood a player's console.  The line format is
 the one quoted above: both builds print it, the port to `stdout` (the browser
-console) and the native to `stderr`, and the capture driver keys its gates off
-the ` FRAME ` field rather than any particular prefix.
+console) and the native to `stderr`.  The capture driver keys its gates off the
+five characters ` FRAME `, so the line needs some token in front of it --
+`PF FRAME ...` is what recent comparison builds print -- and it then reads the
+fields by name (`gt`, `pos`, `h`, `dir`) from whatever follows.
 
 The taps used while tracking the divergences are working-tree only for the same
 reason: an event tap in `EventArchiver::Archive`, which is what exposed the
