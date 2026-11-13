@@ -67,7 +67,11 @@ def close_stale_pages():
 
 class Page:
     def __init__(self, url):
-        target = http("/json/new?" + urllib.parse.quote(url, safe=""), "PUT")
+        # Open at about:blank and navigate only once the init script below is
+        # registered: addScriptToEvaluateOnNewDocument cannot run inside a
+        # document that is already loading, and the parity-stamp flag has to be
+        # set before the wasm's first rendered frame reads it.
+        target = http("/json/new?about:blank", "PUT")
         self.id = target["id"]
         self.ws = websocket.create_connection(target["webSocketDebuggerUrl"], timeout=120)
         self._id = 0
@@ -75,6 +79,14 @@ class Page:
         self.cfile = None
         for d in ("Page.enable", "Runtime.enable", "Log.enable", "Network.enable"):
             self.cmd(d)
+        # Opt the build into its parity stamp (src/tron/gGame.cpp).  This is a
+        # capture-side switch, so the published page needs no debug hook of its
+        # own and can still be gated by game time.  STAMP=0 captures without it.
+        if os.environ.get("STAMP", "1") != "0":
+            self.cmd(
+                "Page.addScriptToEvaluateOnNewDocument",
+                {"source": "window.arma_parity_stamp = true;"},
+            )
         # The page reserves 56 px of chrome below the canvas, so the port
         # renders at innerHeight - 56: an 856 tall viewport lands the buffer on
         # exactly the 1280x800 the native capture uses.  Anything smaller makes
@@ -86,6 +98,7 @@ class Page:
             "Emulation.setDeviceMetricsOverride",
             {"width": w, "height": h, "deviceScaleFactor": 1, "mobile": False},
         )
+        self.cmd("Page.navigate", {"url": url})
 
     def _log(self, line):
         if self.cfile:

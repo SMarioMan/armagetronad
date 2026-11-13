@@ -327,14 +327,17 @@ band, `parity_report.py` reports window peak, coverage and row profile, and
 
 ### Comparison instrumentation
 
-Captures are paired by a stamp that a comparison working tree adds to
-`gGame::Render`; it is deliberately not committed because it prints every
-eleventh rendered frame and would flood a player's console.  The line format is
-the one quoted above: both builds print it, the port to `stdout` (the browser
-console) and the native to `stderr`.  The capture driver keys its gates off the
-five characters ` FRAME `, so the line needs some token in front of it --
-`PF FRAME ...` is what recent comparison builds print -- and it then reads the
-fields by name (`gt`, `pos`, `h`, `dir`) from whatever follows.
+Captures are paired by the parity stamp in `gGame::Render`, off unless a run
+asks for it: the port prints it when `window.arma_parity_stamp` is set, which
+`webgl/harness/cdpd.py` installs as a document init script before the wasm
+starts (`STAMP=0` captures without it), and a native build prints it when
+`ARMA_PARITY_STAMP` is set in its environment.  The switch lives on the capture
+side, so the published page can be gated by game time exactly like a local
+build without carrying a debug hook of its own.  The line format is the one
+quoted above: the port writes it to `stdout` (the browser console), the native
+to `stderr`, and the capture driver keys its gates off the five characters
+` FRAME ` -- hence the `PF` prefix -- and reads the fields by name (`gt`, `pos`,
+`h`, `dir`) from whatever follows.
 
 The taps used while tracking the divergences are working-tree only for the same
 reason: an event tap in `EventArchiver::Archive`, which is what exposed the
