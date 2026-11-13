@@ -249,6 +249,35 @@ What has been closed since that table was written:
   distinction`.  There is no matched before-picture at the same gate, so this is
   not counted as a measured visual fix, only as a patch that now does what it
   claims.
+- Lines that run back past the eye plane are now cut by the port itself.  The
+  game folds the camera into the projection matrix, so a wall top edge can
+  carry clip-space `w` of opposite signs at its two ends, and Chrome's
+  ANGLE/SwiftShader line clipper then emits nothing at all for the segment:
+  measured in a bare WebGL1 page using the exact matrices of replay frame 363,
+  0 of 4017 probed pixels lit with no GL error, while a triangle under the same
+  matrix clipped correctly at 4004/4017.  `atglDrawArrays` now splits
+  line-family primitives at the near plane and interpolates position, texture
+  coordinate and colour across the cut, which is the clip the desktop's driver
+  performs.  Measured on two runs of the same replay, both gated to frame 363
+  at rendered game time 2.8494, with only the clip block differing: over the
+  submitted top edges whose ends straddle the eye plane the mean luminance goes
+  279.8 -> 354.1 against the desktop's 353.7, and for one such segment 44.2 ->
+  166.4 against the desktop's 166.8.  Edges with both ends in front are
+  untouched (478.9 -> 475.7, desktop 469.4).
+- Replayed input and HUD key labels.  The `.aarec` input section and the
+  configuration defaults store SDL 1.2 keysyms (`SDLK_DOWN` == 274) while this
+  build's SDL layer puts `0x400 | SDL2 scancode` numbers in its events (1103 to
+  1106 for the arrows), and its `SDL_GetKeyName()` names a-z and 0-9 only --
+  measured empty for 274 and for 1105 alike.  Every arrow, function, keypad and
+  modifier key was therefore dropped when a recording was replayed, and the HUD
+  printed `Press <> or <o> to turn right.` where the desktop names the key.  Two
+  generated tables now travel with the port, both derived from the headers this
+  build compiles against: `webgl/gen_sdl12_keymap.py` maps stored keysyms onto
+  runtime keysyms on archive read and back on write, and
+  `webgl/gen_sdl12_keynames.py` emits `ui/uSDL12KeyNames.h`, SDL 1.2's display
+  names, which `su_SDL12KeyName()` serves in either numbering.  After the
+  change the port resolves 273 to 276 as up, down, right and left, byte for byte
+  what the desktop build resolves.
 
 What is still open, with today's numbers from a game-time-matched pair at 2.46
 (port pose 107.8338, 69.6826, camera height 16.3236; native 107.8338, 69.6817,
@@ -284,13 +313,26 @@ What is still open, with today's numbers from a game-time-matched pair at 2.46
 - The spectator camera desyncs a few seconds into a replay: the recording stores
   no camera state, so the two builds follow different cycles later on and only
   the first gates can be paired.
-- The cycle body itself measures at parity.  Over the lower half of the frame the
-  whitish specular core covers 6944 px on the native and 6989 on the port, mean
-  215,215,215 against 213,213,213, and the saturated green body colour is
-  identical (mean 0,253,0 against 0,254,0).  Saturated-green *coverage* is not at
-  parity there (8120 against 2356 px), but that is the near-field geometry
-  described above: measured as luminance coverage over the far wall band the same
-  pair is at parity (24.1 % against 23.8 % above luminance 40).
+- The two builds do not share AI state at a matched stamp, and that limits what
+  a picture pair can be used for.  The recording archives the player's states;
+  the ten AIs are re-simulated locally, so by frame 363 the wall geometry
+  already differs -- the desktop submits a top edge (86.62, 87.18) to
+  (79.90, 87.18) that the port never submits, the port submits
+  (86.62, 86.77) to (89.58, 86.77) that the desktop never submits, and shared
+  vertices differ by 0.02 world units even though the stamped pose agrees to
+  0.0002.  Comparing one pixel of a desktop frame against the same pixel of a
+  port frame is therefore only meaningful for the player's own cycle and its
+  archived wall; everything else has to be compared as per-build
+  self-consistency (submitted geometry measured against that build's own
+  picture) or as window statistics.
+- The cycle body is not at parity in the near field.  Cropping the 160x160 box
+  the wall top edges converge on at frame 363, the desktop crop reads mean
+  luminance 47.8 with 3090 px above 150, the port 34.7 with 1768 px; the hot
+  specular core matches (484 against 478 px above 600).  What the port loses is
+  the mid-tone falloff around the body, not the core.  The earlier claim of body
+  parity in this section was measured over the lower half of the frame on the
+  specular core and the green body colour alone, both of which do match (6944
+  against 6989 px and mean 0,253,0 against 0,254,0).
 
 An earlier commit here claimed the projective texture-coordinate fix explained
 the fading grid.  Paired measurement disproved that; it stays as a conformance
@@ -323,7 +365,9 @@ primitive mode and prints the projection matrix, which is how the two builds'
 command streams were compared.  The analysis tools take those manifest lines on
 stdin (`png rect tag gt pos dir`): `gridprofile.py` profiles the grid lines per
 band, `parity_report.py` reports window peak, coverage and row profile, and
-`modelshape.py` extracts the light-cycle silhouette.
+`modelshape.py` extracts the light-cycle silhouette and `cyclegrid.py` reports
+the luminance spread of the cycle crop together with the line peaks of a fixed
+floor band.
 
 ### Comparison instrumentation
 

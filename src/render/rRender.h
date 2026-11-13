@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "defs.h"
 #include "rGL.h"
+#include <vector>
 
 #ifndef DONTDOIT
 #define glBegin        #error glBegin disabled
@@ -201,6 +202,115 @@ inline void atglDrawArrays(GLenum mode, GLsizei n, const GLfloat *v,
                            const GLfloat *t, const GLfloat *c)
 {
     RenderEnd(true);        // flush anything the renderer is still holding open
+
+    // A line primitive whose two ends straddle the eye plane is dropped whole
+    // instead of clipped: the game folds the camera into the projection matrix,
+    // so a wall top edge running back past the eye has clip-space w of opposite
+    // signs at its two ends, and Chrome's ANGLE/SwiftShader line clipper then
+    // emits nothing at all for it (measured in a bare WebGL1 page with the very
+    // matrices of replay frame 363: 0 of 4017 probed pixels, no GL error, while
+    // a triangle under the same matrix clips correctly at 4004/4017).  Cutting
+    // the segment at the near plane here, where the per-vertex attributes are
+    // still at hand, leaves the driver segments it handles and puts the same
+    // pixels on screen as the desktop build, whose GL does this clip for us.
+    // Triangles need nothing: they are clipped correctly already.
+    static std::vector<GLfloat> ov, ot, oc;
+    if ((mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP) && n >= 2)
+    {
+        GLfloat mv[16], pj[16], m[16];
+        glGetFloatv(GL_MODELVIEW_MATRIX, mv);
+        glGetFloatv(GL_PROJECTION_MATRIX, pj);
+        for (int col = 0; col < 4; col++)
+            for (int row = 0; row < 4; row++)
+                m[col * 4 + row] =
+                    pj[row] * mv[col * 4] + pj[4 + row] * mv[col * 4 + 1] +
+                    pj[8 + row] * mv[col * 4 + 2] + pj[12 + row] * mv[col * 4 + 3];
+
+        // Clip space: the near plane is z = -w, so a point is in front of it
+        // exactly where z + w >= 0; that same test implies w > 0, which is what
+        // the driver's line clipper trips over.
+        GLfloat gs[2][4];
+        GLsizei segs;
+        if (mode == GL_LINES)
+            segs = n / 2;
+        else
+            segs = n - 1 + (mode == GL_LINE_LOOP ? 1 : 0);
+
+        ov.clear(); ot.clear(); oc.clear();
+        for (GLsizei k = 0; k < segs; k++)
+        {
+            GLsizei a, b;
+            if (mode == GL_LINES) { a = 2 * k; b = a + 1; }
+            else { a = k; b = (k + 1) % n; }
+
+            for (int i = 0; i < 2; i++)
+            {
+                const GLfloat *p = v + 3 * (i ? b : a);
+                GLfloat *cc = gs[i];
+                for (int r = 0; r < 4; r++)
+                    cc[r] = m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r];
+            }
+            GLfloat da = gs[0][2] + gs[0][3], db = gs[1][2] + gs[1][3];
+            bool fa = da >= 0, fb = db >= 0;
+            if (fa == fb && fa)
+            {
+                // Both ends in front: hand the pair over untouched.
+                for (int i = 0; i < 2; i++)
+                {
+                    const GLfloat *p = v + 3 * (i ? b : a);
+                    ov.insert(ov.end(), p, p + 3);
+                    if (t) { const GLfloat *q = t + 2 * (i ? b : a); ot.insert(ot.end(), q, q + 2); }
+                    if (c) { const GLfloat *q = c + 4 * (i ? b : a); oc.insert(oc.end(), q, q + 4); }
+                }
+                continue;
+            }
+            if (!fa && !fb)
+                continue;                       // entirely behind the eye
+
+            // One end in front, one behind: keep the front end and the point
+            // where the segment meets the near plane.  Interpolating along the
+            // segment is the same interpolation a hardware clipper applies to
+            // the clip coordinates, so position, texture coordinate and colour
+            // all land where the desktop's clipper puts them.
+            GLsizei f = fa ? a : b;
+            GLsizei r2 = fa ? b : a;
+            GLfloat t0 = fa ? da : db, t1 = fa ? db : da;
+            GLfloat mix = t0 / (t0 - t1);
+            const GLfloat *pf = v + 3 * f, *pr = v + 3 * r2;
+            for (int j = 0; j < 3; j++)
+                ov.push_back(pf[j] + (pr[j] - pf[j]) * mix);
+            if (t)
+            {
+                const GLfloat *qf = t + 2 * f, *qr = t + 2 * r2;
+                for (int j = 0; j < 2; j++)
+                    ot.push_back(qf[j] + (qr[j] - qf[j]) * mix);
+            }
+            if (c)
+            {
+                const GLfloat *qf = c + 4 * f, *qr = c + 4 * r2;
+                for (int j = 0; j < 4; j++)
+                    oc.push_back(qf[j] + (qr[j] - qf[j]) * mix);
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                const GLfloat *p = v + 3 * (i ? b : a);
+                if ((i ? fb : fa))
+                {
+                    ov.insert(ov.end(), p, p + 3);
+                    if (t) { const GLfloat *q = t + 2 * (i ? b : a); ot.insert(ot.end(), q, q + 2); }
+                    if (c) { const GLfloat *q = c + 4 * (i ? b : a); oc.insert(oc.end(), q, q + 4); }
+                }
+            }
+        }
+        if (ov.size() < 6)
+            return;                             // nothing of it is in front
+        mode = GL_LINES;                        // the pieces are independent
+        n = ov.size() / 3;
+        v = ov.data();
+        t = t ? ot.data() : nullptr;
+        c = c ? oc.data() : nullptr;
+    }
+
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_FLOAT, 0, v);
     if (t)
