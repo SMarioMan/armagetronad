@@ -352,6 +352,29 @@ What has been closed since that table was written:
   change the port resolves 273 to 276 as up, down, right and left, byte for byte
   what the desktop build resolves.
 
+- The arena rim face.  The wall body's only textured face painted nothing on
+  the port, so next to a close wall the port showed the void behind the arena
+  where the desktop shows the rim texture.  Measured on `myrec.aarec` at game
+  time 8.06 with the camera 3.2 world units off the west rim (port pose
+  3.2089, 59.1453, camera height 16.7466; desktop 3.2161, 58.4567, 16.7467):
+  the right half of the frame read mean RGB 2,2,2 with 96.3 % near-black pixels
+  before the change and 30,34,46 with 14.0 % after, against the desktop's
+  30,34,46 and 13.8 %; over the whole frame the mean absolute difference
+  against the desktop goes 57.2 -> 19.3 and the share of pixels differing by
+  more than 12 goes 55.6 % -> 44.1 %.  A GL-state probe compiled into both
+  builds shows the submitted data is not at fault: at that frame the quad's
+  endpoints and texcoords, the 10000-unit height and how the sky clamp leaves
+  it alone, fog off, alpha test at ref 0, blending on, depth test on, culling
+  off, and the clip-space corner signs (+62, -4955, -5022, -5) all agree on
+  both sides, and `textures/rim_wall.png` carries no alpha channel to throw
+  away.  The face does reach the WebGL layer as `drawElements(TRIANGLES, 6)`
+  with those coordinates and paints nothing there, while the same two triangles
+  submitted through client arrays paint correctly, so the loss is inside the
+  emulation's immediate-mode path.  `gWallRim_helper` now emits the two
+  triangles GL_QUADS would have produced through `atglDrawArrays`, as the wall
+  top edge, the turning-cap strip and the bulk wall quads already do.
+  Comparison sheet: `shots/rimface.png`.
+
 What is still open, with today's numbers from a game-time-matched pair at 2.46
 (port pose 107.8338, 69.6826, camera height 16.3236; native 107.8338, 69.6817,
 16.3234 -- 0.00 world units apart, so what follows is not a pose difference):
