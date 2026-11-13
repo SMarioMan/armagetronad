@@ -764,20 +764,6 @@ void rISurfaceTexture::OnSelect( bool enforce )
                                     GL_LINEAR);
                     break;
                 }
-                #ifdef __EMSCRIPTEN__
-                // ANGLE switches a trilinear-mipmapped sampler to its
-                // anisotropic path on its own; nothing here asks for it and
-                // desktop GL never sees an anisotropy request because the game
-                // makes none.  Left alone the port samples grazing surfaces
-                // softer than the desktop: over x 1200-1270, y 20-200 (the rim
-                // wall seen along its length) the detail measure is 0.500
-                // against the desktop's 0.622, and pinning the hint to 1 moves
-                // it to 0.593 while leaving face-on floor sampling unchanged.
-                #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
-                #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
-                #endif
-                glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1.0f);
-                #endif
 
             }
             else

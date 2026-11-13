@@ -196,13 +196,20 @@ silently lost a fix.
   context comes up with `antialias:false, stencil:false` and every 1 px light
   cycle line is then an unantialiased staircase that reads as a chain of
   separate rectangles. The same hook enables
-  `EXT_texture_filter_anisotropic` and sets up to 8x anisotropy on every
-  texture the game uploads; with only isotropic mipmaps one screen direction
-  stays under-sampled and the minified floor grid moires badly toward the
-  horizon. A desktop build gets both from the driver, so this restores parity
-  rather than adding detail. The extension state and the buffer attributes
-  belong to the context created first, and SDL's own `getContext()` call
-  returns this same object.
+  `EXT_texture_filter_anisotropic` so that the sampler parameter exists at all;
+  the game never asks for anisotropic filtering and the desktop build's floor
+  texture measures `GL_TEXTURE_MAX_ANISOTROPY_EXT = 1.0`.  An explicit 1x pin
+  on the port was implemented, measured and reverted: on the rim wall seen
+  along its length (x 1200-1270, y 20-200, mean adjacent-pixel difference) it
+  does move that window toward the desktop, 0.494 -> 0.585 against the
+  desktop's 0.614, but in the far band y 380-460, where the grid is supposed
+  to stay resolvable, it moves away -- 3.17 bright grid peaks per column at
+  13.50 peak-minus-median on the desktop, 3.33 at 13.73 without the pin, 1.87
+  at 10.77 with it.  Excluding the floor texture group from the pin changes
+  nothing measurable, band for band, so the far-band cost comes from the pin on
+  other groups and cannot be separated from the near-wall gain.  The extension
+  state and the buffer attributes belong to the context created first, and
+  SDL's own `getContext()` call returns this same object.
 
 ## Visual parity against the native build
 
