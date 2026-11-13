@@ -321,6 +321,36 @@ def main():
             if gts[-1] < target:
                 raise SystemExit(f"gt gate {target}: timed out at game time {gts[-1]}")
             print(f"gt wait {target}: at {gts[-1]}", flush=True)
+        elif name == "P":
+            # P:<recSec> - ask the wasm loop to stop itself the moment the
+            # playback position reaches <recSec> (src/tools/tWasmLoop.cpp,
+            # adSetPauseAt: the loop checks tPlaybackRecSec() every tick).  This
+            # is the only gate that does not depend on log traffic: the loop
+            # freezes inside the frame that crosses the position, so the next
+            # screenshot is of a stopped, reproducible world state, and two runs
+            # of the same recording pause at the identical state.  The HUD game
+            # clock burned into the frame is what pairs it with a native capture.
+            target = float(parts[1])
+            p.eval(f"Module._adSetPauseAt({target}); Module._adSetPaused(0);")
+            limit = time.time() + int(os.environ.get("GATEWAIT", "600"))
+            paused = 0
+            while time.time() < limit:
+                try:
+                    paused = int(p.eval("Module._adIsPaused()") or 0)
+                except Exception:
+                    paused = 0
+                if paused:
+                    break
+                time.sleep(0.05)
+            if not paused:
+                raise SystemExit(
+                    f"pause-at {target}: the wasm loop never paused - the page is "
+                    "not playing a recording, or the bridge export is missing.")
+            try:
+                at = p.eval("Module._adGetRecSec()")
+            except Exception:
+                at = "?"
+            print(f"pause-at {target}: loop frozen at recSec {at}", flush=True)
         elif name == "N":
             target = int(float(parts[1]))
             # N:<frame> - wait until the stamped rendered-frame counter reaches
