@@ -79,6 +79,7 @@ so native builds compile and behave exactly as before.
 | `src/tools/tDirectories.cpp`, `tResourceManager.cpp`, `tConfiguration.cpp` | No binreloc in the browser: paths resolve to the preload root, user data to `$HOME/.armagetronad/var` (mounted as IndexedDB by the page). |
 | `src/ui/uMenu.*`, `uInput*.cpp` | Menu rendering/keyboard handling for the event-loop model and browser focus rules. |
 | `src/tron/*` | Startup sequence, splash/logo handling, server browser/favorites for the transport change. |
+| `src/ui/uInputQueue.cpp` | The event archiver stores SDL 1.2 keysyms; the runtime delivers SDL 2 ones. A generated table translates the 56 keys whose numbers differ, in both directions, so replays drive the menu and the throttle arrows reach the game. |
 | `src/tools/wdbg.h` | Console logging that compiles to nothing unless the build adds `-DWASM_DBG`. |
 
 ## Post-build JavaScript patches
@@ -167,6 +168,11 @@ keysyms, which the port's SDL 2 event layer has to translate
 frame number, camera position and view direction, so pairs are matched by pose
 rather than by wall clock.
 
+Frame counters are not comparable across the two builds: the port plays the
+recording at up to twice the recorded rate because its clock advances faster, so
+a pair is matched by game-time gate and by pose (typically within 0.1 world
+units), never by `n`.
+
 The reference native run uses llvmpipe (`LIBGL_ALWAYS_SOFTWARE=1`), a software
 rasterizer, which is closer to the browser's SwiftShader than to a desktop GPU
 is; treat the numbers as one named reference rather than as "the machine the
@@ -180,6 +186,9 @@ horizon, 0.70-0.85 mid-distance floor, 0.85-1.00 the floor nearest the camera.
 reaches above it, `width` the mean extent of a bright run in pixels.  The lit
 rows give the share of pixels above a luminance threshold and the mean colour
 of those pixels, which is where a shading error shows up directly.
+
+The table describes the published build before the fixes listed below; the
+current numbers are in the closing part of this section.
 
 | | native | port as published | port + floor 3 (reverted) |
 |---|---|---|---|
@@ -201,33 +210,109 @@ page does request `antialias: true`; SwiftShader does not deliver it),
 of this file listed 4 sample buffers and 8x anisotropy in use; both figures are
 now contradicted by the direct measurements above.
 
-What is still different, and measurable today:
+What has been closed since that table was written:
 
-- The distance grid.  In the band nearest the horizon the port's lines reach a
-  peak of 103 against the native's 152 and carry 63 % of its ink; in the
-  nearest band 32 against 86.  Switching to the desktop's two-texture floor
-  mode made this worse (73, and 50 % of the ink), which is why that default
-  change was reverted.  One plausible mechanism, not yet proven: a 1x256 line
-  texture mipped down to 1x1 is a flat average, so the line simply averages
-  away at high lod, whereas the native path keeps a resolvable mip.
-- The light cycle body and the wall strip.  Over the frame's brightest pixels
-  the port averages R171 G208 B132 against native R109 G224 B101: the green is
-  roughly held while red and blue are lifted by about 60 and 30.  The same
-  over-bright, low-detail wash is visible on the wall texture in the horizon
-  band.  Two lighting patches are in (vertex colour as material, positional
-  lights); neither moved this metric, so the cause is still open.
-- Desktop-side context parameters (aliased line width range, sample buffers)
-  are still not probed. Filter, wrap and anisotropy of the floor texture now
-  are, from the same probe in both builds, and they agree -- which removes
-  filtering and anisotropic sampling as candidate causes of the distance grid.
-- Only the first gates of a playback pair are pose-comparable: a few seconds
-  in, the spectator camera follows a different cycle on the two builds (a
-  178-degree view-direction difference at the 4.4 s gate), so later captures
-  show different scenes and cannot be paired.
+- The wall's bright top edge.  The desktop never sets a texture coordinate for
+  it: the line inherits the previous wall quad's last texcoord and therefore
+  samples the bright edge of the wall texture.  The port's GL emulation gives an
+  immediate-mode primitive with no texcoord array the constant generic texcoord
+  (0,0,0,1), which samples a transparent texel and the line is thrown out by the
+  alpha test - the walls up close had no top edge at all.  The port's wall
+  passes supply that texcoord and colour through client arrays
+  (`src/tron/gWall.cpp`).  On the far wall band the builds now measure the same:
+  24.1 % against 23.8 % of pixels above luminance 40, mean green 37.9 against
+  36.7, 9.4 % against 8.8 % above 120.
+- Playback used to skip rendering whenever the port's clock ran ahead of the
+  recording (`src/render/rSysdep.cpp`), which left a cleared canvas under the
+  HUD at exactly the gates the captures were taken at.  Playback frames now
+  render one step and present like live ones.
+- The distance grid is at parity at matched poses.  Window peak brightness
+  255 / 253 / 211 against the native's 255 / 255 / 255 in the far, mid and left
+  windows, bright-row coverage within 1.5 points, and a row profile whose
+  sampling period, mean and standard deviation match.  An earlier revision of
+  this section reported the opposite; that was an artefact of counting dark rows
+  as lines, which is why the metrics are now peak, coverage and row profile.
+
+What is still open, with today's numbers from a frame-matched pair at game time
+2.46 (camera 107.83, 69.69 on the port against 107.83, 69.60 native):
+
+- The floor and the trail nearest the camera.  In the band from 0.61 to 0.86 of
+  frame height the native has 8.9 % of its pixels above luminance 120, the port
+  6.9 %; over the pixels where the native is bright, the port reads RGB
+  (31,33,32) with a median of 0, so about half of them are simply black.  The
+  candidate mechanisms have been measured one by one and rejected: the floor
+  texture is the same file, size, wrap and filter on both sides (the native
+  uploads 1x256 and 256x1 copies as well), the wall passes are all issued in the
+  port's command stream, the line vertices are submitted and inside the clip
+  volume against the port's own projection matrix, the projection matrix agrees
+  with the native's to two decimals, and a depth-test tie is not the cause - the
+  engine already compares with `GL_LEQUAL`, so the small lift the line carries
+  does not have to beat a depth step.  What has not been ruled out is the
+  `glPolygonOffset` both builds use to push floor-adjacent geometry in front of
+  the floor: the offsets are stated in depth-buffer steps, and the port's WebGL
+  context typically has a 16-bit depth buffer against the reference's 24-bit
+  one, so the same numbers move a fragment further than WebGL can represent and
+  get clamped.
+- A page-side probe once reported `GL_INVALID_ENUM` on quad-family
+  immediate-mode draws.  The client-array draws described above report no GL
+  error (checked with `glGetError` around every `glDrawArrays` in the helper),
+  so the report is not reproduced by the code path that draws the walls and
+  stays open as an observation about the immediate-mode paths.
+- The spectator camera desyncs a few seconds into a replay: the recording stores
+  no camera state, so the two builds follow different cycles later on and only
+  the first gates can be paired.
 
 An earlier commit here claimed the projective texture-coordinate fix explained
 the fading grid.  Paired measurement disproved that; it stays as a conformance
 fix and is not counted as a visual fix.
+
+### Reproducing the comparison
+
+The recording used for this is `webgl/harness/perp2.aarec`: a single-player
+round on the default map, 60 fps capped, with the camera driven around the
+perimeter of the stage, so walls, floor and cycles all appear edge-on and
+head-on.  The native build is configured with the same `autoexec.cfg`
+(`webgl/harness/autoexec.cfg`) and played back under Xvfb:
+
+    src/armagetronad_main --norun --loglevel 4 \
+
+`--playback FILE` takes the file as a separate argument, not joined by `=`.
+Keystrokes are sent with `xdotool`; the menu sequence that starts a single
+player round is `w:4500 e:1500 d:700 e:1500 e:1500` (wait, then Enter).  A
+comparison build prints one line every eleventh rendered frame:
+
+    FRAME <n> state 6 gt <game time> ncam <c> pos <x> <y> h <h> dir <dx> <dy>
+
+The port writes the same line to `stdout` (the browser console); the native
+writes it to `stderr`.  `webgl/harness/cdpd.py` drives the port over the Chrome
+DevTools protocol: it watches that stream, fires a screenshot when the step
+condition is met (`N:341,s` grabs at frame 341) and writes `<tag>-NN.png` plus a
+`<tag>-shots.txt` manifest line carrying the pose.  `webgl/harness/glinstrument.c`
+is an `LD_PRELOAD` interposition for the native build that counts draw calls per
+primitive mode and prints the projection matrix, which is how the two builds'
+command streams were compared.  The analysis tools take those manifest lines on
+stdin (`png rect tag gt pos dir`): `gridprofile.py` profiles the grid lines per
+band, `parity_report.py` reports window peak, coverage and row profile, and
+`modelshape.py` extracts the light-cycle silhouette.
+
+### Comparison instrumentation
+
+Captures are paired by a stamp that a comparison working tree adds to
+`gGame::Render`; it is deliberately not committed because it prints every
+eleventh rendered frame and would flood a player's console.  The line format is
+the one quoted above: both builds print it, the port to `stdout` (the browser
+console) and the native to `stderr`, and the capture driver keys its gates off
+the ` FRAME ` field rather than any particular prefix.
+
+The taps used while tracking the divergences are working-tree only for the same
+reason: an event tap in `EventArchiver::Archive`, which is what exposed the
+SDL 1.2 against SDL 2 keysym mismatch in replayed input; a texture-upload tap in
+`rTexture.cpp`; a wall-pass tap in `gWall.cpp`; spark taps in `gSparks.cpp` and
+`gCycle.cpp`; and a GL-error tap around every `glDrawArrays` in the
+client-array helper.  Page-side hooks - `getContext` wrappers logging GL state
+or a draw census - are written into `webgl/dist/` by hand and referenced from
+the generated `index.html`; `webgl/build.sh` wipes `dist/` on every run, so they
+are applied after the build and never committed.
 
 ## Multiplayer
 

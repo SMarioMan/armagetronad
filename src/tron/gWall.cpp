@@ -1115,7 +1115,34 @@ void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL
 
     if (hfrac>0){
         if ( ( mode & gWallRenderMode_Lines && sg_renderBulkLines  ) ){
-
+#ifdef __EMSCRIPTEN__
+            // The desktop never sets a texture coordinate for this line: it
+            // inherits the previous wall quad's last texcoord, so the line
+            // samples the bright top edge of the wall texture and survives the
+            // alpha test.  On the port an immediate-mode primitive with no
+            // texcoord array gets the constant generic texcoord (0,0,0,1),
+            // which samples a transparent texel and the line is discarded.
+            // Supply the texcoord and colour the desktop inherits, through
+            // client arrays.
+            {
+                const GLfloat vtx[6] = { p1.x, p1.y, h*hfrac + rWALL_LINE_LIFT,
+                                         p2.x, p2.y, h*hfrac + rWALL_LINE_LIFT };
+                const GLfloat txc[4] = { te, hfrac, te, hfrac };
+                REAL lr = r, lg = g, lb = b;
+                if (rTextureGroups::TextureMode[rTextureGroups::TEX_WALL] < 0)
+                    lr = lg = lb = 1;
+                const GLfloat col[8] = { lr, lg, lb, a, lr, lg, lb, a };
+                // The desktop never sets a texture coordinate for this line: it
+                // inherits the previous wall quad's last texcoord, so the line
+                // samples the bright top edge of the wall texture and survives
+                // the alpha test.  On the port an immediate-mode primitive with
+                // no texcoord array gets the constant generic texcoord
+                // (0,0,0,1), which samples a transparent texel and the line is
+                // discarded.  Supply the texcoord and colour the desktop
+                // inherits, through client arrays.
+                atglDrawArrays(GL_LINES, 2, vtx, txc, col);
+            }
+#else
             BeginLines();
 
             upperlinecolor(r,g,b,a);
@@ -1123,6 +1150,7 @@ void gNetPlayerWall::RenderNormal(const eCoord &p1,const eCoord &p2,REAL ta,REAL
             upperlinecolor(r,g,b,a);
             glVertex3f(p2.x,p2.y,h*hfrac + rWALL_LINE_LIFT);
 
+#endif
         }
 
         //glColor4f(r,g,b,a);
@@ -1265,6 +1293,35 @@ void gNetPlayerWall::RenderBegin(const eCoord &p1,const eCoord &pp2,REAL ta,REAL
         //REAL H=h*hfrac;
 #define segs 5
 #define seginv (1/float(segs))
+#ifdef __EMSCRIPTEN__
+            // Same strip, through client arrays.  With no texcoord array the
+            // port's line strip gets the constant generic texcoord (0,0,0,1),
+            // samples a transparent texel of the wall texture and the alpha
+            // test discards the strip; the desktop inherits the opaque
+            // top-edge texel of the previous quad and keeps its bright edge.
+            {
+                const int nseg = segs + 1;
+                GLfloat vtx[nseg * 3], txc[nseg * 2], col[nseg * 4];
+                REAL lr = r, lg = g, lb = b;
+                if (rTextureGroups::TextureMode[rTextureGroups::TEX_WALL] < 0)
+                    lr = lg = lb = 1;
+                for (int i = 0; i <= segs; i++)
+                {
+                    REAL frag = i * seginv;
+                    REAL rat = ra + frag * (re - ra);
+                    REAL x = (p1.x + frag*(p2.x-p1.x))*(1-xfunc(rat)) + ppos.x*xfunc(rat);
+                    REAL y = (p1.y + frag*(p2.y-p1.y))*(1-xfunc(rat)) + ppos.y*xfunc(rat);
+                    REAL H = h*hfrac*hfunc(rat);
+                    vtx[i*3+0] = x + H*cycle_->skew*sfunc(rat)*cycle_->dir.y;
+                    vtx[i*3+1] = y - H*cycle_->skew*sfunc(rat)*cycle_->dir.x;
+                    vtx[i*3+2] = H + rWALL_LINE_LIFT;
+                    txc[i*2+0] = te; txc[i*2+1] = hfrac;
+                    col[i*4+0] = lr; col[i*4+1] = lg; col[i*4+2] = lb;
+                    col[i*4+3] = a * afunc(rat);
+                }
+                atglDrawArrays(GL_LINE_STRIP, nseg, vtx, txc, col);
+            }
+#else
             BeginLineStrip();
             
             // upperlinecolor(r,g,b,a);//a*afunc(rat));
@@ -1282,6 +1339,7 @@ void gNetPlayerWall::RenderBegin(const eCoord &p1,const eCoord &pp2,REAL ta,REAL
                            H + rWALL_LINE_LIFT);//+se_cameraZ*.005);
 
             }
+#endif
         }
     }
 

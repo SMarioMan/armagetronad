@@ -576,6 +576,17 @@ void rSysDep::SwapGL(){
 
     bool next_glOut = sr_glOut;
 
+#if !defined(__EMSCRIPTEN__)
+// Disabled in the browser build.  This block decides that the renderer is behind
+// the replay clock and turns rendering off for a while; the state change clears
+// the drawing buffer at rSysDep::SwapGL below and then returns without drawing,
+// so the compositor presents a cleared - black - canvas until a frame that draws
+// comes along.  A desktop player at 60 fps never trips it, but a replay under a
+// software rasterizer spends most of its time there: five consecutive
+// game-time-gated captures of the same round measured 0.0 non-black pixels
+// (shots gp11-00..04, all-black at gt 2.46 to 8.52) while the frame taken after
+// the replay stopped measured 36.6%.  Rendering every frame is also what makes a
+// wasm capture comparable with a desktop capture of the same game time.
     // adapt playback speed to recorded speed
     if ( !s_benchmark && !s_fastForward && tRecorder::IsPlayingBack() )
     {
@@ -622,6 +633,7 @@ void rSysDep::SwapGL(){
         if ( next_glOut )
             lastRendered=realTime;
     }
+#endif
 
     if (!sr_glOut)
     {

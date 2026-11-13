@@ -35,6 +35,15 @@ on the desktop, and the dark gap between lines measured 41 against 1.  This
 patch restores the specified behaviour; how much of the reported picture that
 on its own accounts for is measured separately.
 
+Measured on the reference driver here (llvmpipe, Mesa 25.2.8, the same library the
+desktop build renders with) with the standalone probe in lightprobe.c at the top of
+the work directory: a white front-facing quad at z = -3 lit by one positional light
+on the view axis reads 208/255 at its centre.  That is the per-vertex value
+4/sqrt(2^2 + 2^2 + 4^2) = 0.816; the constant-direction rule would give 255, and
+Mesa returns 208 with GL_LIGHT_MODEL_LOCAL_VIEWER set either way.  So the form
+below is the one the desktop build is actually lit with, and turning the viewer
+flag off is not a lever available to this game: it never calls glLightModel*.
+
 The half-vector stays `lightDirection + vec3(0,0,1)`: GL's default half-vector
 uses the headlight eye vector for a vertex at the eye point, which is what the
 emulation already emits, and the two lights are close enough to the geometry

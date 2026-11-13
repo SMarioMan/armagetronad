@@ -52,7 +52,16 @@ matters and q = 0 is harmless.  Only 1D/2D samplers are touched; cube maps keep
 the upstream expression, and ordinary 2-component coordinates arrive as w = 1
 where texture2DProj is identical to texture2D.
 """
+import os
 import sys
+
+# Which form the projective divide takes.  Experiment switch, not a feature:
+#   proj (default) - texture2DProj: divide and LOD rule inside the sampler.
+#   div            - plain texture2D with the divide written out, so the
+#                    sampler differentiates the normalized coordinate
+#                    (correct LOD on steep far surfaces) but the q = 0 rim
+#                    vertices produce NaN samples.
+MODE = os.environ.get('AGTK_PROJMODE', 'proj').strip().lower()
 
 MARKER = 'var sampler=(func=="texture2D")?"texture2DProj":func;'
 
@@ -78,20 +87,32 @@ REPLACEMENT = (
     'return`${sampler}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr})`'
 )
 
+DIV_REPLACEMENT = (
+    'if(TEX_MATRIX_UNIFORM_PREFIX!=null){'
+    'texCoordExpr=`(${TEX_MATRIX_UNIFORM_PREFIX}${texUnitID} * ${texCoordExpr})`}'
+    'return`${func}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, '
+    '(${texCoordExpr}.xy)/${texCoordExpr}.w)`'
+)
+
 
 def main():
     path = sys.argv[1]
     data = open(path, 'r').read()
-    if MARKER in data:
+    if MODE not in ('proj', 'div'):
+        sys.exit('ERROR: AGTK_PROJMODE must be proj or div (got %r)' % MODE)
+    div_marker = '/*PROJECTIVE_DIV_MARKER*/return`'
+    if MARKER in data or div_marker in data:
         print('patch_texture_projective_coords: already patched')
         return
     if ANCHOR not in data:
         sys.exit('ERROR: TexEnvJIT sampler coordinate expression not found '
                  '(generated shader emitter changed?)')
-    data = data.replace(ANCHOR, REPLACEMENT, 1)
+    repl = REPLACEMENT
+    if MODE == 'div':
+        repl = DIV_REPLACEMENT.replace('return`', div_marker, 1)
+    data = data.replace(ANCHOR, repl, 1)
     open(path, 'w').write(data)
-    print('patch_texture_projective_coords: switched the projective divide to '
-          'texture2DProj so the sampler keeps a usable LOD')
+    print('patch_texture_projective_coords: projective divide form = %s' % MODE)
 
 
 if __name__ == '__main__':
