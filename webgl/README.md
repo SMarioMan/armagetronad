@@ -93,6 +93,34 @@ these patches on `src/armagetronad_main.js` after every link:
 - `patch_gl_emulation.py` — the legacy GL emulation lacks immediate-mode
   `GL_QUAD_STRIP`, used for player walls; the mode is retargeted to
   `GL_TRIANGLE_STRIP`, which the wall's vertex order already is.
+- `patch_line_eyeclip.py` — this renderer *drops* a line segment whose two ends
+  have opposite clip-space w rather than clipping it, and the game folds its
+  camera into the projection, so any segment running back past the eye simply
+  disappears. Measured in a bare WebGL1 page with the very matrices of replay
+  frame 363: a straddling segment paints 0 of 4017 probed pixels with no GL
+  error, while a triangle under the same matrix clips correctly at 4004/4017.
+  `src/render/rRender.h` (`atglDrawArrays`) already cuts those segments for the
+  draws routed through client arrays; this patch covers the rest, because the
+  game calls `glBegin`/`glVertex2f`/`glVertex3f`/`glEnd` directly in
+  `engine/eDisplay.cpp`, `tron/gSparks.cpp`, `tron/gExplosion.cpp`,
+  `tron/gWinZone.cpp`, `engine/ePath.cpp`, `render/rFont.cpp`, `ui/uMenu.cpp`
+  and the debug-line helpers. The cut runs in `GLImmediate` at `glEnd`, where
+  the vertex block is finished and interleaved, and line-family primitives come
+  out as clipped `GL_LINES` pairs, so a strip with a piece removed cannot
+  connect across the gap. Triangles are left exactly as they were; they clip
+  correctly here. Arm `window.arma_lineclip_debug` to print the vertex layout
+  the patch found plus a keep/drop/split tally per draw.
+  A draw with nothing actually cut is left completely alone: re-emitting an
+  untouched polyline as separate pairs costs extra blended pixels at every
+  join, which measured worse against the reference. Measured on the
+  frame-exact `n363` pair of the perimeter replay (desktop pose 107.8338
+  69.5185, camera height 16.4540; port 107.8338 69.5183, 16.4542):
+  green-dominant pixels below row 520 go from 258 to 3008 against the
+  desktop's 5307, saturated green over the lower half of the frame from 3046
+  to 10178 against the desktop's 10684, while whole-frame agreement with the
+  desktop stays flat (mean absolute channel difference 3.45 to 3.47, pixels
+  differing by more than 32 from 3.65 % to 3.48 %). `&nolineclip=1` in the
+  page URL switches the cut off again, so one build measures both states.
 - `patch_emulation_fixes.py` — the fixed-function fragment shader is hardcoded
   to `precision mediump float`, which bands fog, trail fades, floor lighting
   and per-vertex wall alpha on desktop WebGL; promoted to `highp`.
@@ -311,9 +339,12 @@ What is still open, with today's numbers from a game-time-matched pair at 2.46
   433 641 of the frame's pixels move.  The offset is therefore load-bearing,
   not a lift that carries near geometry through the floor, and in the near band
   it changes almost nothing (6.9 % to 7.3 % above luminance 40, 2.8 % to 2.7 %
-  above 120).  The mechanism behind the near-field deficit is still
-  unexplained; what remains untested is the wall quad strip's own coverage and
-  the trail's per-vertex alpha.
+  The mechanism is now known and fixed: this renderer's near-plane handling of
+  line segments, addressed by `patch_line_eyeclip.py` above. Cutting the
+  straddling segments restores the near-field geometry - green-dominant
+  pixels below row 520 from 258 to 3008 against the native's 5307 - and what
+  is left in that band is a brightness and coverage difference, not missing
+  geometry.
 - A page-side probe once reported `GL_INVALID_ENUM` on quad-family
   immediate-mode draws.  The client-array draws described above report no GL
   error (checked with `glGetError` around every `glDrawArrays` in the helper),

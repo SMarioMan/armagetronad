@@ -148,6 +148,17 @@ python3 webgl/patch_sdl_convert.py src/armagetronad_main.js || exit 1
 # (mode 8), which Armagetron uses for player walls. See webgl/patch_gl_emulation.py.
 python3 webgl/patch_gl_emulation.py src/armagetronad_main.js || exit 1
 
+# Cut immediate-mode line primitives at the eye plane.  The renderer this port
+# draws with drops a line segment whose two ends have opposite clip-space w
+# instead of clipping it, and the game folds the camera into the projection, so
+# any segment running back past the eye disappears: on the frame-exact n363
+# perimeter pair the desktop paints saturated green line pixels down to row 775
+# while the port paints none below row 520, even though the C++ census shows
+# the game submitting the same primitives on both builds.  The game-side
+# atglDrawArrays already does this cut for the draws routed through client
+# arrays; this covers the rest.  See webgl/patch_line_eyeclip.py.
+python3 webgl/patch_line_eyeclip.py src/armagetronad_main.js || exit 1
+
 # Fix the generated legacy GL emulation's FFP fragment shader precision
 # (mediump -> highp) to stop 16-bit fog/color banding in trails, floor
 # lighting and wall alpha. See webgl/patch_emulation_fixes.py.
