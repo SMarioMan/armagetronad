@@ -244,7 +244,7 @@ atKeySymPairs[] =
     { 322u, 0x047Au },  /* SDLK_UNDO */
 };
 
-static Uint32 atFileToRuntimeKeySym( Uint32 s )
+Uint32 su_FileKeySymToRuntimeKeySym( Uint32 s )
 {
     for ( size_t i = 0; i < sizeof( atKeySymPairs ) / sizeof( atKeySymPairs[0] ); ++i )
     {
@@ -262,6 +262,38 @@ static Uint32 atRuntimeToFileKeySym( Uint32 s )
             return atKeySymPairs[i].file;
     }
     return s;
+}
+
+// Display names for the key numbers this build stores and displays.  The
+// desktop build gets them from SDL 1.2's keynames[] table, which SDL fills in
+// SDL_EnableKeyMap(); emscripten's SDL_GetKeyName() (library_sdl.js) names a-z
+// and 0-9 and nothing else, so the table has to travel with the port.  It is
+// generated -- see webgl/gen_sdl12_keynames.py.
+#include "uSDL12KeyNames.h"
+
+static char const *atSDL12KeyNameLookup( Uint32 sym )
+{
+    for ( size_t i = 0; i < sizeof( atSDL12KeyNames ) / sizeof( atSDL12KeyNames[0] ); ++i )
+    {
+        if ( atSDL12KeyNames[i].sym == sym )
+            return atSDL12KeyNames[i].name;
+    }
+    return NULL;
+}
+
+char const *su_SDL12KeyName( Uint32 sym )
+{
+    char const *name = atSDL12KeyNameLookup( sym );
+    if ( !name )
+    {
+        // A key pressed in the browser is stored in this build's own numbering
+        // while a configuration default or a .aarec holds the SDL 1.2 number;
+        // the label the player reads has to be the same either way.
+        Uint32 fileSym = atRuntimeToFileKeySym( sym );
+        if ( fileSym != sym )
+            name = atSDL12KeyNameLookup( fileSym );
+    }
+    return name;
 }
 #endif
 
@@ -294,7 +326,7 @@ public:
 #ifdef __EMSCRIPTEN__
         // reading back: the stored SDL 1.2 keysym becomes this build's key
         if ( tRecorder::IsPlayingBack() )
-            key.keysym.sym = atFileToRuntimeKeySym( key.keysym.sym );
+            key.keysym.sym = su_FileKeySymToRuntimeKeySym( key.keysym.sym );
 #endif
     }
 #endif

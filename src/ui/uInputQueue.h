@@ -37,6 +37,18 @@ void su_FetchAndStoreSDLInput();
 bool su_StoreSDLEvent(const SDL_Event &tEvent);    //!< stores an event so it will be returned by GetSDLInput() later
 bool su_GetSDLInput(SDL_Event &tEvent,REAL &time); //!< fetches an event
 
+#ifdef __EMSCRIPTEN__
+//! Map an SDL 1.2 keysym -- the number the .aarec input section and the
+//! configuration defaults store -- onto this build's SDL layer key number.
+//! The archive code in uInputQueue.cpp uses it in both directions.
+Uint32 su_FileKeySymToRuntimeKeySym(Uint32 sym);
+
+//! SDL 1.2's display name for a key number, or NULL if there is none.  This
+//! build's SDL_GetKeyName() has names for a-z and 0-9 only, so key labels come
+//! from the SDL 1.2 table carried by the port (uSDL12KeyNames.h).
+char const *su_SDL12KeyName(Uint32 sym);
+#endif
+
 //! have one object of this class around while processing input
 class uInputProcessGuard
 {

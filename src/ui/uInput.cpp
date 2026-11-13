@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tConfiguration.h"
 #include "rConsole.h"
 #include "uMenu.h"
+#include "uInputQueue.h"
 #include "tSysTime.h"
 
 bool su_mouseGrab = false;
@@ -343,6 +344,22 @@ int uPlayerPrototype::Num(){return nextid;}
 
 static char const * keyname(int sym){
 #ifndef DEDICATED
+#ifdef __EMSCRIPTEN__
+    // The desktop resolves a key label through SDL 1.2's own name table;
+    // this build's SDL_GetKeyName() knows a-z and 0-9 and nothing else, so
+    // every special key came back empty and the HUD printed
+    // "Press <> or <o> to turn right." where the desktop prints the key name.
+    // su_SDL12KeyName() consults the SDL 1.2 table the port carries, in either
+    // numbering: a stored default holds the SDL 1.2 number, a key pressed in
+    // the browser is stored in this build's own.
+    {
+        char const *mapped = su_SDL12KeyName(static_cast<Uint32>(sym));
+        if (mapped && *mapped)
+        {
+            return mapped;
+        }
+    }
+#endif
     if (sym<=SDLK_LAST)
         return SDL_GetKeyName(static_cast<SDLKey>(sym));
     else switch (sym){
