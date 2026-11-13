@@ -129,8 +129,8 @@ class Page:
                 # An uncaught page error is how a broken post-build JS patch
                 # shows up: no console line at all, the module never reaches its
                 # main loop, and the canvas stays at the 300x150 default.
-                exc = msg["params"]["exception"]
-                txt = exc.get("description") or exc.get("value") or json.dumps(exc)[:300]
+                exc = msg["params"].get("exception") or {}
+                txt = exc.get("description") or exc.get("value") or json.dumps(msg["params"])[:300]
                 self.console.append(f"exception: {txt}")
                 self._log(self.console[-1])
             if msg.get("id") == mid:
