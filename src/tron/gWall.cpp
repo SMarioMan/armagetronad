@@ -220,10 +220,12 @@ static void gWallRim_helper(eCoord p1,eCoord p2,REAL tBeg,REAL tEnd,REAL h,
     // paints nothing for it: the desktop fills the area beside a close wall
     // with the rim texture while the port leaves the void behind the wall
     // showing through.  Measured at myrec gt 8.06 with the camera 3.2 units
-    // off the west rim, the right half of the frame averaged RGB 2,2,2 with
-    // 96.3% near-black pixels before this change and RGB 30,34,46 with 14.0%
-    // after, against the desktop's 30,34,46 and 13.8%; agreement with the
-    // desktop over the whole frame went from meanAbs 57.2 to 19.3.  The quad's
+    // off the west rim, the right half of the 3D area (columns 640-1280, rows
+    // 40-640, HUD excluded) averaged RGB 2,2,2 with 97.6% of its pixels under
+    // 20 per channel before this change and RGB 27,31,46 with 18.4% after,
+    // against the desktop's 27,32,46 and 18.1%; the mean absolute difference
+    // against that desktop frame, averaged over the three channels, goes 19.1
+    // to 6.4 over the whole frame and 33.8 to 7.9 over that region.  The quad's
     // vertices, texcoords, height clamp and GL state (fog off, alpha test ref
     // 0, blending on, depth test on, culling off) are identical on both
     // builds, and rim_wall.png carries no alpha channel, so the failure is in

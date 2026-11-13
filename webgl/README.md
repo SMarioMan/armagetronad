@@ -357,12 +357,15 @@ What has been closed since that table was written:
   where the desktop shows the rim texture.  Measured on `myrec.aarec` at game
   time 8.06 with the camera 3.2 world units off the west rim (port pose
   3.2089, 59.1453, camera height 16.7466; desktop 3.2161, 58.4567, 16.7467):
-  the right half of the frame read mean RGB 2,2,2 with 96.3 % near-black pixels
-  before the change and 30,34,46 with 14.0 % after, against the desktop's
-  30,34,46 and 13.8 %; over the whole frame the mean absolute difference
-  against the desktop goes 57.2 -> 19.3 and the share of pixels differing by
-  more than 12 goes 55.6 % -> 44.1 %.  A GL-state probe compiled into both
-  builds shows the submitted data is not at fault: at that frame the quad's
+  the right half of the 3D area (columns 640-1280, rows 40-640, HUD excluded)
+  read mean RGB 2,2,2 with 97.6 % of its pixels under 20 per channel before the
+  change and 27,31,46 with 18.4 % after, against the desktop's 27,32,46 and
+  18.1 %;  the mean absolute difference against that desktop frame, averaged
+  over the three channels, goes 19.1 -> 6.4 over the whole frame and 33.8 ->
+  7.9 over that region, and the share of whole-frame pixels whose averaged
+  difference exceeds 12 goes 47.3 % -> 14.1 %.
+  A GL-state probe compiled into both builds shows the submitted data is not at
+  fault: at that frame the quad's
   endpoints and texcoords, the 10000-unit height and how the sky clamp leaves
   it alone, fog off, alpha test at ref 0, blending on, depth test on, culling
   off, and the clip-space corner signs (+62, -4955, -5022, -5) all agree on
