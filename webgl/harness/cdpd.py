@@ -79,6 +79,12 @@ class Page:
         self.cfile = None
         for d in ("Page.enable", "Runtime.enable", "Log.enable", "Network.enable"):
             self.cmd(d)
+        # Chrome caches the wasm and the JS glue: after a rebuild the next run
+        # happily executes the previous binary, which silently invalidates every
+        # A/B (one display-list experiment captured a cached pre-change build and
+        # its numbers looked like a real regression).  Disable the cache for the
+        # target so a capture always exercises what is on disk.
+        self.cmd("Network.setCacheDisabled", {"cacheDisabled": True})
         # Opt the build into its parity stamp (src/tron/gGame.cpp).  This is a
         # capture-side switch, so the published page needs no debug hook of its
         # own and can still be gated by game time.  STAMP=0 captures without it.
@@ -306,7 +312,15 @@ def main():
                 if gts and gts[-1] >= target:
                     break
                 time.sleep(0.1)
-            print(f"gt wait {target}: at {gts[-1] if gts else None}", flush=True)
+            if not gts:
+                raise SystemExit(
+                    f"gt gate {target}: no stamped frames in the console.  The build "
+                    "prints no parity stamp (window.arma_parity_stamp unset, or a "
+                    "stale cached binary), so a shot taken here would capture an "
+                    "arbitrary frame - refusing rather than reporting junk.")
+            if gts[-1] < target:
+                raise SystemExit(f"gt gate {target}: timed out at game time {gts[-1]}")
+            print(f"gt wait {target}: at {gts[-1]}", flush=True)
         elif name == "N":
             target = int(float(parts[1]))
             # N:<frame> - wait until the stamped rendered-frame counter reaches
