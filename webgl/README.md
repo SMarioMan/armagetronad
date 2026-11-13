@@ -266,6 +266,22 @@ page does request `antialias: true`; SwiftShader does not deliver it),
 of this file listed 4 sample buffers and 8x anisotropy in use; both figures are
 now contradicted by the direct measurements above.
 
+Min-filter sensitivity, measured on the port by rewriting the sampler at the
+draw call (`harness/filterhook.js`, harness-only) at a frame-exact gate, as
+resolvable grid peaks per column against the desktop's 3.17 / 6.27 / 3.53 /
+6.27 for bands y 380-460, 460-540, 540-620, 620-700: as published
+(`GL_LINEAR_MIPMAP_LINEAR`) the port counts 3.33 / 2.67 / 4.53 / 4.37; forcing
+`GL_LINEAR_MIPMAP_NEAREST`, which is what the desktop build picks for itself
+under `software_renderer` because this harness' GL is llvmpipe, counts 3.00 /
+4.57 / 4.87 / 6.13; forcing `GL_LINEAR` with no mipmapping at all counts 2.63 /
+4.40 / 2.27 / 5.03 while peak-minus-median contrast blows out to 30.2-44.9
+against the desktop's 13.5-34.4.  The middle setting is not shipped: it halves
+the line-count error against this reference, but the reference is llvmpipe, and
+a desktop on a hardware driver keeps `GL_LINEAR_MIPMAP_LINEAR`
+(`src/render/rScreen.cpp`), which is what the port already uses.  Matching the
+harness' filter would move the port away from the machine the comparison is
+supposed to reach.
+
 What has been closed since that table was written:
 
 - The wall's bright top edge.  The desktop never sets a texture coordinate for
@@ -310,6 +326,17 @@ What has been closed since that table was written:
   279.8 -> 354.1 against the desktop's 353.7, and for one such segment 44.2 ->
   166.4 against the desktop's 166.8.  Edges with both ends in front are
   untouched (478.9 -> 475.7, desktop 469.4).
+  The same A/B counted as pixels rather than as edges: saturated green pixels
+  (`g>200, r<80, b<80`) below the horizon of that frame go 1687 with the cut
+  off to 7324 with it on, against the desktop's 8491.  The two lower row bands
+  that held none at all -- 520-600 and 600-680 -- measure 0 -> 1116 and
+  0 -> 959 (desktop 2412 and 1453).  Columns carrying that green somewhere in
+  rows 520-800: 1221 on the desktop, 0 without the cut, 1193 with it, and the
+  lowest row reached is 679 on both builds.  The remaining 14% sits in rows
+  520-600 (1116 against 2412) while rows 440-520 overshoot (5249 against
+  4626): the near geometry is back and what is left is brightness, not
+  presence.  Comparison of the three states is
+  `shots/myrec/nearband-clipper.png` in the report directory.
 - Replayed input and HUD key labels.  The `.aarec` input section and the
   configuration defaults store SDL 1.2 keysyms (`SDLK_DOWN` == 274) while this
   build's SDL layer puts `0x400 | SDL2 scancode` numbers in its events (1103 to
@@ -329,31 +356,25 @@ What is still open, with today's numbers from a game-time-matched pair at 2.46
 (port pose 107.8338, 69.6826, camera height 16.3236; native 107.8338, 69.6817,
 16.3234 -- 0.00 world units apart, so what follows is not a pose difference):
 
-- The floor and the trail nearest the camera.  In the band from 0.61 to 0.86 of
-  frame height the native has 8.9 % of its pixels above luminance 120, the port
-  6.9 %; over the pixels where the native is bright, the port reads RGB
-  (31,33,32) with a median of 0, so about half of them are simply black.  The
-  candidate mechanisms have been measured one by one and rejected: the floor
-  texture is the same file, size, wrap and filter on both sides (the native
-  uploads 1x256 and 256x1 copies as well), the wall passes are all issued in the
-  port's command stream, the line vertices are submitted and inside the clip
-  volume against the port's own projection matrix, the projection matrix agrees
-  with the native's to two decimals, and a depth-test tie is not the cause - the
-  engine already compares with `GL_LEQUAL`, so the small lift the line carries
-  does not have to beat a depth step.  Measured at the same gate: a port build
-  (`glPolygonOffset(0,0)` plus all three `GL_POLYGON_OFFSET_*` enables off,
-  `__EMSCRIPTEN__` only) puts 9.5 % of the far wall band above luminance 40
-  where the same build with the offset puts 23.8 % and the native puts 24.1 %,
-  and its saturated-green coverage over the lower half falls from 2356 px to 0;
-  433 641 of the frame's pixels move.  The offset is therefore load-bearing,
-  not a lift that carries near geometry through the floor, and in the near band
-  it changes almost nothing (6.9 % to 7.3 % above luminance 40, 2.8 % to 2.7 %
-  The mechanism is now known and fixed: this renderer's near-plane handling of
-  line segments, addressed by `patch_line_eyeclip.py` above. Cutting the
-  straddling segments restores the near-field geometry - green-dominant
-  pixels below row 520 from 258 to 3008 against the native's 5307 - and what
-  is left in that band is a brightness and coverage difference, not missing
-  geometry.
+- Near-field brightness, not near-field geometry.  The near-plane line cut
+  described above restored the geometry: saturated green pixels below the
+  horizon go 1687 with the cut off to 7324 with it on, against the desktop's
+  8491, at a frame-exact gate (both builds at rendered frame 363, game time
+  2.8494 / 2.8486, pose 0.0002 apart).  What is left is coverage and
+  brightness: rows 520-600 hold 1116 against the native's 2412 while rows
+  440-520 overshoot at 5249 against 4626.  Mechanisms measured and rejected
+  for this band: the floor texture is the same file, size, wrap and filter on
+  both sides (the native uploads the 1x256 and 256x1 copies as well), every
+  wall pass appears in the port's command stream, the line vertices are
+  submitted inside the clip volume against the port's own projection matrix,
+  the projection matrix agrees with the native's to two decimals, and a
+  depth-test tie is not the cause -- the engine already compares with
+  `GL_LEQUAL`, so the lift a line carries does not have to beat a depth step.
+  The polygon offset is load-bearing, not a lift: zeroing `glPolygonOffset` and
+  its three enables on the port drops the far wall band from 23.8 % to 9.5 %
+  above luminance 40 where the native sits at 24.1 %, takes saturated-green
+  coverage in the lower half from 2356 px to 0, and moves 433 641 pixels of
+  the frame.
 - A page-side probe once reported `GL_INVALID_ENUM` on quad-family
   immediate-mode draws.  The client-array draws described above report no GL
   error (checked with `glGetError` around every `glDrawArrays` in the helper),
