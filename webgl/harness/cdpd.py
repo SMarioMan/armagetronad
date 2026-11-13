@@ -331,6 +331,14 @@ def main():
             # of the same recording pause at the identical state.  The HUD game
             # clock burned into the frame is what pairs it with a native capture.
             target = float(parts[1])
+            kind = p.eval("typeof Module._adSetPauseAt")
+            if kind != "function":
+                raise SystemExit(
+                    f"pause-at {target}: Module._adSetPauseAt is {kind}, not a "
+                    "function - the wasm has not finished loading, raise BOOT.")
+            print(f"pause-at {target}: recSec at start "
+                  f"{p.eval('Module._adGetRecSec ? Module._adGetRecSec() : -1')}",
+                  flush=True)
             p.eval(f"Module._adSetPauseAt({target}); Module._adSetPaused(0);")
             limit = time.time() + int(os.environ.get("GATEWAIT", "600"))
             paused = 0
@@ -351,6 +359,10 @@ def main():
             except Exception:
                 at = "?"
             print(f"pause-at {target}: loop frozen at recSec {at}", flush=True)
+        elif name == "E":
+            # E:<js> - evaluate one expression in the page and print its value.
+            # Keep the argument comma-free: the step list splits on commas.
+            print("eval ->", p.eval(step.split(":", 1)[1]), flush=True)
         elif name == "N":
             target = int(float(parts[1]))
             # N:<frame> - wait until the stamped rendered-frame counter reaches
