@@ -232,6 +232,13 @@ What has been closed since that table was written:
   sampling period, mean and standard deviation match.  An earlier revision of
   this section reported the opposite; that was an artefact of counting dark rows
   as lines, which is why the metrics are now peak, coverage and row profile.
+- The positional-light correction had silently stopped being applied: its patch
+  anchor no longer matched the generated emulation, so `build.sh` ran the script
+  and the script changed nothing.  The anchor is rebuilt from the emitted source
+  and the build now reports `applied positional vs directional light
+  distinction`.  There is no matched before-picture at the same gate, so this is
+  not counted as a measured visual fix, only as a patch that now does what it
+  claims.
 
 What is still open, with today's numbers from a frame-matched pair at game time
 2.46 (camera 107.83, 69.69 on the port against 107.83, 69.60 native):
@@ -247,12 +254,14 @@ What is still open, with today's numbers from a frame-matched pair at game time
   volume against the port's own projection matrix, the projection matrix agrees
   with the native's to two decimals, and a depth-test tie is not the cause - the
   engine already compares with `GL_LEQUAL`, so the small lift the line carries
-  does not have to beat a depth step.  What has not been ruled out is the
-  `glPolygonOffset` both builds use to push floor-adjacent geometry in front of
-  the floor: the offsets are stated in depth-buffer steps, and the port's WebGL
-  context typically has a 16-bit depth buffer against the reference's 24-bit
-  one, so the same numbers move a fragment further than WebGL can represent and
-  get clamped.
+  does not have to beat a depth step.  Still open is the `glPolygonOffset(-2,-5)`
+  both builds use around floor-adjacent geometry (`rScreen.cpp:1228`): those
+  numbers are depth-buffer steps, so on the WebGL context's 16-bit depth buffer
+  the same call moves a fragment about 256 times as far in depth as on the
+  reference's 24-bit one (7.6e-5 against 3.0e-7 at these view distances).  That
+  is an over-lift, which would carry near geometry through the floor's own
+  layers rather than hold it back.  A page-side hook meant to neutralize the
+  offset never produced a frame, so this stays arithmetic rather than measurement.
 - A page-side probe once reported `GL_INVALID_ENUM` on quad-family
   immediate-mode draws.  The client-array draws described above report no GL
   error (checked with `glGetError` around every `glDrawArrays` in the helper),
@@ -261,6 +270,13 @@ What is still open, with today's numbers from a frame-matched pair at game time
 - The spectator camera desyncs a few seconds into a replay: the recording stores
   no camera state, so the two builds follow different cycles later on and only
   the first gates can be paired.
+- The cycle body itself measures at parity.  Over the lower half of the frame the
+  whitish specular core covers 6944 px on the native and 6989 on the port, mean
+  215,215,215 against 213,213,213, and the saturated green body colour is
+  identical (mean 0,253,0 against 0,254,0).  Saturated-green *coverage* is not at
+  parity there (8120 against 2356 px), but that is the near-field geometry
+  described above: measured as luminance coverage over the far wall band the same
+  pair is at parity (24.1 % against 23.8 % above luminance 40).
 
 An earlier commit here claimed the projective texture-coordinate fix explained
 the fading grid.  Paired measurement disproved that; it stays as a conformance
