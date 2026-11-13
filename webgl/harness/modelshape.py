@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Harness (never commit): shape signature of the followed cycle in a frame.
+"""Shape signature of the followed cycle in a frame, for native/port comparison.
 
 The report is that the browser build draws the lightbike model shredded.  The
 model is three .mod files (cycle_body/front/rear) drawn with
