@@ -219,24 +219,27 @@ python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exi
 # lights.  Emission and specular stay on the material, which is what
 # COLOR_MATERIAL leaves alone.  See webgl/patch_light_colormaterial.py.
 python3 webgl/patch_light_colormaterial.py src/armagetronad_main.js || exit 1
-# Tell positional lights from directional ones, the way desktop GL does: w = 0
-# is a direction (normalize(u_lightPositionN)) while w != 0 is a point that has
-# to be measured against the vertex (u_lightPositionN - ecPosition), and the
-# lighting pass runs in eye space.  The emulation always used the directional
-# rule, so any light the game places as a point was lit as if it were at the
-# eye-space origin.  The two lights gCycle.cpp sets for the cycle body are
-# directional (measured w = 0) and src places no point lights at all today, so
-# this changes nothing measurable in the shipped content; it is the specified
-# rule kept for any light that does become positional.
-python3 webgl/patch_light_positional.py src/armagetronad_main.js || exit 1
-# Suppress the specular term when the shininess is 0, as desktop GL defines it.
-# The emulation approximates the exponent with exp(shininess*log(N.H)), which is
-# 1 at shininess 0, so every vertex facing a light got a full-intensity
-# highlight: gCycle.cpp sets GL_SPECULAR (1,1,1) and never touches GL_SHININESS,
-# which stays at the GL default 0, and the cycle body blew out to white (mean
-# green 254 against the desktop 70 in the body box).  See
-# webgl/patch_light_specular.py.
-python3 webgl/patch_light_specular.py src/armagetronad_main.js || exit 1
+# Two lighting patches were tried here and taken out again after measuring.
+# patch_light_positional.py assumed the cycle's lights were positional, but
+# src/tron/gCycle.cpp:4341-4346 passes w = 0 for both of them, so they are
+# directional and a positional branch changes nothing in shipped content.
+# patch_light_specular.py suppressed the specular term whenever the shininess
+# is 0, on the reading that desktop GL computes no highlight there.
+# bodylightprobe.c measured the opposite on the reference driver this build is
+# compared against (llvmpipe, Mesa 25.2.8, direct): with the game's own state -
+# material specular (1,1,1), GL_SHININESS left at the default 0, the two
+# directional lights of gCycle.cpp, a front-facing quad with normal +z - the
+# centre pixel reads 255,255,255, while the same scene with the material
+# specular forced to black reads 233,199,246, which is exactly the
+# diffuse+ambient sum 0.04 + 0.447*(1,.7,.7) + 0.610*(.7,.7,1).  A shininess of
+# 0 therefore keeps a full light-coloured specular wash, which is what the
+# emulation's own exp(shininess*log(N.H)) = 1 already gives.  With the guard in
+# place the cycle body box of the pose-matched pair read max luminance 120 with
+# 1 near-neutral px against the desktop's 189 with 14; that is why the guard is
+# gone rather than adjusted.  The same probe also settles the colour source:
+# with the material specular black, feeding a green colour array (or a green
+# current colour) still reads 233,199,246, so explicit materials win over the
+# vertex colour exactly as the retained patch_light_colormaterial.py assumes.
 fi
 # Every patch above edits generated JavaScript in place, so a bad anchor or a
 # mistyped replacement only shows up as a SyntaxError in the browser.  Catch it
