@@ -60,7 +60,10 @@ private:
 class tReproducibleRandomizer: public tRandomizer
 {
 public:
-    tReproducibleRandomizer  ()                      ;   //!< default constructor
+    //! \param section  archive section this generator's seed is kept in;
+    //!        generators with different names never read each other's values,
+    //!        which is what makes a replay seed the same numbers on every build.
+    tReproducibleRandomizer  (char const *section = "RANDOM");
     ~tReproducibleRandomizer ()                      ;   //!< destructor
 
     static tReproducibleRandomizer & GetInstance()   ;   //!< returns the standard reproducible randomizer

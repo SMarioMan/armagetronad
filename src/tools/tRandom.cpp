@@ -37,6 +37,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include    "tError.h"
 #include    "tRecorder.h"
 #include    <cstdlib>
+#include    <cstring>
 
 #undef 	INLINE_DEF
 #define INLINE_DEF
@@ -171,7 +172,6 @@ unsigned int tRandomizer::GetRawRand( void )
     return rand();
 }
 
-static char const * recordingSection = "RANDOM";
 
 // *******************************************************************************************
 // *
@@ -181,20 +181,87 @@ static char const * recordingSection = "RANDOM";
 //!
 //!
 // *******************************************************************************************
-
-tReproducibleRandomizer::tReproducibleRandomizer( void )
+// Which generator number this is among the ones using the same archive section.
+// Nothing else about the run - how many other generators exist, or in which
+// order they were constructed - is allowed to move this number, because that is
+// exactly what made the desktop build and the wasm build hand the computer
+// players different seeds while replaying the same recording.
+static unsigned int sectionInstance(char const *section)
 {
-    // generate random seeds with standard random generator
-    z_ = rand();
-    w_ = rand();
+    struct entry { char const *name; unsigned int count; };
+    static entry instances[16];
+    static int used = 0;
+
+    for (int i = 0; i < used; i++)
+        if (strcmp(instances[i].name, section) == 0)
+            return instances[i].count++;
+
+    if (used < 16)
+    {
+        instances[used].name = section;
+        instances[used].count = 1;
+        int const index = used;
+        used++;
+        return index;
+    }
+
+    return 0;
+}
+
+// Fallback seed for a recording that has nothing archived under this section:
+// FNV-1a over the section name, salted with the instance number, then an
+// avalanche step so two generators of the same section do not start from
+// related states.  It depends on nothing but the section name and the instance,
+// so every build derives the same one.
+static int sectionSeed(char const *section, unsigned int instance, unsigned int salt)
+{
+    unsigned int h = 2166136261u ^ salt;
+
+    for (char const *p = section; *p != '\0'; ++p)
+    {
+        h ^= static_cast<unsigned char>(*p);
+        h *= 16777619u;
+    }
+
+    h ^= (instance + 1u) * 2654435761u;
+    h ^= h >> 16;
+    h *= 2246822519u;
+    h ^= h >> 13;
+
+    return static_cast<int>(h);
+}
+
+
+tReproducibleRandomizer::tReproducibleRandomizer( char const *section )
+{
+    unsigned int const instance = sectionInstance(section);
+    bool const replaying = tRecorder::IsPlayingBack();
+
     randMax_ = 0xffffffff;
 
-    // archive seed
-    tRecorder::PlaybackStrict( recordingSection, z_ );
-    tRecorder::Record( recordingSection, z_ );
+    // Archive seed: every generator keeps its seed under its own section, so
+    // constructing another generator somewhere else cannot shift the values
+    // this one reads back.  When the archive has nothing for this section - a
+    // recording made before the section existed - a playback takes the
+    // deterministic seed derived from the section name and the instance number
+    // below rather than drawing from the standard generator, whose position in
+    // its sequence depends on how many generators were built beforehand and is
+    // therefore not the same in two different builds.  Outside a playback the
+    // standard generator still provides the seed, and recording it is what lets
+    // a later playback read it back instead of deriving it.
+    bool archived_z = tRecorder::PlaybackStrict( section, z_ );
+    if (!archived_z)
+    {
+        z_ = replaying ? sectionSeed(section, instance, 0x5a17u) : rand();
+        tRecorder::Record( section, z_ );
+    }
 
-    tRecorder::PlaybackStrict( recordingSection, w_ );
-    tRecorder::Record( recordingSection, w_ );
+    bool archived_w = tRecorder::PlaybackStrict( section, w_ );
+    if (!archived_w)
+    {
+        w_ = replaying ? sectionSeed(section, instance, 0x9e37u) : rand();
+        tRecorder::Record( section, w_ );
+    }
 
     /*
         // read RAND_MAX from recording or write it to recording

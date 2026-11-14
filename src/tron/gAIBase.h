@@ -56,7 +56,10 @@ gAI_STATE;
 class gAIPlayer: public ePlayerNetID{
     friend class gAITeam;
 
-    tReproducibleRandomizer randomizer_;
+    // Own archive section: the computer player's decisions then replay as the
+    // same sequence of draws on every build, which is what makes a desktop
+    // capture and a port capture of one recording comparable at any game time.
+    tReproducibleRandomizer randomizer_ {"AI_RANDOM"};
 protected:
     gAICharacter*           character; // our specification of abilities
 
