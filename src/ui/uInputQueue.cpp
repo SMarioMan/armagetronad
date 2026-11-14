@@ -244,14 +244,25 @@ atKeySymPairs[] =
     { 322u, 0x047Au },  /* SDLK_UNDO */
 };
 
+// Turn a key number the browser SDL layer reports into the SDL 1.2 number the
+// game works with.  Below 256 both layers carry the character itself, so those
+// pass straight through; everything else arrives as 0x400 | scancode and is
+// looked up.  A key with no SDL 1.2 equivalent at all -- the function keys above
+// F15, the internet and media keys SDL 2 invented -- becomes SDLK_UNKNOWN: it
+// binds to nothing, exactly as it does on the desktop, and it can never index
+// keymap[]/pressed[] past the end now that those arrays have the desktop's
+// 337 entries (SDLK_LAST + 14) instead of the oversized 1550 the SDL layer's
+// own SDLK_LAST would have given them.
 static Uint32 atRuntimeToFileKeySym( Uint32 s )
 {
+    if ( s < 256 )
+        return s;
     for ( size_t i = 0; i < sizeof( atKeySymPairs ) / sizeof( atKeySymPairs[0] ); ++i )
     {
         if ( atKeySymPairs[i].runtime == s )
             return atKeySymPairs[i].file;
     }
-    return s;
+    return SDLK_UNKNOWN;
 }
 
 // Display names for the key numbers this build stores and displays.  The

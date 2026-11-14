@@ -122,7 +122,12 @@ public:
         tString in;
         int keysym;
         s >> keysym;
-        if (keysym>=0){
+        // A key number outside the table is a configuration error, not a licence
+        // to write past the end of keymap[]: the port's builds up to 2026-11-13
+        // numbered the mouse pseudo-keys from the SDL layer's own SDLK_LAST (1536)
+        // and wrote those numbers into the user configuration, which every later
+        // build then reads back into a 337-entry table.
+        if (keysym>=0 && keysym < SDLK_NEWLAST){
             tASSERT(keysym < SDLK_NEWLAST);
             s >> in;
             if (uBindPlayer::IsKeyWord(in))

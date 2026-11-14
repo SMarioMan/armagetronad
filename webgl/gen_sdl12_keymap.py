@@ -24,9 +24,19 @@ Generate:
       /path/to/SDL-1.2.15/include/SDL/SDL_keysym.h \
       /path/to/emscripten/system/include/SDL/SDL_scancode.h
 
-It prints a C++ array of {file, runtime} pairs for the keys whose numbers
-differ, sorted by file value.  Keys that already agree are left out, because
-the runtime lookup falls through to identity.
+Without a flag it prints a C++ array of {file, runtime} pairs for the keys whose
+numbers differ, sorted by file value.  Keys that already agree are left out,
+because the runtime lookup falls through to identity.
+
+With --defines it prints src/render/rSDL12KeySyms.h instead: every SDL 1.2
+special keysym (everything from 256 up, whether or not a scancode pairing was
+found for it) redefined to the SDL 1.2 number, and the closing SDLK_LAST.  The
+last one matters as much as the keys themselves: the game derives its mouse
+pseudo-keys (SDLK_MOUSE_*, uInput.h) and the size of keymap[]/pressed[] from
+SDLK_LAST, and the shipped configuration files bind those pseudo-keys by
+number (config/default.cfg has "KEYBOARD 332 PLAYER_BIND ZOOM_IN"), so a port
+whose SDLK_LAST differs puts the mouse bindings on slots the desktop build
+never uses and leaves the configured numbers pointing at nothing.
 """
 
 import re
@@ -145,8 +155,16 @@ def main():
         print("// simulate different games.  su_GetSDLInput() maps the incoming events")
         print("// to the same numbers; the include sits after <SDL.h> on purpose, so")
         print("// the enum declaration above is untouched and only later uses change.")
-        for f, r, name in pairs:
-            print(f"#define {name} {f}")
+        print("// SDL 1.2 closed the enum one above its last special key, and the game")
+        print("// numbers its mouse pseudo-keys from there (uInput.h: SDLK_MOUSE_X_PLUS")
+        print("// == SDLK_LAST+1, SDLK_NEWLAST == SDLK_LAST+14); the configuration files")
+        print("// bind those pseudo-keys by number, so the enum has to close at the same")
+        print("// place here as it does on the desktop.")
+        for file_val, name in sorted((v, k) for k, v in sdl12.items() if v >= 256):
+            print(f"#define {name} {file_val}")
+        # SDL 1.2's SDLKey enum ends in an unnamed sentinel one past the last
+        # named special key, which is what SDLK_LAST means there.
+        print(f"#define SDLK_LAST {max(v for v in sdl12.values() if v >= 256) + 1}")
         print("#endif")
     print(f"# sdl12={len(sdl12)} scancodes={len(scan)} "
           f"mapped={len(pairs)} unmapped={len(unmapped)}", file=sys.stderr)

@@ -10,6 +10,11 @@
 // simulate different games.  su_GetSDLInput() maps the incoming events
 // to the same numbers; the include sits after <SDL.h> on purpose, so
 // the enum declaration above is untouched and only later uses change.
+// SDL 1.2 closed the enum one above its last special key, and the game
+// numbers its mouse pseudo-keys from there (uInput.h: SDLK_MOUSE_X_PLUS
+// == SDLK_LAST+1, SDLK_NEWLAST == SDLK_LAST+14); the configuration files
+// bind those pseudo-keys by number, so the enum has to close at the same
+// place here as it does on the desktop.
 #define SDLK_KP0 256
 #define SDLK_KP1 257
 #define SDLK_KP2 258
@@ -69,7 +74,10 @@
 #define SDLK_HELP 315
 #define SDLK_PRINT 316
 #define SDLK_SYSREQ 317
+#define SDLK_BREAK 318
 #define SDLK_MENU 319
 #define SDLK_POWER 320
+#define SDLK_EURO 321
 #define SDLK_UNDO 322
+#define SDLK_LAST 323
 #endif
