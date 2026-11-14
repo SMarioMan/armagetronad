@@ -181,11 +181,17 @@ unsigned int tRandomizer::GetRawRand( void )
 //!
 //!
 // *******************************************************************************************
-// Which generator number this is among the ones using the same archive section.
-// Nothing else about the run - how many other generators exist, or in which
-// order they were constructed - is allowed to move this number, because that is
-// exactly what made the desktop build and the wasm build hand the computer
-// players different seeds while replaying the same recording.
+// Which generator number this is among the ones using the same archive section:
+// 0 for the first one, 1 for the next, and so on.  Nothing else about the run -
+// how many other sections exist, or in which order they were constructed - is
+// allowed to move this number, because that is exactly what made the desktop
+// build and the wasm build hand the computer players different seeds while
+// replaying one recording.  The wasm build touches the network randomizer while
+// starting up and the desktop single player build does not, so taking the
+// number from the table slot - which is what this did first - numbered the
+// computer players 0,1,2,3 on the desktop and 1,1,2,3 on the port: one number
+// twice over, and the seed that belongs to the first computer player never
+// used at all.
 static unsigned int sectionInstance(char const *section)
 {
     struct entry { char const *name; unsigned int count; };
@@ -200,9 +206,7 @@ static unsigned int sectionInstance(char const *section)
     {
         instances[used].name = section;
         instances[used].count = 1;
-        int const index = used;
         used++;
-        return index;
     }
 
     return 0;
