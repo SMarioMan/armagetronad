@@ -54,6 +54,14 @@ download.
 Environment knobs: `EMSDK_DIR`, `LIBXML2_PREFIX`, `SDK_VERSION`,
 `DOWNLOAD_DIR`, `JOBS`, `CLEAN=0|1`, `PORT`.
 
+`bootstrap.sh` needs pkg-config's `pkg.m4` macro (`/usr/share/aclocal/pkg.m4`).
+Without it `aclocal` succeeds quietly but emits an `aclocal.m4` with no
+`PKG_CHECK_MODULES` definition, so `configure` is generated carrying three
+unexpanded calls and aborts part way through with
+`syntax error near unexpected token 'XML2,'`.  An autoconf built outside the
+system prefix does not search the system aclocal directory, so it needs
+`ACLOCAL_PATH=/usr/share/aclocal ./bootstrap.sh`.
+
 There is no emscripten port of libxml2, and the resource manager needs it to
 parse the XML resources, so `setup_toolchain.sh` cross-compiles libxml2 2.9.14
 as a static library. `webgl/build.sh` runs configure with
@@ -663,6 +671,35 @@ band, `parity_report.py` reports window peak, coverage and row profile, and
 `modelshape.py` extracts the light-cycle silhouette and `cyclegrid.py` reports
 the luminance spread of the cycle crop together with the line peaks of a fixed
 floor band.
+
+Two more things decide whether a pair is comparable at all.
+
+The build's version string has to match the recording's.  A client that reads a
+different one says so and switches to "probably desynced" playback, which
+relaxes the cycle-movement replay match and takes a different time-archive path:
+the two builds then run different replay logic while looking identical.  That
+string comes from `batch/make/version` -- commit count, plus a date suffix while
+the tree is dirty -- so it moves with every commit, upstream merges included.  A
+comparison build therefore pins `src/nTrueVersion.h` to the recording's value and
+touches it after configure, which stops the make rule at `src/Makefile.am:30`
+from regenerating it; both trees are then identical in that respect.
+
+The screenshotted frame is the last one composited, not the one the stamp line
+described, so the same binary captured twice at the same game-time gate can
+differ.  Measured: one build captured twice at the five gates of the reference
+recording gives 9.10, 0.00, 30.73, 1.29, 6.85 (mean 9.59).  A whole-frame score
+is only meaningful against that spread.  Replaying `webgl/harness/perp2.aarec`
+on a build with `v0.2.9.3.1` merged scores 4.58, 10.67, 33.63, 9.28, 9.45 (mean
+13.52) where the pre-merge build scored 1.11, 10.67, 36.27, 9.25, 9.57 (mean
+13.37): the same result, inside the noise.  Three of the five desktop captures
+before and after that merge are pixel-identical, and two of the port's are.
+
+Two stamp variants have been in use and their manifest fields are not the same
+numbers: `webgl/harness/parity-stamp.patch` reports `CameraPos()` and
+`CameraZ()`, while a `grid->CameraGlancePos(i)` / `grid->CameraHeight(i)` probe
+reports the eye position and its height above the target.  Gates parse `gt` by
+name and are unaffected, but pose deltas taken across the two variants mean
+nothing.
 
 ### Comparison instrumentation
 
