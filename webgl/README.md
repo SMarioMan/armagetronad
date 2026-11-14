@@ -160,6 +160,32 @@ these patches on `src/armagetronad_main.js` after every link:
   unpatched). Emission is the term with the strongest evidence: on the frame-exact
   `n363` pair the desktop has 3865 saturated green pixels in the near band below
   row 520 and a port tracking only ambient and diffuse has none there.
+
+  The substitution is now conditional, and the reason it has to be is measured.
+  The emulator feeds `a_color` from a *generic* attribute value when the draw has
+  no colour array bound, and the cycle body is drawn exactly that way: the
+  page-side per-draw snapshot shows `drawElements TRIANGLES n123/n243` with
+  `a_normal=on`, `a_color=off` and a generic `a_color` of `(1,0,1,1)`.
+  Unconditional substitution therefore threw the body's green channel away and
+  took its alpha from whatever `glColor` an earlier immediate pass had left
+  behind; an alpha left at 0 by a fading trail hides the body outright.  The patch
+  now uploads `getVertexAttrib(colorLocation, ATTRIB_ARRAY_ENABLED)` once per lit
+  draw and the shader picks vertex colour or material uniforms on that flag.
+  Pose-matched `perp2` pair, both builds at `n352`, gt 2.6519, camera 107.8338
+  69.5988, desktop reference frame at gt 2.6912: whole-frame mean channel
+  difference 3.73 unconditional (what the site runs today) against 3.40
+  conditional; pixels over 12 4.13 % against 3.73 %; bright neutral body-like
+  pixels in x250-760 y430-640 2286 against 2714, desktop 2939; whole-frame
+  magenta-signature pixels (r>120, b>120, g at least 40 below both) 161 against
+  118, desktop 138.  Unpatched, the same port measures 4.63, 5.89 %, 2287, 108.
+  The two builds now agree on every *input* to that draw -- page-side uniform
+  dump against the desktop `gCycle.cpp` probe: both lights compiled, diffuse
+  (1,.7,.7) and (.7,.7,1), eye-space positions (320,240,200,0) and
+  (-240,-100,200,0) matching `glGetLightfv(GL_POSITION)` exactly, light ambient 0,
+  model ambient (0.2,0.2,0.2), material ambient 0.2, diffuse 1, emission 0,
+  shininess 0, specular 1 -- and the body still reads dark and tinted on the port,
+  so the colour source was one layer of the cycle-shading gap, not all of it.  The
+  remaining leads are the normal transform and the body texture path.
 - `patch_light_positional.py` — the emulation always used the directional-light
   rule, `normalize(u_lightPositionN)`, which is only correct when `w = 0`.  GL's
   rule for a positional light is light-minus-vertex, both in eye space, so the
