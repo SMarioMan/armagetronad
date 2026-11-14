@@ -135,29 +135,42 @@ these patches on `src/armagetronad_main.js` after every link:
   changes the picture is a separate question from conforming to the spec; the
   shader text the running page emits is the way to check any of these took
   effect.
-- `patch_light_colormaterial.py` — desktop GL enables `GL_COLOR_MATERIAL` by
-  default with the colour components (R,G,B,A) all mapped, so a lit primitive's
-  material ambient, diffuse, *emission* and material alpha come from its vertex
-  colour; the emulation lights the raw `glMaterialfv` state instead and carries
-  no colour-material code at all. In `src/tron/gCycle.cpp` that material is
-  plain white, so the two lights next to the bike blew the body out to flat
-  saturated yellow and flattened its shading gradient. Emission matters as
-  much as the light terms: without it the port has no self-lit colour anywhere,
-  which is what the frame-exact n363 pair shows as 3865 saturated green pixels
-  in the near band below row 520, where the player's own cycle and its rays
-  sit, against none in a port that tracked only ambient and diffuse. Ambient,
-  diffuse, emission and the material alpha now come from the vertex colour;
-  specular colour stays on the material, which is what colour material leaves
-  alone. Tracking emission and alpha moved the far band mean from 30.14 to
-  33.18 against the desktop's 33.17 and the cycle-cluster count from 14814 to
-  17012 against the desktop's 14882.
+- `patch_light_colormaterial.py` — the generated lighting pass took every term
+  from the `glMaterialfv` state, and lighting the material the game actually sets
+  is brighter than the desktop build: on the frame-identical `n814` pair at
+  gt 10.06 the wall strip read mean bright luminance 162 against the desktop's
+  88, and in the frame-exact `myrec2` pair (port `n726`, desktop `n731`, pose
+  69.6229 against 69.6130, heading identical) the 120x110 box over the two
+  opponent cycles read max luminance 202 with 183 px above 120 against the
+  desktop's max 107 with none. The patch feeds the vertex colour into ambient,
+  diffuse, emission and the material alpha instead. **This is not the GL
+  colour-material rule**: `GL_COLOR_MATERIAL` is disabled by default, nothing in
+  `src` calls `glColorMaterial` or enables that token, and the desktop light-state
+  probe confirms the material terms do not track the vertex colour (with the
+  current colour at (1,1,1), material ambient still reads the GL default 0.2).
+  The emulation does implement `glMaterialfv` -- the generated glue initializes
+  `materialDiffuse` to 0.8 and uploads it -- so it is not missing material state
+  either; it is a stand-in for a lighting-state difference that is still open. The
+  frame-exact A/B says what it buys and what it costs: in that box the patched
+  port keeps the desktop's ceiling (max 107, zero px above 120, the desktop the
+  same) but lights 1402 px where the desktop lights 2021, while the unpatched
+  port lights 1985 px -- 98 % of the desktop's area -- with the blowout above.
+  Whole-frame agreement is a tie (full mean 14.24 desktop, 14.29 patched, 14.30
+  unpatched). Emission is the term with the strongest evidence: on the frame-exact
+  `n363` pair the desktop has 3865 saturated green pixels in the near band below
+  row 520 and a port tracking only ambient and diffuse has none there.
 - `patch_light_positional.py` — the emulation always used the directional-light
-  rule, `normalize(u_lightPositionN)`, so the two lights `src/tron/gCycle.cpp`
-  places next to the bike (`w = 1`, default constant-only attenuation) were
-  pointed from the eye-space origin instead: whatever faces the camera got lit
-  and the lamps' actual position was ignored.  The lighting pass runs in eye
-  space, so the positional form is light minus `ecPosition`.  The half-vector
-  is left as emitted, because GL's default is the headlight eye vector.
+  rule, `normalize(u_lightPositionN)`, which is only correct when `w = 0`.  GL's
+  rule for a positional light is light-minus-vertex, both in eye space, so the
+  patch now selects on `w`.  Measured: `src/tron/gCycle.cpp` is the only place
+  in the tree that sets any light, and both positions carry `w = 0`
+  (`lposa {320,240,200,0}`, `lposb {-240,-100,200,0}`, gCycle.cpp:4333-4334), so
+  no shipped content takes the new branch.  The frame-exact A/B at n363
+  (gt 2.8494, `plA` with the patch against `plB` without) differs by a fraction
+  of a percent of pixels in every floor band and leaves the near field alone, so
+  this is the specified rule kept for a light that does become positional, not a
+  fix for the cycle shading or the far grid.  The `w = 1` rule itself was
+  confirmed against the reference driver with the standalone `lightprobe.c`.
 
 The patches assert on the code they expect and `build.sh` aborts on the first
 failure, so a toolchain bump fails the build instead of shipping a page that

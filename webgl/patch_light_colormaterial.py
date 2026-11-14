@@ -1,40 +1,49 @@
 #!/usr/bin/env python3
 """Post-build patch for the emscripten GL legacy emulation in the generated JS.
 
-Tracks GL_COLOR_MATERIAL in the generated per-vertex lighting pass.
+Feeds the vertex colour into the ambient, diffuse, emission and material-alpha
+terms of the generated per-vertex lighting pass.
 
-Desktop GL enables colour material by default, for face GL_FRONT_AND_BACK with
-glColorMaterial parameters (R,G,B,A) all true.  Mesa applies that per vertex:
-the vertex colour replaces the RGB of the material's AMBIENT, DIFFUSE and
-EMISSION (and the alpha of all three), while SPECULAR keeps its RGB from
-glMaterialfv and only its alpha, plus SHININESS, follow the colour's alpha.
-Armagetron relies on that default everywhere it lights anything:
-src/tron/gCycle.cpp sets GL_DIFFUSE and GL_SPECULAR to plain white once per
-cycle draw (gCycle.cpp:4338-4339) and then colours the body per vertex, and the
-wall polygons in src/tron/gWall.cpp carry nothing but a vertex colour.
+What this is *not* is the GL colour-material rule.  GL_COLOR_MATERIAL is
+disabled by default, nothing in this game calls glColorMaterial or enables the
+token, and the desktop state probe settles it: with the current colour at
+(1,1,1) the material ambient on the reference driver still reads the GL default
+0.2, so no material term there tracks the vertex colour.  The emulation does
+implement glMaterialfv -- the generated glue initializes materialDiffuse to 0.8
+and uploads it through a uniform -- so this is not missing material state
+either.  It is an empirical stand-in for a lighting-state difference that has
+not been pinned down: lighting the material the game actually sets (src/tron/
+gCycle.cpp sets GL_DIFFUSE and GL_SPECULAR to plain white once per cycle draw,
+gCycle.cpp:4338-4339, and the wall polygons in src/tron/gWall.cpp carry nothing
+but a vertex colour) comes out brighter than the desktop build.
 
-The emulation instead feeds the raw glMaterialfv state into every lighting
-term (u_materialAmbient / u_materialDiffuse / u_materialEmission) and never
-implements colour material at all -- there is no GL_COLOR_MATERIAL token in the
-generated file.  Measured on frame-identical replays:
-  * cycle body strip, before any colour-material work: R/G/B = 10/33/10 against
-    the desktop driver's 41/49/12, lit fraction 0.06 against 0.34;
-  * wall strip on the n814 pair at gt 10.06 with the material terms lit white:
-    mean bright luminance 162 against the desktop's 88.
-An earlier revision of this file tracked only AMBIENT and DIFFUSE, which is the
-common case but not the whole rule.  The remaining two terms show up as the
-user's two complaints:
-  * EMISSION never gets the vertex colour, so the port has no self-lit colour
-    anywhere: in the frame-exact n363 pair the desktop shows 3865 saturated
-    green pixels (g>200, r<80, b<80) in the near band below row 520, where the
-    player's own cycle and its rays sit, and the port shows exactly zero there
-    while matching in the mid band (chroma 234 against 229); the channel
-    extremes lose blue the same way (max blue 107 against 253).
-  * the material alpha keeps coming from glMaterialfv, so a per-vertex fading
-    trail cannot fade: v_color.w is built from u_materialDiffuse.w.
-Colour material tracks the alpha too, so v_color.w follows the vertex colour.
-SPECULAR stays on u_materialSpecular because colour material leaves its colour
-alone and webgl/patch_light_specular.py already handles shininess zero.
+Measured, on the frame-identical n814 pair at gt 10.06: the wall strip read mean
+bright luminance 162 against the desktop's 88.  Measured again after the model
+geometry was fixed (see webgl/README.md on the 16-bit element-index limit), on
+the frame-exact myrec2 pair -- port n726 gt 2.5523 pos 69.6229 86.6206, desktop
+n731 gt 2.5929 pos 69.6130 86.6206, heading identical on both -- inside the
+120x110 box over the two opponent cycles:
+
+    crop                 lit px   mean L   max L   px with mean L >= 120
+    desktop               2021       34       107                        0
+    this patch applied    1402       32       107                        0
+    patch reversed        1985       50       202                      183
+
+Whole-frame agreement with the desktop is a tie either way (full-frame mean
+luminance 14.24 desktop, 14.29 with the patch, 14.30 without), so the patch
+buys the desktop's luminance ceiling and costs 30 % of the lit area the desktop
+has in that box.  Neither state is at parity there, and which term of the
+emulation's lighting sum is over-bright is still open.  The earlier numbers
+quoted in this file (cycle body 10/33/10 against the desktop's 41/49/12, lit
+fraction 0.06 against 0.34) were taken while the cycle model was being drawn
+with mangled indices and no longer describe the port.
+
+Emission is the term with the strongest evidence: on the frame-exact n363 pair
+the desktop shows 3865 saturated green pixels (g>200, r<80, b<80) in the near
+band below row 520 and a port that tracks only ambient and diffuse shows none.
+Colour material tracks the alpha too, so v_color.w follows the vertex colour and
+a fading trail can fade.  SPECULAR stays on u_materialSpecular, and
+webgl/patch_light_specular.py already handles shininess zero.
 """
 import sys
 

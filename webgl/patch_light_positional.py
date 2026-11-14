@@ -15,25 +15,22 @@ light as directional points it from the eye-space origin -- i.e. from the
 camera -- so every surface that faces the camera is lit as if a lamp sat behind
 the viewer, and the light's actual location is ignored entirely.
 
-Armagetron uses positional lights: src/tron/gCycle.cpp places GL_LIGHT0 and
-GL_LIGHT1 next to the bike (glLightfv(GL_POSITION) at the cycle's own
-coordinates, w = 1) and never touches the attenuation factors, so the default
-constant-only attenuation applies and the position itself is the whole
-distance falloff.  The lighting pass runs in eye space (the generated shader
-already declares `vec4 ecPosition = u_modelView * a_position;` and lights with
-ecNormal), so the positional form is u_lightPosition.xyz - ecPosition.xyz.
-Both lights' positions are already transformed by the modelview at glLightfv
-time, as GL requires.
+This game's only lights are the two set in src/tron/gCycle.cpp:4341-4346.  Their
+positions are `lposa = {320, 240, 200, 0}` and `lposb = {-240, -100, 200, 0}`
+(gCycle.cpp:4333-4334), so w == 0 for both: they are *directional*.  The new
+branch therefore never fires for shipped content, and this patch is
+spec-correctness kept on the shelf rather than the explanation of any current
+divergence.  The frame-exact A/B at n363 (gt 2.8494, shots/plA-00.png with the
+patch against shots/plB-00.png without it) differs in only a fraction of a
+percent of pixels in every floor band and leaves the near field untouched.  An
+earlier version of this note claimed it explained the cycle body's shading and
+the flattened far-grid contrast; that claim is retracted.
 
-That is the mechanism behind the two differences reported against the desktop
-build: the cycle body, which should be lit from beside the bike, is lit from
-the camera instead, and a lit textured floor plane picks up a broad wash from
-the same misplaced lights, flattening the grid's contrast.  The measured
-before-symptom on a replayed pair at the same game time, pose and canvas size
-(mid-distance band): the grid line peaked 52 levels above the floor against 177
-on the desktop, and the dark gap between lines measured 41 against 1.  This
-patch restores the specified behaviour; how much of the reported picture that
-on its own accounts for is measured separately.
+The lighting pass runs in eye space (the generated shader already declares
+`vec4 ecPosition = u_modelView * a_position;` and lights with ecNormal), so the
+positional form is u_lightPosition.xyz - ecPosition.xyz.  Both lights'
+positions are already transformed by the modelview at glLightfv time, as GL
+requires.
 
 Measured on the reference driver here (llvmpipe, Mesa 25.2.8, the same library the
 desktop build renders with) with the standalone probe in lightprobe.c at the top of

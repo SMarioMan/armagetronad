@@ -173,20 +173,25 @@ python3 webgl/patch_emulation_fixes.py src/armagetronad_main.js || exit 1
 # and left the far floor grid on full base-level detail.
 # See webgl/patch_texture_projective_coords.py.
 python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exit 1
-# Track GL_COLOR_MATERIAL, which desktop GL enables by default: ambient,
-# diffuse, emission and the material alpha then come from the vertex colour,
-# not from the material state.  The cycle body in src/tron/gCycle.cpp sets its
-# material to plain white and colours the geometry per vertex, and the wall
-# polygons in src/tron/gWall.cpp carry only a vertex colour, so lighting a
-# white material instead blows both out: on the frame-identical n814 pair at
-# gt 10.06 the wall strip measured mean bright luminance 162 against the
-# desktop's 88 (250,250,50 against 102,102,20 down a scanline) and the cycle
-# body box 1977 bright px against 40.  Emission carries as much of the look as
-# the light terms do: on the frame-exact n363 pair the desktop shows 3865
-# saturated green pixels in the near band below row 520, where the player's own
-# cycle and its rays sit, and a port that tracks only ambient and diffuse shows
-# none there.  An earlier revision of this file dropped this patch; the
-# measurement says it belongs.
+# Feed the vertex colour into the ambient, diffuse, emission and material-alpha
+# terms of the generated lighting pass.  This is NOT the colour-material rule:
+# GL_COLOR_MATERIAL is disabled by default, nothing in src calls glColorMaterial
+# or enables it, and the desktop light-state probe confirms it -- with the
+# current colour at (1,1,1) the material ambient still reads the GL default
+# 0.2.  The emulation does implement glMaterialfv (the generated glue
+# initializes materialDiffuse and uploads it), but lighting a white material is
+# not what the desktop shows: on the frame-identical n814 pair at gt 10.06 the
+# wall strip read mean bright luminance 162 against the desktop's 88, and in the
+# frame-exact myrec2 pair (port n726, desktop n731, pose 69.6229 against
+# 69.6130, heading identical) the cycle box read max luminance 202 with 183 px
+# above 120 against the desktop's max 107 with none.  Patched, that box keeps
+# the desktop's ceiling but covers 1402 lit px where the desktop covers 2021;
+# unpatched it covers 1985 px and overshoots.  Whole-frame agreement is a tie
+# either way (full mean 14.24 desktop, 14.29 patched, 14.30 unpatched), so this
+# compensates empirically for a lighting-state difference that is still open.
+# Emission carries as much of the look as the light terms do: on the frame-exact
+# n363 pair the desktop shows 3865 saturated green pixels in the near band below
+# row 520 and a port that tracks only ambient and diffuse shows none there.
 # See webgl/patch_light_colormaterial.py.
 python3 webgl/patch_light_colormaterial.py src/armagetronad_main.js || exit 1
 # Tell positional lights from directional ones, the way desktop GL does: w = 0
@@ -195,15 +200,17 @@ python3 webgl/patch_light_colormaterial.py src/armagetronad_main.js || exit 1
 # lighting pass runs in eye space.  The emulation always used the directional
 # rule, so any light the game places as a point was lit as if it were at the
 # eye-space origin.  The two lights gCycle.cpp sets for the cycle body are
-# directional (measured w = 0), so this does not change the body; it matters for
-# the point lights elsewhere.  See webgl/patch_light_positional.py.
+# directional (measured w = 0) and src places no point lights at all today, so
+# this changes nothing measurable in the shipped content; it is the specified
+# rule kept for any light that does become positional.
 python3 webgl/patch_light_positional.py src/armagetronad_main.js || exit 1
 # Suppress the specular term when the shininess is 0, as desktop GL defines it.
 # The emulation approximates the exponent with exp(shininess*log(N.H)), which is
 # 1 at shininess 0, so every vertex facing a light got a full-intensity
-# highlight: gCycle.cpp sets GL_SHININESS 0 with GL_SPECULAR (1,1,1), and the
-# cycle body blew out to white (mean green 254 against the desktop 70 in the
-# body box).  See webgl/patch_light_specular.py.
+# highlight: gCycle.cpp sets GL_SPECULAR (1,1,1) and never touches GL_SHININESS,
+# which stays at the GL default 0, and the cycle body blew out to white (mean
+# green 254 against the desktop 70 in the body box).  See
+# webgl/patch_light_specular.py.
 python3 webgl/patch_light_specular.py src/armagetronad_main.js || exit 1
 # Every patch above edits generated JavaScript in place, so a bad anchor or a
 # mistyped replacement only shows up as a SyntaxError in the browser.  Catch it
