@@ -465,6 +465,37 @@ What is still open, with today's numbers from a game-time-matched pair at 2.46
   storage: it is the lighting terms described under
   `patch_light_colormaterial.py` above, where neither patched nor unpatched
   reproduces the desktop's cycle box.
+- The colour-material patch is the closer of the two sides, but it does not deliver
+  the desktop's body coverage.  Frame-exact A/B on `myrec2.aarec` -- port `n726`
+  (pose 69.6229 86.6206 h 16.3572) with the patch applied and then reversed in the
+  built JS by `webgl/harness/unpatch_cmat.py`, desktop reference `n731`
+  (69.6130 86.6206 h 16.3728), same 120x110 cycle box as the bullet above: with the
+  patch the box reads max luminance 107 (exactly the desktop's), 252 px above 120
+  against the desktop's 289, and no pixel above the desktop's maximum; without it,
+  max 202 with 240 px above the desktop's maximum and mean luminance 57 against the
+  desktop's 34.  What is still missing with the patch on is area, not peak: 1402 lit
+  body pixels against the desktop's 2021.  The patch stays.
+- Display lists are disabled wholesale on the port, and that is not the near-field
+  mechanism.  `rDisplayListFiller::Start` computes
+  `useList = sr_useDisplayLists != rDisplayList_Off && ...` and then
+  `src/render/rDisplayList.cpp:232-234` forces it false under `__EMSCRIPTEN__`; that
+  block came in with the initial port commit `d922ec04` and no measured failure
+  backs it.  The desktop default is also off (`rScreen.cpp:77`, reset at
+  `rScreen.cpp:1085`) and only a `gl_vendor` of NVIDIA switches it to
+  `rDisplayList_CAC` (`rScreen.cpp:1128-1132`), so the Mesa/llvmpipe reference pair
+  runs lists-off on both sides while a real NVIDIA desktop runs them on and the port
+  never does -- the settings that would let a user change this are
+  `USE_DISPLAYLISTS` (`rModel.cpp:46`) and the video-menu tweaks entry
+  (`tron/gMenus.cpp:600`).  Rebuilding the port with that `#ifdef` block removed and
+  capturing the same gate (`n363`, gt 2.8494, pose 107.8338 69.5183 h 16.4542
+  dir 0,1) moves the far band 420-490 mean from 29.15 to 31.92, >40% from 24.59 to
+  26.33 and >120% from 6.73 to 7.67 (the desktop at that gate reads 9.59), and the
+  lower half 400-800 mean from 12.18 to 12.56; the near band 720-800 is unchanged at
+  1.57 -> 1.58 and saturated green in the lower half is flat (2936 -> 2913).  A
+  partial gain in the far band and nothing in the near field, so the block stays as
+  it is; the pre-existing guards on that path are the renderer blacklist at
+  `rScreen.cpp:818-832` and the refusal to generate textures inside a list at
+  `rTexture.cpp:721`.
 
 An earlier commit here claimed the projective texture-coordinate fix explained
 the fading grid.  Paired measurement disproved that; it stays as a conformance
