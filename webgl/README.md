@@ -654,7 +654,7 @@ head-on.  The native build is configured with the same `autoexec.cfg`
 `--playback FILE` takes the file as a separate argument, not joined by `=`.
 Keystrokes are sent with `xdotool`; the menu sequence that starts a single
 player round is `w:4500 e:1500 d:700 e:1500 e:1500` (wait, then Enter).  A
-comparison build prints one line every eleventh rendered frame:
+comparison build prints one line for every rendered frame:
 
     FRAME <n> state 6 gt <game time> ncam <c> pos <x> <y> h <h> dir <dx> <dy>
 
@@ -701,10 +701,48 @@ reports the eye position and its height above the target.  Gates parse `gt` by
 name and are unaffected, but pose deltas taken across the two variants mean
 nothing.
 
+### What a matched pair does and does not pin down
+
+Computer players are not reproducible, so a pair is only world-matched while the
+camera is still on the recorded human player.  The AI draws its randomness from
+`tRandomizer::GetInstance()` (`gAIBase.cpp:96,119`), which calls the C library's
+`rand()`; that generator is seeded from the wall clock at `ePlayer.cpp:1132` and
+nothing archives its draws.  The recording pins only the seed of the *other*
+generator (`tRandom.cpp:193-197`) and that class' per-draw archiving is commented
+out (`tRandom.cpp:253-267`).  Measured on the reference recording: at gt 2.6 the
+desktop and the port agree on the camera to 0.04 world units; by gt 4.6 and 6.5
+they are 4.3 and 5.6 units apart, the camera having switched to a computer player
+running its own random path.  Region statistics are only meaningful at the first
+gate, and a run with many computer players is for looking at, not for measuring.
+
+At that gate, both builds free of page-side GL hooks (native `hpbR0-00`, port
+`ppR0-00`), mean luminance / pixels over 150 / pixels over 240 in fixed boxes:
+
+| box | desktop | port |
+|---|---|---|
+| near floor grid | 20.4 / 22744 / 2690 | 20.2 / 22061 / 2675 |
+| far floor grid | 38.6 / 12582 / 1548 | 38.7 / 13193 / 1529 |
+| wall band | 79.1 / 10218 / 1658 | 79.2 / 10722 / 1638 |
+| light cycle body | 8.4 / 215 / 0 | 9.5 / 287 / 0 |
+
+The grid metric (peaks per scan row, mean lit run width, contrast in row sigmas)
+agrees to within about 0.8 px of line width at every row from 410 to 760, and the
+line counts agree within a quarter at five of the seven rows -- the outlier is row
+620, where a wall crosses the band.  The cycle box is the one region still
+measurably apart (13 % brighter, 33 % more lit pixels on the port), and most of
+that box is floor around the model.
+
+The form of the projective divide is the lever that moves the floor.  Shipped
+`texture2DProj` against a hand-written divide changes the bottom row's counted
+grid lines from 18 to 2 -- the q = 0 rim vertices of the infinite planes then
+resolve to nothing -- while an analytic-derivative `texture2DLodEXT` variant
+changes nothing at this pose and is not applied.  See the note in
+`webgl/build.sh` where that patch used to hang out.
+
 ### Comparison instrumentation
 
 Captures are paired by the parity stamp: a block in `gGame::Render` printing the
-line quoted above every eleventh rendered frame, the port writing it to `stdout`
+line quoted above once per rendered frame, the port writing it to `stdout`
 (the browser console) and the native build to `stderr`.  The block is not part of
 the published tree -- a shipped build should not carry instrumentation the game
 never asks for, however cheap its guard -- and a capture session puts it back
@@ -727,6 +765,51 @@ client-array helper.  Page-side hooks - `getContext` wrappers logging GL state
 or a draw census - are written into `webgl/dist/` by hand and referenced from
 the generated `index.html`; `webgl/build.sh` wipes `dist/` on every run, so they
 are applied after the build and never committed.
+
+## Gamepad support
+
+A standard Gamepad-API pad drives the cycle with no player setup
+(`src/ui/uInputQueue.cpp`, `atPollPad`). The sample is taken in JavaScript and
+copied into the wasm heap through `Module.HEAPU8`/`HEAPF32` - which is why the
+link line exports those runtime views - and every change of pad state becomes an
+ordinary SDL 1.2 key event inside the input pump: the keymap, the menus, the
+netgame protocol and `.aarec` archives see key presses and never learn that a
+pad exists.
+
+Two mapping layers, so that the pad cannot collide with the keyboard:
+
+- The d-pad and the two face buttons used in menus post real key numbers
+  (arrows, SPACE, ESCAPE). Menus and in-game behaviour then follow whatever
+  keyboard layout the player chose, with nothing to configure.
+- The two sticks and the remaining buttons post private numbers (`SDLK_PAD_*`,
+  `src/ui/uInput.h`, kept above `SDLK_NEWLAST` so that no keyboard and no
+  archive can produce one). `atAddPadDefaults()` binds those to cycle actions:
+  left stick and both bumpers turn, both triggers brake, Y toggles the brake, X
+  looks back, the left stick click switches the camera, the right stick moves
+  the camera, Back shows the score and Start opens the in-game menu. The right
+  stick click and the left stick's up and down stay unbound: the cycle
+  accelerates by itself and this game has nothing sensible for them to do.
+
+That pass runs once per configuration, tracked by `GAMEPAD_DEFAULTS_ADDED`,
+which is a version rather than a flag: port builds up to 2026-11-13 numbered the
+private keys from the SDL layer's own `SDLK_LAST` and wrote those numbers into
+the user configuration, so such a player has to be given fresh bindings instead
+of being left with dead key numbers. A key number that is already bound is never
+overwritten, so a deliberate rebind survives. `GAMEPAD_SUPPORT 0` stops the
+polling; a pad whose sample throws (no Gamepad API, or a heap view left detached
+by a memory growth) disables the pad driver after a few failed reads rather than
+taking the input pump down with it. Chrome attaches a pad to the page only after
+the first input gesture, so a player has to touch a key or button once.
+
+Measured on the page against a scripted standard pad, with the game clock
+stepped frame by frame: an 11-frame left-stick-right hold moves the cycle
+heading -77.8 deg and the matching left hold brings it back +77.6 deg, the pair
+reproducing across a rebuild; holding the d-pad left turns +86 deg, and the
+recorded menu path navigates on the d-pad unchanged. One trap found while
+measuring: the recorded menu path presses ENTER during the round countdown,
+which opens the chat line, and while the chat line is open the game ignores
+cycle input - the heading then looks frozen even though every pad event is
+arriving.
 
 ## Multiplayer
 

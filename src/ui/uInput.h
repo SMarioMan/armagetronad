@@ -224,7 +224,36 @@ public:
 #define SDLK_MOUSE_BUTTON_5 (SDLK_LAST+11)
 #define SDLK_MOUSE_BUTTON_6 (SDLK_LAST+12)
 #define SDLK_MOUSE_BUTTON_7 (SDLK_LAST+13)
-#define SDLK_NEWLAST        (SDLK_LAST+14)
+// The wasm build feeds the browser game pad through the same table: the SDL
+// layer it links has no joystick support, and a pad is not a keyboard, so the
+// driver in uInputQueue.cpp gives every button and stick direction a number of
+// its own and posts KEYDOWN/KEYUP events carrying it.  PLAYER_BIND, the input
+// configuration menu, the key tooltips, the double-bind timeout and the .aarec
+// input section then work on pad controls without knowing they exist.  The
+// numbers continue the mouse block instead of overlapping it, so configuration
+// files written by older builds keep their meaning.  The d-pad and the A and B
+// buttons are deliberately absent: they post real arrow, Space and Escape key
+// numbers, because menus navigate on key numbers and the arrow keys already
+// carry navigation bindings in every keyboard layout.
+#define SDLK_PAD_X            (SDLK_LAST+14)
+#define SDLK_PAD_Y            (SDLK_LAST+15)
+#define SDLK_PAD_LB           (SDLK_LAST+16)
+#define SDLK_PAD_RB           (SDLK_LAST+17)
+#define SDLK_PAD_LT           (SDLK_LAST+18)
+#define SDLK_PAD_RT           (SDLK_LAST+19)
+#define SDLK_PAD_BACK         (SDLK_LAST+20)
+#define SDLK_PAD_START        (SDLK_LAST+21)
+#define SDLK_PAD_LSTICK       (SDLK_LAST+22)
+#define SDLK_PAD_RSTICK       (SDLK_LAST+23)
+#define SDLK_PAD_LLEFT        (SDLK_LAST+24)
+#define SDLK_PAD_LRIGHT       (SDLK_LAST+25)
+#define SDLK_PAD_LUP          (SDLK_LAST+26)
+#define SDLK_PAD_LDOWN        (SDLK_LAST+27)
+#define SDLK_PAD_RLEFT        (SDLK_LAST+28)
+#define SDLK_PAD_RRIGHT       (SDLK_LAST+29)
+#define SDLK_PAD_RUP          (SDLK_LAST+30)
+#define SDLK_PAD_RDOWN        (SDLK_LAST+31)
+#define SDLK_NEWLAST          (SDLK_LAST+32)
 #define MOUSE_BUTTONS 7
 
 // one key_action for every keysym

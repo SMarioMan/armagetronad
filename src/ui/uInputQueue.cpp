@@ -37,6 +37,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include  "tRecorder.h"
 
 #include  "uMenu.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/em_asm.h>
+#include <cstddef>
+#include <cstdio>
+#include "uInput.h"
+#include "wdbg.h"
+#endif
 
 static su_TimerCallback *timer=NULL;
 
@@ -250,9 +258,9 @@ atKeySymPairs[] =
 // looked up.  A key with no SDL 1.2 equivalent at all -- the function keys above
 // F15, the internet and media keys SDL 2 invented -- becomes SDLK_UNKNOWN: it
 // binds to nothing, exactly as it does on the desktop, and it can never index
-// keymap[]/pressed[] past the end now that those arrays have the desktop's
-// 337 entries (SDLK_LAST + 14) instead of the oversized 1550 the SDL layer's
-// own SDLK_LAST would have given them.
+// keymap[]/pressed[] past the end now that those arrays are sized by
+// SDLK_NEWLAST -- the desktop's 323 keys plus the mouse and pad pseudo-keys --
+// instead of the oversized 1550 the SDL layer's own SDLK_LAST would give them.
 static Uint32 atRuntimeToFileKeySym( Uint32 s )
 {
     if ( s < 256 )
@@ -260,7 +268,7 @@ static Uint32 atRuntimeToFileKeySym( Uint32 s )
     // Only the browser layer's own 0x400|scancode range needs translating.
     // Everything else above 255 is already in the desktop numbering: key
     // numbers read back out of a recording, numbers written into configuration
-    // files, and the mouse pseudo-keys at SDLK_LAST+1..+14.  Looking those up
+    // files, and the mouse and pad pseudo-keys past SDLK_LAST.  Looking those up
     // anyway turned every replayed arrow, function and keypad key into
     // SDLK_UNKNOWN, so a replayed recording could navigate no menu and steer no
     // light cycle -- the desktop build reads the same file without a mapping
@@ -477,6 +485,382 @@ bool uInputScrambler::Scrambled()
     return scrambled_ > 0;
 }
 
+#if defined(__EMSCRIPTEN__) && !defined(DEDICATED)
+// *********************************************
+//  Game pad, wasm build
+// *********************************************
+//
+// A pad is not a keyboard, but every input binding in this tree is one key
+// number mapped to one action, and the mouse already exploits that by owning
+// pseudo keysyms past SDLK_LAST (uInput.h).  The pad does the same: its buttons
+// and stick directions get numbers of their own, and the code below reads the
+// browser's Gamepad API and posts KEYDOWN/KEYUP events carrying those numbers
+// into the queue su_GetSDLInput() drains.  Binding and rebinding in the input
+// configuration menu, the "press <> or <> to turn right" tooltips, the
+// double-bind timeout, the key state the analog actions run on and the .aarec
+// input section then all work on pad controls without any of them knowing a
+// pad exists.
+//
+// The state is read from the Gamepad API rather than through SDL because the
+// SDL layer this build links exposes no joystick support at all.  Button and
+// axis order is the W3C standard gamepad layout, which is what Chrome reports
+// for a wired or wireless Xbox 360/One/Series controller, and the default
+// bindings below are written for that pad.
+//
+// Browsers hand out the pad object only after the player has pressed a button,
+// so the poll runs every time input is fetched and copes with the pad
+// appearing or disappearing; a pad that disappears releases everything it was
+// holding, so an unplugged pad does not leave the cycle turning into a wall.
+// The sticks are analog while the player actions are digital, so each stick
+// axis turns into up to two digital directions behind a dead zone.
+namespace
+{
+// W3C standard button order.  The guide button is deliberately unused: the
+// browser keeps it.
+enum atPadButton
+{
+    atPAD_A = 0, atPAD_B, atPAD_X, atPAD_Y,
+    atPAD_LB, atPAD_RB, atPAD_LT, atPAD_RT,
+    atPAD_BACK, atPAD_START, atPAD_LSTICK_CLICK, atPAD_RSTICK_CLICK,
+    atPAD_DUP, atPAD_DDOWN, atPAD_DLEFT, atPAD_DRIGHT, atPAD_GUIDE,
+    atPAD_BUTTON_COUNT = 17
+};
+
+// Standard layout axes: left stick x/y, then right stick x/y.  Some mappings
+// mirror the triggers into these slots as well; the triggers are read as
+// buttons, where the pad reports their pull directly.
+enum { atPAD_AXIS_COUNT = 4 };
+
+struct atPadSample
+{
+    unsigned char present;
+    unsigned char button[atPAD_BUTTON_COUNT];
+    unsigned char align[2];         // keeps the axis array 4-byte aligned
+    float axis[atPAD_AXIS_COUNT];
+};
+
+atPadSample s_pad;
+
+//! Copy the first connected pad into s_pad, one JS round trip per call.
+//! Returns 0 when the sample was written, 1 when it could not be.  The body
+//! catches everything it can throw: this runs inside the input pump, and an
+//! exception crossing the wasm boundary takes the pump -- and with it the
+//! keyboard -- down with it.
+int atReadPad()
+{
+    return EM_ASM_ARGS({
+        // No top-level commas anywhere inside the braces: the C++ preprocessor
+        // splits macro arguments at them, and only the first piece becomes the
+        // JavaScript body -- the rest is parsed as C++ arguments to the macro.
+        try
+        {
+            // The heap views are reachable through Module only because
+            // webgl/build.sh exports them.  They are read through Module and
+            // not by bare name because an EM_ASM body is turned into a string
+            // and evaluated outside the scope of the generated glue, where the
+            // names the glue uses have been shortened.
+            var b8 = Module.HEAPU8;
+            var f32 = Module.HEAPF32;
+            if (!b8 || !f32)
+                return 1;
+            var dst = $0;
+            var bOff = $1;
+            var aOff = $2;
+            var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            var pad = null;
+            for (var i = 0; i < pads.length; ++i)
+            {
+                if (pads[i] && pads[i].connected) { pad = pads[i]; break; }
+            }
+            if (!pad)
+            {
+                b8[dst] = 0;
+                return 0;
+            }
+            b8[dst] = 1;
+            var nb = Math.min(pad.buttons.length, 17);
+            for (var b = 0; b < 17; ++b)
+            {
+                var btn = (b < nb) ? pad.buttons[b] : null;
+                // Triggers report their pull in .value and only set .pressed
+                // past the halfway point; taking either keeps them digital.
+                b8[dst + bOff + b] = (btn && (btn.pressed || btn.value > 0.5)) ? 1 : 0;
+            }
+            var na = Math.min(pad.axes.length, 4);
+            var base = (dst + aOff) >> 2;
+            for (var a = 0; a < 4; ++a)
+            {
+                var v = (a < na) ? pad.axes[a] : 0;
+                f32[base + a] = (typeof v === 'number') ? v : 0;
+            }
+            return 0;
+        }
+        catch (e)
+        {
+            return 1;
+        }
+    }, &s_pad, (int)offsetof(atPadSample, button), (int)offsetof(atPadSample, axis));
+}
+
+//! One physical control mapped to one key number.
+struct atPadControl
+{
+    int  padIndex;  // button index, or axis index when isAxis
+    bool isAxis;
+    int  side;      // axes only: -1 for the negative half, 1 for the positive
+    int  keysym;
+};
+
+const atPadControl s_padControls[] =
+{
+    // The d-pad and the two face buttons used in menus post real key numbers:
+    // menus navigate on key numbers, and the arrow keys carry navigation
+    // bindings in every keyboard layout, so a player gets working menus and
+    // in-game behaviour that matches the layout they chose without having to
+    // configure anything.
+    { atPAD_DUP,          false, 0, SDLK_UP },
+    { atPAD_DDOWN,        false, 0, SDLK_DOWN },
+    { atPAD_DLEFT,        false, 0, SDLK_LEFT },
+    { atPAD_DRIGHT,       false, 0, SDLK_RIGHT },
+    { atPAD_A,            false, 0, SDLK_SPACE },
+    { atPAD_B,            false, 0, SDLK_ESCAPE },
+
+    // Everything else posts a pad number and is bound to an action below.
+    { atPAD_X,            false, 0, SDLK_PAD_X },
+    { atPAD_Y,            false, 0, SDLK_PAD_Y },
+    { atPAD_LB,           false, 0, SDLK_PAD_LB },
+    { atPAD_RB,           false, 0, SDLK_PAD_RB },
+    { atPAD_LT,           false, 0, SDLK_PAD_LT },
+    { atPAD_RT,           false, 0, SDLK_PAD_RT },
+    { atPAD_BACK,         false, 0, SDLK_PAD_BACK },
+    { atPAD_START,        false, 0, SDLK_PAD_START },
+    { atPAD_LSTICK_CLICK, false, 0, SDLK_PAD_LSTICK },
+    { atPAD_RSTICK_CLICK, false, 0, SDLK_PAD_RSTICK },
+
+    { 0, true, -1, SDLK_PAD_LLEFT },
+    { 0, true,  1, SDLK_PAD_LRIGHT },
+    { 1, true, -1, SDLK_PAD_LUP },
+    { 1, true,  1, SDLK_PAD_LDOWN },
+    { 2, true, -1, SDLK_PAD_RLEFT },
+    { 2, true,  1, SDLK_PAD_RRIGHT },
+    { 3, true, -1, SDLK_PAD_RUP },
+    { 3, true,  1, SDLK_PAD_RDOWN },
+};
+
+bool s_held[sizeof(s_padControls) / sizeof(s_padControls[0])];
+
+//! Post a press or a release for one pad control.  The event is pushed into
+//! SDL's own queue so that every loop which reads input - the game's, a menu's,
+//! the replay archiver - sees a pad control exactly as it sees a key press,
+//! which is the point.
+void atInjectKey(int keysym, bool down)
+{
+    SDL_Event ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.type = down ? SDL_KEYDOWN : SDL_KEYUP;
+    ev.key.state = down ? 1 : 0;        // SDL 1.2 SDL_PRESSED / SDL_RELEASED
+    ev.key.keysym.sym = (SDLKey)keysym;
+    ev.key.keysym.mod = KMOD_NONE;
+    ev.key.keysym.scancode = (SDL_Scancode)0;
+    // su_GetSDLInput() throws away presses of key numbers below SDLK_z that
+    // carry no character, a filter for keyboard events the browser mangles.
+    // Handing the real key numbers their character gets them past that filter,
+    // just as a keyboard press does; pad numbers are above the filtered range
+    // anyway.
+    ev.key.keysym.unicode = (down && keysym < 256) ? (Uint16)keysym : 0;
+    // Push into SDL rather than into su_GetSDLInput()'s own queue.  A menu
+    // pumps SDL directly - and a menu is open during most of what a pad player
+    // does: the local game's settings menu stays open behind a running round,
+    // as does the chat line.  A queued event is invisible to those loops while
+    // a real browser key is not, so pushing is what makes a pad control reach
+    // the game exactly where a keyboard control does.
+    sr_LockSDL();
+    SDL_PushEvent(&ev);
+    sr_UnlockSDL();
+}
+
+struct atPadDefaultBind
+{
+    int          keysym;
+    char const  *action;
+    int          player;    // PLAYER_BIND numbering: 0 is global, 1 is player 1
+};
+
+// A standard Xbox pad laid out the way a pad player expects: the left stick and
+// the bumpers steer, the triggers brake, the right stick moves the camera, a
+// stick click changes the view, X looks back, Y toggles the brake, back shows
+// the score and start opens the in-game menu.  The right stick's click and the
+// left stick's up and down stay unbound on purpose: a game that accelerates by
+// itself has nothing sensible for them to do.
+const atPadDefaultBind s_padDefaults[] =
+{
+    { SDLK_PAD_LLEFT,  "CYCLE_TURN_LEFT",     1 },
+    { SDLK_PAD_LRIGHT, "CYCLE_TURN_RIGHT",    1 },
+    { SDLK_PAD_LB,     "CYCLE_TURN_LEFT",     1 },
+    { SDLK_PAD_RB,     "CYCLE_TURN_RIGHT",    1 },
+    { SDLK_PAD_LT,     "CYCLE_BRAKE",         1 },
+    { SDLK_PAD_RT,     "CYCLE_BRAKE",         1 },
+    { SDLK_PAD_X,      "GLANCE_BACK",         1 },
+    { SDLK_PAD_Y,      "CYCLE_BRAKE_TOGGLE",  1 },
+    { SDLK_PAD_LSTICK, "SWITCH_VIEW",         1 },
+    { SDLK_PAD_RLEFT,  "LOOK_LEFT",           1 },
+    { SDLK_PAD_RRIGHT, "LOOK_RIGHT",          1 },
+    { SDLK_PAD_RUP,    "MOVE_UP",             1 },
+    { SDLK_PAD_RDOWN,  "MOVE_DOWN",           1 },
+    { SDLK_PAD_BACK,   "SCORE",               0 },
+    { SDLK_PAD_START,  "INGAME_MENU",         0 },
+};
+
+bool s_gamepadSupport = true;
+int  s_gamepadDefaultsAdded = 0;
+
+// The marker is a version, not a flag.  Builds up to 2026-11-13 numbered the
+// mouse and pad pseudo-keys from the SDL layer's own SDLK_LAST and wrote those
+// numbers -- together with this marker -- into the user configuration.  A
+// player carrying such a config has pad bindings pointing at key numbers that
+// no longer exist, and the marker stopped the corrected ones from ever being
+// made.  Re-running the pass is safe: a key number that is already bound is
+// left alone, so a control the player rebound deliberately keeps that binding.
+// Bump the version whenever the default map or the key numbering changes.
+int const s_padBindVersion = 2;
+
+tConfItem<bool> s_gamepadSupportConf("GAMEPAD_SUPPORT", s_gamepadSupport);
+tConfItem<int>  s_gamepadDefaultsConf("GAMEPAD_DEFAULTS_ADDED", s_gamepadDefaultsAdded);
+
+//! Add the default pad bindings, once.  The marker travels in the user
+//! configuration, so a player who rebinds or clears a pad control in the input
+//! menu keeps that decision from then on.
+void atAddPadDefaults()
+{
+    if (s_gamepadDefaultsAdded >= s_padBindVersion)
+        return;
+    s_gamepadDefaultsAdded = s_padBindVersion;
+
+    int added = 0, already = 0, conflict = 0, unknown = 0;
+    for (size_t i = 0; i < sizeof(s_padDefaults) / sizeof(s_padDefaults[0]); ++i)
+    {
+        int sym = s_padDefaults[i].keysym;
+        uAction *act = uAction::Find(s_padDefaults[i].action);
+        if (!act)
+        {
+            ++unknown;
+            continue;
+        }
+        if (sym < 0 || sym >= SDLK_NEWLAST)
+            continue;
+        uBind *old = keymap[sym];
+        if (old)
+        {
+            // The binding is there: an earlier build made it and the user
+            // configuration carried it back, or the player bound the key by
+            // hand.  Report it, never overwrite it.
+            if (old->act != act)
+                ++conflict;
+            ++already;
+            continue;
+        }
+        keymap[sym] = uBindPlayer::NewBind(act, s_padDefaults[i].player);
+        ++added;
+    }
+    // Only say something when the defaults moved or something failed to bind:
+    // the ordinary "everything was already there" case is not worth a line.
+    if (added || conflict || unknown)
+    {
+        fprintf(stderr, "Armagetron: game pad defaults: %d added, %d already bound, %d on other actions, %d unknown.\n",
+                added, already, conflict, unknown);
+        fflush(stderr);
+    }
+}
+
+// A pad whose state cannot be sampled is worse than no pad: the read throws
+// across the wasm boundary and takes the whole input pump with it.  Give up on
+// the pad after a few failed reads.  This is deliberately not tied to the
+// GAMEPAD_SUPPORT setting -- a player's own choice must not be overwritten in
+// the user configuration by a failure that may be specific to one session.
+bool s_padDisabled = false;
+int  s_padReadFailures = 0;
+
+//! Sample the pad and turn every change of state into a key press or release.
+void atPollPad()
+{
+    if (!s_gamepadSupport || s_padDisabled)
+        return;
+
+    if (atReadPad() != 0)
+    {
+        if (++s_padReadFailures == 4)
+        {
+            s_padDisabled = true;
+            fprintf(stderr, "Armagetron: the game pad could not be read; pad support is off.\n");
+            fflush(stderr);
+        }
+        return;
+    }
+
+    if (s_pad.present)
+        atAddPadDefaults();
+
+    // Wall-clock scheduling for the key-repeat emulation below: when a control
+    // started being held, and when it last fired a repeat.
+    static Uint32 s_holdStart[sizeof(s_held) / sizeof(s_held[0])];
+    static Uint32 s_lastRepeat[sizeof(s_held) / sizeof(s_held[0])];
+
+    for (size_t c = 0; c < sizeof(s_held) / sizeof(s_held[0]); ++c)
+    {
+        atPadControl const &ctl = s_padControls[c];
+
+        bool down;
+        if (!ctl.isAxis)
+        {
+            down = (s_pad.present && s_pad.button[ctl.padIndex] != 0);
+        }
+        else
+        {
+            float v = s_pad.present ? s_pad.axis[ctl.padIndex] : 0;
+            v *= ctl.side;
+            // Digital edges on an analog axis: press past 0.6, release back
+            // inside 0.4, so a stick resting off centre holds still instead of
+            // chattering between the two directions.
+            down = s_held[c] ? (v > 0.4f) : (v > 0.6f);
+        }
+
+        bool edge = (down != s_held[c]);
+        if (edge)
+            s_held[c] = down;
+
+        // A release is a single event, on its edge.
+        if (!down)
+        {
+            if (edge)
+                atInjectKey(ctl.keysym, false);
+            continue;
+        }
+
+        if (edge)
+        {
+            s_holdStart[c] = s_lastRepeat[c] = SDL_GetTicks();
+            atInjectKey(ctl.keysym, true);
+            continue;
+        }
+
+        // Still held.  Every action in this game is written for a keyboard,
+        // where a held key keeps arriving because the window system repeats it;
+        // a light cycle turns because it is told about the held key again and
+        // again.  A pad control has no repeat of its own, so a single press
+        // would nudge the cycle once and then stop.  Emulate the SDL default -
+        // half a second of delay, then about thirty repeats a second - which is
+        // what holding the same key on the keyboard does.
+        Uint32 const now = SDL_GetTicks();
+        if ((Sint32)(now - s_holdStart[c]) > 500 && (Sint32)(now - s_lastRepeat[c]) >= 33)
+        {
+            s_lastRepeat[c] = now;
+            atInjectKey(ctl.keysym, true);
+        }
+    }
+}
+}   // namespace
+#endif
+
 bool su_GetSDLInput(SDL_Event &tEvent,REAL &time){
     bool ret=false;
 
@@ -494,6 +878,13 @@ bool su_GetSDLInput(SDL_Event &tEvent,REAL &time){
     if ( !EventArchiver< tPlaybackBlock >::Archive( tEvent, time, ret ) )
     {
         // get real event
+        // The pad is sampled here rather than in a frame hook: this is the one
+        // place every input consumer passes through -- game frames, menus, the
+        // server browser -- and this branch is not reached while a recording is
+        // playing back, so replayed input is left alone.
+#if defined(__EMSCRIPTEN__) && !defined(DEDICATED)
+        atPollPad();
+#endif
         sr_LockSDL();
         input_get=true;
         if (current_out!=currentIn){
@@ -518,7 +909,7 @@ bool su_GetSDLInput(SDL_Event &tEvent,REAL &time){
         // A key number coming from the browser is not the number the game works
         // with.  Everything key related in this tree is built around the SDL 1.2
         // numbers the desktop build uses: the keymap[]/pressed[] tables
-        // (uInput.cpp, size SDLK_NEWLAST == SDLK_LAST+14), the PLAYER_BIND
+        // (uInput.cpp, sized SDLK_NEWLAST), the PLAYER_BIND
         // configuration, the .aarec input format and the key names shown in the
         // HUD.  The browser's SDL 2 layer numbers the same keys differently
         // (SDLK_DOWN is 0x451 here, 274 on the desktop), which leaves a browser

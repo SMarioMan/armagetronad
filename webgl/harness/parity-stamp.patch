@@ -1,11 +1,13 @@
+diff --git a/src/tron/gGame.cpp b/src/tron/gGame.cpp
+index d4bee1b5..8accfb4f 100644
 --- a/src/tron/gGame.cpp
 +++ b/src/tron/gGame.cpp
-@@ -1843,6 +1843,48 @@
+@@ -1843,6 +1843,52 @@ void Render(eGrid *grid, REAL time, bool swap=true){
  #ifdef DEBUG
      //  eFace::UpdateVisAll(10);
  #endif
 +    // Parity stamp for the capture harness, off unless asked for: one line
-+    // every eleventh rendered frame giving the rendered-frame counter, the game
++    // every rendered frame giving the rendered-frame counter, the game
 +    // clock and the camera pose, which is what pairs a desktop screenshot with
 +    // a port screenshot of the very same frame.  The port reads
 +    // window.arma_parity_stamp, which webgl/harness/cdpd.py installs as a
@@ -21,19 +23,23 @@
 +#endif
 +    static int s_stampFrame = 0;
 +    ++s_stampFrame;
-+    if (s_stampOn && grid && (s_stampFrame % 11) == 0)
++    if (s_stampOn && grid)
 +    {
 +        const tList<eCamera>& spCameras = grid->Cameras();
 +        char sbuf[256];
 +        int sn = spCameras.Len();
 +        eCamera* sc = (sn > 0) ? spCameras(0) : nullptr;
++        int spMenu = 0;
++#ifndef DEDICATED
++        spMenu = uMenu::MenuActive() ? 1 : 0;
++#endif
 +        if (sn > 0)
-+            snprintf(sbuf, sizeof sbuf,
-+                "PF FRAME %d state 6 gt %.4f ncam %d pos %.4f %.4f h %.4f dir %.4f %.4f",
-+                s_stampFrame, (double)se_GameTime(), sn,
-+                (double)sc->CameraPos().x, (double)sc->CameraPos().y,
-+                (double)sc->CameraZ(),
-+                (double)sc->CameraDir().x, (double)sc->CameraDir().y);
++        snprintf(sbuf, sizeof sbuf,
++            "PF FRAME %d state 6 gt %.4f ncam %d pos %.4f %.4f h %.4f dir %.4f %.4f menu %d",
++            s_stampFrame, (double)se_GameTime(), sn,
++            (double)sc->CameraPos().x, (double)sc->CameraPos().y,
++            (double)sc->CameraZ(),
++            (double)sc->CameraDir().x, (double)sc->CameraDir().y, spMenu);
 +        else
 +            snprintf(sbuf, sizeof sbuf,
 +                "PF FRAME %d state 6 gt %.4f ncam 0",

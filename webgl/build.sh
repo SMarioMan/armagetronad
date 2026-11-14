@@ -136,10 +136,16 @@ make -C resource
 # about; drop the link outputs so the packer always sees fresh resources.
 rm -f src/armagetronad_main.js src/armagetronad_main.wasm src/armagetronad_main.data
 
+# The pad driver in src/ui/uInputQueue.cpp writes its sample into the wasm heap
+# from JavaScript, and it can only reach the heap through Module if the link
+# exports the views; without them the driver's read fails and it disables itself
+# rather than taking the input pump down.  ccall/cwrap stay on the list because
+# they are the defaults being replaced here.
 emmake make -j"$JOBS" \
 LDFLAGS="-s LEGACY_GL_EMULATION=1 -s GL_UNSAFE_OPTS=0 -s ALLOW_MEMORY_GROWTH=1 \
 $EXTRA_LDFLAGS \
 -s USE_SDL=1 -s STB_IMAGE=1 -s USE_ZLIB=1 -s USE_LIBPNG=1 -s FILESYSTEM=1 \
+-s EXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8,HEAPF32 \
 --preload-file ../textures@${DATA_DIR}/textures \
 --preload-file ../models@${DATA_DIR}/models \
 --preload-file ../language@${DATA_DIR}/language \
@@ -189,6 +195,20 @@ python3 webgl/patch_emulation_fixes.py src/armagetronad_main.js || exit 1
 # and left the far floor grid on full base-level detail.
 # See webgl/patch_texture_projective_coords.py.
 python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exit 1
+
+# Mip-level selection for the projective sampler is left to the WebGL
+# implementation.  An analytic variant (texture2DLodEXT fed with the partials of
+# the *divided* coordinate, the quantity the spec says drives level selection)
+# was built and A/B'd against the desktop on the frame-exact pair
+# shots/hpbR0-00 / shots/ppR0-00: the shipped form already resolves the floor
+# grid to within 1-2 % of the desktop in mean luminance and lit-pixel count in
+# every band (near grid 20.4 vs 20.2, far grid 38.6 vs 38.7) and within about a
+# quarter of a pixel on line width, so the patch buys nothing and is not
+# applied.  What does matter is keeping the divide inside the sampler: writing it
+# out by hand (plain texture2D with xy/q) makes the q = 0 rim vertices of the
+# infinite planes wipe out the far grid -- 18 counted grid lines on the last row
+# against 2 -- so texture2DProj stays.
+
 # GL_COLOR_MATERIAL is on by default and nothing in src calls glColorMaterial,
 # so on the desktop the material of a lit primitive *is* the current vertex
 # colour.  The emulation multiplied by u_materialAmbient/u_materialDiffuse

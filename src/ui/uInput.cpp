@@ -381,6 +381,24 @@ static char const * keyname(int sym){
         case SDLK_MOUSE_BUTTON_5: return "Mousebutton 5";
         case SDLK_MOUSE_BUTTON_6: return "Mousebutton 6";
         case SDLK_MOUSE_BUTTON_7: return "Mousebutton 7";
+        case SDLK_PAD_X: return "Pad X";
+        case SDLK_PAD_Y: return "Pad Y";
+        case SDLK_PAD_LB: return "Pad left bumper";
+        case SDLK_PAD_RB: return "Pad right bumper";
+        case SDLK_PAD_LT: return "Pad left trigger";
+        case SDLK_PAD_RT: return "Pad right trigger";
+        case SDLK_PAD_BACK: return "Pad back";
+        case SDLK_PAD_START: return "Pad start";
+        case SDLK_PAD_LSTICK: return "Pad left stick";
+        case SDLK_PAD_RSTICK: return "Pad right stick";
+        case SDLK_PAD_LLEFT: return "Pad left stick left";
+        case SDLK_PAD_LRIGHT: return "Pad left stick right";
+        case SDLK_PAD_LUP: return "Pad left stick up";
+        case SDLK_PAD_LDOWN: return "Pad left stick down";
+        case SDLK_PAD_RLEFT: return "Pad right stick left";
+        case SDLK_PAD_RRIGHT: return "Pad right stick right";
+        case SDLK_PAD_RUP: return "Pad right stick up";
+        case SDLK_PAD_RDOWN: return "Pad right stick down";
         }
 #endif
     return "";
