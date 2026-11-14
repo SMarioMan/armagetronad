@@ -583,18 +583,55 @@ described as one in `patch_light_colormaterial.py`.
 
 The 10.25 gate is the open item: 249757 of 1024000 pixels differ by more than
 30/255 there under every set tried, 33.6 to 37.8 mean against 1 to 15 at the
-other gates.  Measured and ruled out: distance fog (the game compiles it out --
-the whole block at `src/tron/gGame.cpp:1803-1809` is commented out, on both
-sides); settings mismatch (a playback session takes its settings from the
-recording, `src/tools/tConfiguration.cpp:999`, so seeding a matching
-`autoexec.cfg` into the browser profile changed nothing beyond a point of
-agreement); a shifted or differently framed view (the best-fitting global pixel
-shift over +-30 px is (0,0), and it improves the mean by nothing); wall pattern
-scale (the wall band's autocorrelation peaks at 20/21/22 px in the native and
-the same 20/21/22 px in the port); and back-face culling of quads that straddle
-the eye plane (suppressing `GL_CULL_FACE` from the page scores worse on the same
-patch set: 19.14 against 9.42 at the 2.18 gate).  What is left is a draw-level
-difference in the far wall band, not yet pinned down.
+other gates.  Measured and ruled out:
+
+- Distance fog.  The game compiles it out: the whole block at
+  `src/tron/gGame.cpp:1803-1809` is commented out, on both sides.
+- Render settings.  Both builds print the same line at startup,
+  `floorDetail 3 alphaBlend 1 smooth 1 texturesHi 1 highRim 1 dither 1`.
+  Pre-seeding `config/autoexec.cfg` into the port's preloaded data file moves
+  the mean by 0.17 in the wrong direction, which is run-to-run noise.
+- Mipmapping.  Correct and necessary.  Forcing `GL_LINEAR` on every texture
+  from a page-side hook costs 11 points of whole-frame agreement (24.50 against
+  13.55): the game uploads a full chain (`texImage2D` level 1 is 128x128 for a
+  256x256 texture) and the port samples it.
+- Display lists.  Off on both: `sr_useDisplayLists` stays at `rDisplayList_Off`
+  unless the GL vendor is NVIDIA (`src/render/rScreen.cpp:1131`), and neither
+  llvmpipe nor the browser's software GL is, so the rim goes through the same
+  immediate-mode path in both builds.
+- Back-face culling of quads that straddle the eye plane.  Suppressing
+  `GL_CULL_FACE` from the page scores worse on the same patch set, 19.14 against
+  9.42 at the 2.18 gate.
+
+What is left is not a rendering difference at all.  Per-row cross-correlation
+along x over the 10.25 pair gives a strong peak at dy = 0, dx = -31 on the right
+half of the far wall and -54 to -73 on the left half (peaks 0.35 to 0.74), while
+the floor rows near the camera correlate at dx = 0 with peak 0.90: the floor and
+the near field are exact, only the far band is displaced.  An earlier note here
+claimed the best global shift was (0,0); that searched only +-30 px and fitted a
+single shift to the whole frame, and was wrong.  The displacement is the replay
+diverging, not the drawing: the port prints
+
+    AI timing decision changed by 1 from 1 to 0!
+    AI turn decision changed!
+
+from `gAIPlayer::ActOnData` (`src/tron/gAIBase.cpp:2906-2928`), which compares
+the locally recomputed AI decision with the recorded one; the desktop run of the
+same recording never prints either.  The two builds' `sinf` agree bit for bit on
+15 sample arguments and a 40-step double-precision `sin` loop reproduces
+exactly, but a 40-step *float* `sinf` loop ends one ulp apart (0.259053379
+against 0.259053409): glibc and the emscripten libm are not the same
+implementation, and a cycle-physics simulation amplifies one ulp per call into
+metres over ten seconds of play.  AI trails therefore differ between the two
+playbacks, and whole-frame scores at the later gates measure that, not the GL
+stack.  Parity measurement has to be read gate by gate and weighted to the early
+ones, where the pose still agrees to 0.01 world units and the shipped set scores
+1.11: it is the near field -- floor, cycles, the wall the camera is facing --
+that is comparable, and the gates past 10 are only useful for spotting gross
+errors.  Pinning the far band down properly would need the simulation made
+bit-identical first, which is out of reach; the vertex data each build hands to
+GL (the port's page-side hook captures it, the desktop side needs an `LD_PRELOAD`
+shim) is the way to settle any residual rendering difference on the early gates.
 
 ### Reproducing the comparison
 
