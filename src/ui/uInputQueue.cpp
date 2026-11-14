@@ -244,16 +244,6 @@ atKeySymPairs[] =
     { 322u, 0x047Au },  /* SDLK_UNDO */
 };
 
-Uint32 su_FileKeySymToRuntimeKeySym( Uint32 s )
-{
-    for ( size_t i = 0; i < sizeof( atKeySymPairs ) / sizeof( atKeySymPairs[0] ); ++i )
-    {
-        if ( atKeySymPairs[i].file == s )
-            return atKeySymPairs[i].runtime;
-    }
-    return s;
-}
-
 static Uint32 atRuntimeToFileKeySym( Uint32 s )
 {
     for ( size_t i = 0; i < sizeof( atKeySymPairs ) / sizeof( atKeySymPairs[0] ); ++i )
@@ -304,30 +294,12 @@ public:
 #ifndef DEDICATED
     static void ArchiveKey( Archiver & archive, SDL_KeyboardEvent & key )
     {
-#ifdef __EMSCRIPTEN__
-        if ( !tRecorder::IsPlayingBack() )
-        {
-            // Writing: the file format is defined by the SDL 1.2 numbers the
-            // desktop build stores, so a browser recording has to emit those.
-            // The live event keeps its runtime key: only the archived number
-            // is converted.  Without this a recording made in the browser is
-            // unreadable everywhere else -- the desktop build reads
-            // SDLK_DOWN == 1105, matches nothing, and silently drops it.
-            Uint32 fileSym = atRuntimeToFileKeySym( key.keysym.sym );
-            archive.Archive(key.state)
-                .Archive(key.keysym.scancode)
-                .Archive(fileSym)
-                .Archive(key.keysym.mod)
-                .Archive(key.keysym.unicode);
-            return;
-        }
-#endif
+        // Every platform stores SDL 1.2 key numbers in the file.  This build
+        // converts the browser's key numbers to that numbering before the game
+        // ever sees an event (see su_GetSDLInput), so the game, its bindings and
+        // the archive all agree on one numbering and a recording made anywhere
+        // plays back everywhere with every key press landing on the same action.
         archive.Archive(key.state).Archive(key.keysym.scancode).Archive(key.keysym.sym).Archive(key.keysym.mod).Archive(key.keysym.unicode);
-#ifdef __EMSCRIPTEN__
-        // reading back: the stored SDL 1.2 keysym becomes this build's key
-        if ( tRecorder::IsPlayingBack() )
-            key.keysym.sym = su_FileKeySymToRuntimeKeySym( key.keysym.sym );
-#endif
     }
 #endif
 
@@ -439,10 +411,6 @@ void EventArchiver< tRecordingBlock >::ArchiveKey( tRecordingBlock & archive, SD
         }
     }
 
-#ifdef __EMSCRIPTEN__
-    // storing: write the SDL 1.2 number so the file stays readable on native
-    key.keysym.sym = atRuntimeToFileKeySym( key.keysym.sym );
-#endif
     archive.Archive(key.state).Archive(key.keysym.scancode).Archive(key.keysym.sym).Archive(key.keysym.mod).Archive(key.keysym.unicode);
 }
 #endif
@@ -525,6 +493,22 @@ bool su_GetSDLInput(SDL_Event &tEvent,REAL &time){
         sr_UnlockSDL();
         input_get=false;
     }
+#ifdef __EMSCRIPTEN__
+        // A key number coming from the browser is not the number the game works
+        // with.  Everything key related in this tree is built around the SDL 1.2
+        // numbers the desktop build uses: the keymap[]/pressed[] tables
+        // (uInput.cpp, size SDLK_NEWLAST == SDLK_LAST+14), the PLAYER_BIND
+        // configuration, the .aarec input format and the key names shown in the
+        // HUD.  The browser's SDL 2 layer numbers the same keys differently
+        // (SDLK_DOWN is 0x451 here, 274 on the desktop), which leaves a browser
+        // key press on a binding that does not exist -- and, worse, indexes
+        // keymap[0x451] past the end of a 1038-entry array.  Convert once, at
+        // the single place where a real event enters the game, so every consumer
+        // downstream sees the desktop numbering.  Events that came out of a
+        // playback archive are already in that numbering and pass through.
+        if ( ret && ( tEvent.type == SDL_KEYDOWN || tEvent.type == SDL_KEYUP ) )
+            tEvent.key.keysym.sym = atRuntimeToFileKeySym( tEvent.key.keysym.sym );
+#endif
 
     su_markerRequired |= ret;
 

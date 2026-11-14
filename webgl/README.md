@@ -80,7 +80,7 @@ so native builds compile and behave exactly as before.
 | `src/tools/tDirectories.cpp`, `tResourceManager.cpp`, `tConfiguration.cpp` | No binreloc in the browser: paths resolve to the preload root, user data to `$HOME/.armagetronad/var` (mounted as IndexedDB by the page). |
 | `src/ui/uMenu.*`, `uInput*.cpp` | Menu rendering/keyboard handling for the event-loop model and browser focus rules. |
 | `src/tron/*` | Startup sequence, splash/logo handling, server browser/favorites for the transport change. |
-| `src/ui/uInputQueue.cpp` | The event archiver stores SDL 1.2 keysyms; the runtime delivers SDL 2 ones. A generated table translates the 56 keys whose numbers differ, in both directions, so replays drive the menu and the throttle arrows reach the game. |
+| `src/render/rSDL.h`, `src/render/rSDL12KeySyms.h`, `src/ui/uInputQueue.*` | The port's SDL layer numbers non-ASCII keys `0x400 \| SDL2 scancode` while the game, its configuration defaults and its `.aarec` archives are all SDL 1.2 numbering.  A generated header redefines the 56 SDLK_* constants whose numbers differ and `su_GetSDLInput()` converts every incoming event through the same pair table, so bindings, replayed input and HUD key labels match the desktop. |
 | `src/tools/wdbg.h` | Console logging that compiles to nothing unless the build adds `-DWASM_DBG`. |
 
 ## Post-build JavaScript patches
@@ -377,20 +377,26 @@ What has been closed since that table was written:
   4626): the near geometry is back and what is left is brightness, not
   presence.  Comparison of the three states is
   `shots/myrec/nearband-clipper.png` in the report directory.
-- Replayed input and HUD key labels.  The `.aarec` input section and the
-  configuration defaults store SDL 1.2 keysyms (`SDLK_DOWN` == 274) while this
-  build's SDL layer puts `0x400 | SDL2 scancode` numbers in its events (1103 to
-  1106 for the arrows), and its `SDL_GetKeyName()` names a-z and 0-9 only --
-  measured empty for 274 and for 1105 alike.  Every arrow, function, keypad and
-  modifier key was therefore dropped when a recording was replayed, and the HUD
-  printed `Press <> or <o> to turn right.` where the desktop names the key.  Two
-  generated tables now travel with the port, both derived from the headers this
-  build compiles against: `webgl/gen_sdl12_keymap.py` maps stored keysyms onto
-  runtime keysyms on archive read and back on write, and
-  `webgl/gen_sdl12_keynames.py` emits `ui/uSDL12KeyNames.h`, SDL 1.2's display
-  names, which `su_SDL12KeyName()` serves in either numbering.  After the
-  change the port resolves 273 to 276 as up, down, right and left, byte for byte
-  what the desktop build resolves.
+- Replayed input and HUD key labels.  The `.aarec` input section, the
+  configuration defaults and every key comparison in the game use SDL 1.2
+  keysyms (`SDLK_DOWN` == 274), while this build's SDL layer puts
+  `0x400 | SDL2 scancode` numbers in its events (1103 to 1106 for the arrows)
+  and its `SDL_GetKeyName()` names a-z and 0-9 only -- measured empty for 274
+  and for 1105 alike.  Every arrow, function, keypad and modifier key was
+  therefore ignored when a recording was replayed, and the HUD printed
+  `Press <> or <o> to turn right.` where the desktop names the key.  The port
+  now compiles against the desktop's numbering: `webgl/gen_sdl12_keymap.py`
+  reads the SDL 1.2 header next to the SDL_keycode/SDL_scancode headers this
+  build uses and emits `src/render/rSDL12KeySyms.h`, redefining the 56 SDLK_*
+  constants whose numbers differ; `su_GetSDLInput()` runs each event through
+  the generated pair table on the way in, so the game, its bindings, the
+  archiver and the HUD all work in one numbering and a recording made on the
+  desktop drives the port unchanged.  `webgl/gen_sdl12_keynames.py` emits
+  `ui/uSDL12KeyNames.h`, SDL 1.2's display names, which `su_SDL12KeyName()`
+  serves because the SDL layer cannot name these keys at all.  Measured on
+  `myrec2.aarec`: the port's replay now reproduces the desktop's stamped pose
+  to 0.0012 world units at game time 3.01, where an earlier run never got past
+  the menu because the recorded arrow presses did not reach the game.
 
 - The arena rim face.  The wall body's only textured face painted nothing on
   the port, so next to a close wall the port showed the void behind the arena
