@@ -80,7 +80,7 @@ so native builds compile and behave exactly as before.
 | `src/tools/tDirectories.cpp`, `tResourceManager.cpp`, `tConfiguration.cpp` | No binreloc in the browser: paths resolve to the preload root, user data to `$HOME/.armagetronad/var` (mounted as IndexedDB by the page). |
 | `src/ui/uMenu.*`, `uInput*.cpp` | Menu rendering/keyboard handling for the event-loop model and browser focus rules. |
 | `src/tron/*` | Startup sequence, splash/logo handling, server browser/favorites for the transport change. |
-| `src/render/rSDL.h`, `src/render/rSDL12KeySyms.h`, `src/ui/uInputQueue.*` | The port's SDL layer numbers non-ASCII keys `0x400 \| SDL2 scancode` while the game, its configuration defaults and its `.aarec` archives are all SDL 1.2 numbering.  A generated header redefines the 56 SDLK_* constants whose numbers differ and `su_GetSDLInput()` converts every incoming event through the same pair table, so bindings, replayed input and HUD key labels match the desktop. |
+| `src/render/rSDL.h`, `src/render/rSDL12KeySyms.h`, `src/ui/uInputQueue.*` | The port's SDL layer numbers non-ASCII keys `0x400 \| SDL2 scancode` while the game, its configuration defaults and its `.aarec` archives are all SDL 1.2 numbering.  A generated header redefines the 56 SDLK_* constants whose numbers differ and `su_GetSDLInput()` runs incoming browser events (numbers in `0x400..0x4FF`) through the same pair table, while numbers that already came out of an archive pass through untouched, so bindings, replayed input and HUD key labels match the desktop. |
 | `src/tools/wdbg.h` | Console logging that compiles to nothing unless the build adds `-DWASM_DBG`. |
 
 ## Post-build JavaScript patches
@@ -399,6 +399,22 @@ What has been closed since that table was written:
   `myrec2.aarec`: the port's replay now reproduces the desktop's stamped pose
   to 0.0012 world units at game time 3.01, where an earlier run never got past
   the menu because the recorded arrow presses did not reach the game.
+  The conversion has to know which side of the boundary an event came from.
+  `su_GetSDLInput()` ran *every* event through the pair table, including the ones
+  a playback archive hands back -- and archive numbers are already SDL 1.2,
+  because the recorder stores what the game holds after conversion.  Looking 274
+  up in a table keyed by `0x400 | scancode` returned `SDLK_UNKNOWN`, so on a
+  recording made on the desktop every arrow, function and keypad key arrived as
+  "no key at all" and the port again could not leave the menu.  This stayed
+  hidden because the measurement that closed the original bug replayed a
+  recording the port itself had written.  The lookup is now restricted to the SDL
+  layer's own `0x400..0x4FF` range; everything else passes through unchanged.
+  Measured with the committed reference recording `webgl/harness/perp2.aarec`
+  (a desktop-made file, its INPUT section carrying 13 for RETURN and 274 for
+  DOWN), replayed on both builds of the same commit: the port reaches game time
+  2.0805 at pose (107.8338, 90.1486) where the desktop reaches 2.0796 at
+  (107.8338, 90.1485) -- a pose delta of 1e-4 world units, and the first pair of
+  in-arena frames the two builds have produced from one file.
 
 - The arena rim face.  The wall body's only textured face painted nothing on
   the port, so next to a close wall the port showed the void behind the arena
@@ -534,6 +550,51 @@ What is still open, with today's numbers from a game-time-matched pair at 2.46
 An earlier commit here claimed the projective texture-coordinate fix explained
 the fading grid.  Paired measurement disproved that; it stays as a conformance
 fix and is not counted as a visual fix.
+
+### Patch ablation at five replay gates
+
+The same recording yields five gates both builds stamp at the same game time,
+so a pair of frames at a gate is one world state from one pose (camera position
+agrees to 0.01 world units at all five): 2.1815, 6.0313, 10.2487, 14.2813,
+18.1321.  Score is the mean absolute difference per channel over the whole
+1280x800 frame, 0 meaning identical.  All three rows ran against one wasm link,
+so only the JavaScript patch set differs between them.
+
+| JavaScript patch set | 2.18 | 6.03 | 10.25 | 14.28 | 18.13 | mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| shipped set (what is live now) | 1.11 | 10.67 | 36.27 | 9.25 | 9.57 | 13.37 |
+| shipped set + `patch_gl_current_color` | 9.32 | 11.64 | 33.63 | 10.00 | 7.29 | 14.38 |
+| shipped set + current colour, with the colour-material patch's emission term removed | 9.32 | 11.64 | 35.42 | 9.97 | 9.73 | 15.22 |
+
+Both changes under test are rejected on the numbers.  The second row is the one
+that decides it: at the 2.18 gate, the frame with the light cycle in it, the
+shipped set scores 1.11 and either variant with the current-colour patch scores
+9.32.  `patch_gl_current_color.py` does fix a real defect -- the emulation kept
+a stale (1,0,1,1) generic colour on draws that carry no colour array, where the
+desktop uses the current colour -- but it costs a point of whole-frame
+agreement, so it stays out of the build and is recorded here so it is not
+re-added on the strength of the defect alone.  For the same reason the
+colour-material patch keeps substituting the vertex colour into *emission*,
+which is not what `GL_COLOR_MATERIAL` tracks: on the desktop emission keeps the
+material (measured zero), yet a port that lights only ambient and diffuse shows
+none of the saturated green the desktop paints in the near band.  It is an
+empirical compensation for an unresolved lighting-state difference, and is
+described as one in `patch_light_colormaterial.py`.
+
+The 10.25 gate is the open item: 249757 of 1024000 pixels differ by more than
+30/255 there under every set tried, 33.6 to 37.8 mean against 1 to 15 at the
+other gates.  Measured and ruled out: distance fog (the game compiles it out --
+the whole block at `src/tron/gGame.cpp:1803-1809` is commented out, on both
+sides); settings mismatch (a playback session takes its settings from the
+recording, `src/tools/tConfiguration.cpp:999`, so seeding a matching
+`autoexec.cfg` into the browser profile changed nothing beyond a point of
+agreement); a shifted or differently framed view (the best-fitting global pixel
+shift over +-30 px is (0,0), and it improves the mean by nothing); wall pattern
+scale (the wall band's autocorrelation peaks at 20/21/22 px in the native and
+the same 20/21/22 px in the port); and back-face culling of quads that straddle
+the eye plane (suppressing `GL_CULL_FACE` from the page scores worse on the same
+patch set: 19.14 against 9.42 at the 2.18 gate).  What is left is a draw-level
+difference in the far wall band, not yet pinned down.
 
 ### Reproducing the comparison
 

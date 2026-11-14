@@ -257,6 +257,16 @@ static Uint32 atRuntimeToFileKeySym( Uint32 s )
 {
     if ( s < 256 )
         return s;
+    // Only the browser layer's own 0x400|scancode range needs translating.
+    // Everything else above 255 is already in the desktop numbering: key
+    // numbers read back out of a recording, numbers written into configuration
+    // files, and the mouse pseudo-keys at SDLK_LAST+1..+14.  Looking those up
+    // anyway turned every replayed arrow, function and keypad key into
+    // SDLK_UNKNOWN, so a replayed recording could navigate no menu and steer no
+    // light cycle -- the desktop build reads the same file without a mapping
+    // layer and works fine, which is how the divergence stayed hidden.
+    if ( s < 0x400u || s > 0x4FFu )
+        return s;
     for ( size_t i = 0; i < sizeof( atKeySymPairs ) / sizeof( atKeySymPairs[0] ); ++i )
     {
         if ( atKeySymPairs[i].runtime == s )

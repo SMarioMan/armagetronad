@@ -97,6 +97,13 @@ ac_cv_func_clearenv=no
 ac_cv_file__proc_self_maps=no
 EOF
 
+# SKIP_CONFIGURE=1 keeps the configure output of a previous run and goes
+# straight to compiling, which is what a source-only change needs: the tree
+# then never re-enters the autotools regeneration rules, whose helper programs
+# (aclocal/autoconf) are not part of a normal build machine and which otherwise
+# rewrite configure itself on every rebuild.  A tree without a Makefile always
+# configures, so CI is unaffected.
+if [ ! -f Makefile ] || [ "${SKIP_CONFIGURE:-0}" != 1 ]; then
 emconfigure ./configure \
     --cache-file=webgl/emscripten.cache \
     --host=wasm32-unknown-emscripten \
@@ -113,6 +120,7 @@ emconfigure ./configure \
     --disable-desktop \
     --disable-armathentication \
     --disable-authentication
+fi
 
 if [ -f Makefile ] && [ "${CLEAN:-1}" = 1 ]; then
     emmake make clean
@@ -139,6 +147,14 @@ $EXTRA_LDFLAGS \
 --preload-file ../sound@${DATA_DIR}/sound \
 --preload-file ../config@${DATA_DIR}/config" \
 LIBS="-L$LIBXML2_PREFIX/lib -lxml2 -lm -lpng -lidbfs.js -lwebsocket.js"
+# SKIP_PATCHES=1 stops the pipeline right after the link and leaves the
+# generated JavaScript untouched.  Every patch below is a text edit of that
+# generated file, so one unpatched link plus the patch scripts run by hand
+# reproduces any subset of them without paying for a second wasm link; that is
+# how a patch's individual effect on the picture gets measured.
+if [ "${SKIP_PATCHES:-0}" = 1 ]; then
+    echo "SKIP_PATCHES=1: leaving src/armagetronad_main.js unpatched"
+else
 
 # Patch the SDL1 JS port: fix the SDL_ConvertSurface crash on surfaces whose
 # 2D canvas was discarded by IMG_Load_RW in SDL.GL mode (buffer-copy
@@ -173,26 +189,15 @@ python3 webgl/patch_emulation_fixes.py src/armagetronad_main.js || exit 1
 # and left the far floor grid on full base-level detail.
 # See webgl/patch_texture_projective_coords.py.
 python3 webgl/patch_texture_projective_coords.py src/armagetronad_main.js || exit 1
-# Feed the vertex colour into the ambient, diffuse, emission and material-alpha
-# terms of the generated lighting pass.  This is NOT the colour-material rule:
-# GL_COLOR_MATERIAL is disabled by default, nothing in src calls glColorMaterial
-# or enables it, and the desktop light-state probe confirms it -- with the
-# current colour at (1,1,1) the material ambient still reads the GL default
-# 0.2.  The emulation does implement glMaterialfv (the generated glue
-# initializes materialDiffuse and uploads it), but lighting a white material is
-# not what the desktop shows: on the frame-identical n814 pair at gt 10.06 the
-# wall strip read mean bright luminance 162 against the desktop's 88, and in the
-# frame-exact myrec2 pair (port n726, desktop n731, pose 69.6229 against
-# 69.6130, heading identical) the cycle box read max luminance 202 with 183 px
-# above 120 against the desktop's max 107 with none.  Patched, that box keeps
-# the desktop's ceiling but covers 1402 lit px where the desktop covers 2021;
-# unpatched it covers 1985 px and overshoots.  Whole-frame agreement is a tie
-# either way (full mean 14.24 desktop, 14.29 patched, 14.30 unpatched), so this
-# compensates empirically for a lighting-state difference that is still open.
-# Emission carries as much of the look as the light terms do: on the frame-exact
-# n363 pair the desktop shows 3865 saturated green pixels in the near band below
-# row 520 and a port that tracks only ambient and diffuse shows none there.
-# See webgl/patch_light_colormaterial.py.
+# GL_COLOR_MATERIAL is on by default and nothing in src calls glColorMaterial,
+# so on the desktop the material of a lit primitive *is* the current vertex
+# colour.  The emulation multiplied by u_materialAmbient/u_materialDiffuse
+# instead, which left the cycle body lit as white under two warm lights: in the
+# cycle box of the pose-matched n572 pair the desktop reads 237 green and 8
+# yellow px with peak (0,254,0) where the port reads 5623 yellow px with peak
+# (254,254,253), and green is unreachable from a white material with warm
+# lights.  Emission and specular stay on the material, which is what
+# COLOR_MATERIAL leaves alone.  See webgl/patch_light_colormaterial.py.
 python3 webgl/patch_light_colormaterial.py src/armagetronad_main.js || exit 1
 # Tell positional lights from directional ones, the way desktop GL does: w = 0
 # is a direction (normalize(u_lightPositionN)) while w != 0 is a point that has
@@ -212,6 +217,7 @@ python3 webgl/patch_light_positional.py src/armagetronad_main.js || exit 1
 # green 254 against the desktop 70 in the body box).  See
 # webgl/patch_light_specular.py.
 python3 webgl/patch_light_specular.py src/armagetronad_main.js || exit 1
+fi
 # Every patch above edits generated JavaScript in place, so a bad anchor or a
 # mistyped replacement only shows up as a SyntaxError in the browser.  Catch it
 # here instead, where the build fails loudly.
