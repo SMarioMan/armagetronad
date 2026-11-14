@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "defs.h"
 #include "tArray.h"
 #include "tLinkedList.h"
+#include <vector>
 #include <math.h>
 #include "rGL.h"
 #include "rDisplayList.h"
@@ -67,6 +68,14 @@ class rModel
     tArray<rModelFace> modelFaces;
     tArray<rModelFace> modelTexFaces;
     bool modelTexFacesCoherent; // if modelFaces and modelTexFaces are identical
+    // The wasm build draws the coherent models through emscripten's legacy GL
+    // emulation, whose client-array glDrawElements path copies two bytes per
+    // index and then calls WebGL with a hard-coded GLctx.UNSIGNED_SHORT, so it
+    // cannot read the 32-bit face array above.  This is the 16-bit form of the
+    // same face list.  It belongs to the model rather than to a local or static
+    // buffer because rDisplayList stores the pointer the draw call was given
+    // and replays it on every later frame.
+    std::vector<unsigned short> modelElements;
     void Load(std::istream &s,const char *fileName);
     explicit rModel(const char *fileName);
     rModel(rModel const &);

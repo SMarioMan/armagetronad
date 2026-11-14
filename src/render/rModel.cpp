@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "rModel.h"
 #include <string>
+#include <vector>
 #include <fstream>
 #include <stdlib.h>
 #include "rScreen.h"
@@ -328,12 +329,47 @@ void rModel::Render(){
 
             rDisplayListFiller filler( displayList_, false );
             glEnable(GL_CULL_FACE);
+
+#ifdef __EMSCRIPTEN__
+            // Emscripten's legacy GL emulation can only hand 16-bit indices to
+            // WebGL.  This call reaches the emulation's client-array path
+            // (_emscripten_glDrawElements), whose GLImmediate.flush copies
+            // numProvidedIndexes*2 bytes out of the caller's array and then
+            // calls GLctx.drawElements with a hard-coded GLctx.UNSIGNED_SHORT.
+            // With the 32-bit array the desktop driver reads, the port copied
+            // only the first two thirds of the face list and read those bytes
+            // as 16-bit halves, so every triangle (A,B,C) became (A,0,B) and
+            // (0,C,0): light cycles mangled up close, collapsed to slivers far
+            // away.  Flatten the face list through GLushort, which is the one
+            // index type this path can carry, and keep the 32-bit call for the
+            // rare model whose vertex count does not fit in 16 bits.
+            bool drew16 = false;
+            if (modelFaces.Len() > 0 && vertices.Len() > 0 && vertices.Len() <= 65536)
+            {
+                modelElements.resize((size_t)modelFaces.Len()*3);
+                unsigned short *e = &modelElements[0];
+                for (int i = 0; i < modelFaces.Len(); i++)
+                    for (int j = 0; j < 3; j++)
+                        e[i*3+j] = (unsigned short)modelFaces(i).A[j];
+                glDrawElements(GL_TRIANGLES,
+                               modelFaces.Len()*3,
+                               GL_UNSIGNED_SHORT,
+                               e);
+                drew16 = true;
+            }
+            if (!drew16)
+            {
+                glDrawElements(GL_TRIANGLES,
+                               modelFaces.Len()*3,
+                               GL_UNSIGNED_INT,
+                               &modelFaces(0));
+            }
+#else
             glDrawElements(GL_TRIANGLES,
                            modelFaces.Len()*3,
                            GL_UNSIGNED_INT,
                            &modelFaces(0));
-
-            glDisable(GL_CULL_FACE);
+#endif
         }
 
 

@@ -74,6 +74,7 @@ so native builds compile and behave exactly as before.
 | `src/render/rEmscriptenGLU.h` | GLU is not available in the emscripten GL stack: `gluPerspective`, `gluLookAt`, quadric/mipmap helpers reimplemented on plain GL. |
 | `src/render/rSysdep.cpp`, `rGL.*`, `rDisplayList.cpp`, `rViewport.cpp` | Single-buffered WebGL swap (skip the color-buffer clear that would wipe the frame), `GL_QUAD_STRIP` handling, display-list limits, texture unit state. |
 | `src/render/rTexture.cpp` | Image loading reads the file from the virtual FS (`fread` + `IMG_Load_RW`); the alpha convention matches native SDL_image, so no `IMG_InvertAlpha`. |
+| `src/render/rModel.{cpp,h}` | emscripten's legacy GL emulation can only hand WebGL 16-bit indices: its client-array `glDrawElements` path copies `count << 1` bytes out of the caller's array and calls `GLctx.drawElements` with a hard-coded `GLctx.UNSIGNED_SHORT`. The coherent-model branch passed the 32-bit face array, so the port read it as halves and every triangle `(A,B,C)` became `(A,0,B)` then `(0,C,0)`: light cycles mangled up close, collapsed to slivers far away. The face list is re-emitted as `GLushort` on that branch only, held as a member because the display list records the pointer the draw call was given and replays it on later frames. |
 | `src/engine/eSound.cpp` | The SDL1 JS port has no `SDL_LoadWAV`, so a small RIFF/WAV parser loads effects; the mix callback buffer is explicitly zeroed (the JS port reuses one buffer, which otherwise accumulates samples forever). No music mixer. |
 | `src/engine/eTimer.cpp`, `src/tools/tSysTime.*` | Frame timing and the clock driven from the animation-frame cadence. |
 | `src/tools/tDirectories.cpp`, `tResourceManager.cpp`, `tConfiguration.cpp` | No binreloc in the browser: paths resolve to the preload root, user data to `$HOME/.armagetronad/var` (mounted as IndexedDB by the page). |
@@ -442,6 +443,28 @@ What is still open, with today's numbers from a game-time-matched pair at 2.46
   parity in this section was measured over the lower half of the frame on the
   specular core and the green body colour alone, both of which do match (6944
   against 6989 px and mean 0,253,0 against 0,254,0).
+- The element indices the light-cycle models are drawn with were being read as
+  16-bit halves, and fixing that is the largest single change to cycle shading so
+  far. Every cycle in a replay comes from `models/cycle_body.mod`,
+  `cycle_front.mod` and `cycle_rear.mod` -- no `moviepack/*.ASE` exists in this
+  repository -- and the `.mod` loader sets `modelTexFacesCoherent`, which routes
+  `rModel::Render` down the client-array branch whose `glDrawElements
+  (GL_UNSIGNED_INT, &modelFaces(0))` the emulation re-reads as `GLushort`
+  (`count << 1` bytes, hard-coded `UNSIGNED_SHORT`). `cycle_body.mod` carries 23
+  vertices and 41 faces with a maximum index of 22, so nothing was out of range:
+  the list itself was being misread. Measured port against port at the *same*
+  frame of the same replay, in the 120x110 box over the two opponent cycles --
+  the two builds simulate the AI cycles independently, so the desktop figure is a
+  scale reference and not an exact parity target -- `n715` (gt 2.4608, pose
+  69.1910 86.6206; the desktop's own nearest-pose capture `n716` gt 2.4680 pose
+  69.3469 86.6206): lit pixels 1414 -> 2442, against 3109 on the desktop; mean
+  luminance 32 -> 35 against 41. Whole-frame, the red-dominant bright pixel count
+  -- the HUD contributes the same amount in both runs, so the change is the model
+  draws -- went 314 -> 454 against the desktop's 459, while blue stayed at
+  242 -> 248 against the desktop's 442. The remaining deficit is not index
+  storage: it is the lighting terms described under
+  `patch_light_colormaterial.py` above, where neither patched nor unpatched
+  reproduces the desktop's cycle box.
 
 An earlier commit here claimed the projective texture-coordinate fix explained
 the fading grid.  Paired measurement disproved that; it stays as a conformance
