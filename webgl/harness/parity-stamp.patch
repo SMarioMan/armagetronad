@@ -1,0 +1,51 @@
+--- a/src/tron/gGame.cpp
++++ b/src/tron/gGame.cpp
+@@ -1843,6 +1843,48 @@
+ #ifdef DEBUG
+     //  eFace::UpdateVisAll(10);
+ #endif
++    // Parity stamp for the capture harness, off unless asked for: one line
++    // every eleventh rendered frame giving the rendered-frame counter, the game
++    // clock and the camera pose, which is what pairs a desktop screenshot with
++    // a port screenshot of the very same frame.  The port reads
++    // window.arma_parity_stamp, which webgl/harness/cdpd.py installs as a
++    // document init script before the wasm starts, so the published page can be
++    // captured at a game-time gate without being modified; a native build reads
++    // ARMA_PARITY_STAMP in the environment.  Off by default keeps a player's
++    // console and stderr clean.
++    static const bool s_stampOn =
++#ifdef __EMSCRIPTEN__
++        EM_ASM_INT({ return window.arma_parity_stamp ? 1 : 0; });
++#else
++        getenv("ARMA_PARITY_STAMP") != NULL;
++#endif
++    static int s_stampFrame = 0;
++    ++s_stampFrame;
++    if (s_stampOn && grid && (s_stampFrame % 11) == 0)
++    {
++        const tList<eCamera>& spCameras = grid->Cameras();
++        char sbuf[256];
++        int sn = spCameras.Len();
++        eCamera* sc = (sn > 0) ? spCameras(0) : nullptr;
++        if (sn > 0)
++            snprintf(sbuf, sizeof sbuf,
++                "PF FRAME %d state 6 gt %.4f ncam %d pos %.4f %.4f h %.4f dir %.4f %.4f",
++                s_stampFrame, (double)se_GameTime(), sn,
++                (double)sc->CameraPos().x, (double)sc->CameraPos().y,
++                (double)sc->CameraZ(),
++                (double)sc->CameraDir().x, (double)sc->CameraDir().y);
++        else
++            snprintf(sbuf, sizeof sbuf,
++                "PF FRAME %d state 6 gt %.4f ncam 0",
++                s_stampFrame, (double)se_GameTime());
++#ifdef __EMSCRIPTEN__
++        printf("%s\n", sbuf);
++        fflush(stdout);
++#else
++        fprintf(stderr, "%s\n", sbuf);
++        fflush(stderr);
++#endif
++    }
+     //  se_debugExt=0;
+ 
+ #ifndef DEDICATED

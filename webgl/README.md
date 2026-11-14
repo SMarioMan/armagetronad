@@ -256,10 +256,12 @@ silently lost a fix.
 Parity is measured, not eyeballed.  A round is recorded on a native Linux build
 (`--record`), the same recording is replayed on both builds (`--playback`), and
 captures are taken at fixed game-time gates.  The recorder stores SDL 1.2
-keysyms, which the port's SDL 2 event layer has to translate
-(`src/ui/uInputQueue.cpp`); both builds print a per-frame stamp with game time,
-frame number, camera position and view direction, so pairs are matched by pose
-rather than by wall clock.
+keysyms, the same numbers the configuration defaults, the key-name table and the
+key range checks use, so the port's SDL layer converts the incoming SDL 2 events
+down to them (`src/render/rSDL12KeySyms.h`, `src/ui/uInputQueue.cpp`); a
+comparison build prints a per-frame stamp with game time, frame number, camera
+position and view direction, so pairs are matched by pose rather than by wall
+clock.
 
 Frame counters are not a reliable key.  The current builds land within one
 rendered frame of each other at game time 2.46 (341 against 342, both capped at
@@ -566,17 +568,20 @@ floor band.
 
 ### Comparison instrumentation
 
-Captures are paired by the parity stamp in `gGame::Render`, off unless a run
-asks for it: the port prints it when `window.arma_parity_stamp` is set, which
-`webgl/harness/cdpd.py` installs as a document init script before the wasm
-starts (`STAMP=0` captures without it), and a native build prints it when
-`ARMA_PARITY_STAMP` is set in its environment.  The switch lives on the capture
-side, so the published page can be gated by game time exactly like a local
-build without carrying a debug hook of its own.  The line format is the one
-quoted above: the port writes it to `stdout` (the browser console), the native
-to `stderr`, and the capture driver keys its gates off the five characters
-` FRAME ` -- hence the `PF` prefix -- and reads the fields by name (`gt`, `pos`,
-`h`, `dir`) from whatever follows.
+Captures are paired by the parity stamp: a block in `gGame::Render` printing the
+line quoted above every eleventh rendered frame, the port writing it to `stdout`
+(the browser console) and the native build to `stderr`.  The block is not part of
+the published tree -- a shipped build should not carry instrumentation the game
+never asks for, however cheap its guard -- and a capture session puts it back
+with
+
+    git apply webgl/harness/parity-stamp.patch
+
+`webgl/harness/cdpd.py` keys its gates off the five characters ` FRAME ` -- hence
+the `PF` prefix -- and reads the fields by name (`gt`, `pos`, `h`, `dir`) from
+whatever follows, which is what fires a screenshot at the same game time on both
+builds.  A build without the block can only be driven on wall-clock waits, never
+on game time.
 
 The taps used while tracking the divergences are working-tree only for the same
 reason: an event tap in `EventArchiver::Archive`, which is what exposed the
