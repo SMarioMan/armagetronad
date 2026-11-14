@@ -73,7 +73,11 @@ class Page:
         # set before the wasm's first rendered frame reads it.
         target = http("/json/new?about:blank", "PUT")
         self.id = target["id"]
-        self.ws = websocket.create_connection(target["webSocketDebuggerUrl"], timeout=120)
+        # The shared host carries other Chrome processes (load average 5-7), so a
+        # SwiftShader-bound playback tab can leave a CDP command unanswered for
+        # well over the 120 s default and the driver dies mid-replay.
+        self.ws = websocket.create_connection(
+            target["webSocketDebuggerUrl"], timeout=int(os.environ.get("WS_TIMEOUT", "600")))
         self._id = 0
         self.console = []
         self.cfile = None
@@ -115,9 +119,13 @@ class Page:
         self._id += 1
         mid = self._id
         self.ws.send(json.dumps({"id": mid, "method": method, "params": params or {}}))
-        deadline = time.time() + 60
+        deadline = time.time() + int(os.environ.get("CMD_WAIT", "300"))
         while time.time() < deadline:
-            msg = json.loads(self.ws.recv())
+            try:
+                msg = json.loads(self.ws.recv())
+            except websocket.WebSocketTimeoutException:
+                # No traffic for a while: the tab is starved, not dead.
+                continue
             if msg.get("method") == "Runtime.consoleAPICalled":
                 txt = " ".join(a.get("value", a.get("description", "")) for a in msg["params"].get("args", []))
                 self.console.append(f"{msg['params']['type']}: {txt}")
