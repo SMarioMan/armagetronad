@@ -34,6 +34,8 @@
  * current colour - so an explicit material wins over the vertex colour.
  *
  * build: gcc -O2 -o bodylightprobe probe/bodylightprobe.c -lGL -lGLU -lX11
+ *        needs the GLX development headers; where /usr/include/GL is absent,
+ *        add -I<dir-containing-GL> (this container keeps them under a sysroot).
  * run:   DISPLAY=:97 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe ./bodylightprobe
  */
 #include <GL/glx.h>
