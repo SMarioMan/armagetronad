@@ -64,6 +64,11 @@
       font-size: 12px;
       margin-top: 4px;
     }
+    #glinfo {
+      color: #556;
+      font-size: 11px;
+      margin-top: 2px;
+    }
     .progress {
       height: 6px;
       width: 480px;
@@ -87,6 +92,7 @@
     <canvas class="emscripten" id="canvas" tabindex="-1"
             oncontextmenu="event.preventDefault()"></canvas>
     <div id="hint">click the canvas to give it keyboard focus &nbsp;·&nbsp; arrows/enter navigate, ESC backs out &nbsp;·&nbsp; gamepad: d-pad + A in menus, left stick steers</div>
+    <div id="glinfo"></div>
     <button id="fsBtn" title="Toggle fullscreen (double-click the canvas)">⛶</button>
   </div>
   <script>
@@ -182,6 +188,15 @@
     fsBtn.addEventListener('click', toggleFullscreen);
     canvas.addEventListener('dblclick', toggleFullscreen);
 
+    // ?ss=<factor> lifts the render-target scale above the display's own pixel
+    // ratio.  Measured on the reference replay pair, supersampling does not
+    // close the floor-grid gap -- averaged back down it dilutes the desktop's
+    // hot one-pixel line instead of reproducing it (saturated green in rows
+    // 540-620: 1882 desktop, 1063 at scale 1, 0 at scale 2) -- so the default
+    // stays at the display's ratio and this knob exists only to A/B the two on
+    // one machine.  The cap in armaPixelScale applies to it as well.
+    var ARMA_SS = parseFloat((/[?&]ss=([0-9.]+)/.exec(location.search) || [])[1] || 0) || 0;
+    var armaGL = null;          // the context this page created, for the read-out
     var Module = {
       arguments: ARMA_ARGS,
       preRun: [function () {
@@ -203,10 +218,10 @@
           premultipliedAlpha: true, preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false
         };
-        var glctx = canvas.getContext('webgl', ctxAttrs) ||
+        var glctx = armaGL = canvas.getContext('webgl', ctxAttrs) ||
                     canvas.getContext('experimental-webgl', ctxAttrs);
         if (!glctx) {
-          console.warn('could not create the WebGL context with multisampling');
+          console.warn('could not create a WebGL context on this canvas');
           return;
         }
         // 32-bit triangle indices, requested for correctness.  src/render/
@@ -303,6 +318,7 @@
         progressElement.style.display = 'none';
         canvas.focus();
         reportWindowSize();
+        armaGlInfo();
       },
       onAbort: function (reason) {
         statusElement.textContent = 'Aborted: ' + reason;
@@ -332,12 +348,36 @@
     // keeps its aspect ratio and the CSS fit above is unaffected.
     var ARMA_MAX_PX = 4194304;            // about 2560x1638
     function armaPixelScale () {
-      var dpr = window.devicePixelRatio || 1;
+      var dpr = Math.max(window.devicePixelRatio || 1, ARMA_SS);
       if (dpr <= 1) return 1;
       var w = window.innerWidth;
       var h = Math.max(240, window.innerHeight - ARMA_CHROME_H);
       while (dpr > 1 && (w * dpr) * (h * dpr) > ARMA_MAX_PX) dpr -= 0.25;
       return dpr < 1 ? 1 : dpr;
+    }
+    // What the browser actually delivered, rather than what was asked for: the
+    // render target in device pixels, whether the context carries multisamples,
+    // and the anisotropy the driver offers.  The desktop build's log says the
+    // same three things about its context (no MSAA, anisotropy left at 1.0),
+    // so a report about the port can state the browser side of the comparison.
+    function armaGlInfo () {
+      var el = document.getElementById('glinfo');
+      if (!el) return;
+      // The display re-init re-creates the GL context, so the handle taken in
+      // preRun is not the live one: ask the canvas itself for its context, and
+      // read the size off the canvas, which is what the viewport follows.
+      var cv = (typeof Module !== 'undefined' && Module.canvas) ? Module.canvas : canvas;
+      var g = cv.getContext('webgl') || cv.getContext('experimental-webgl') || armaGL;
+      var t = 'render target ' + cv.width + 'x' + cv.height + ' px (scale ' + armaPixelScale() +
+              ', device pixel ratio ' + (window.devicePixelRatio || 1) + ')';
+      if (g) {
+        var a = g.getContextAttributes();
+        var an = g.getExtension('EXT_texture_filter_anisotropic');
+        t += ' - multisample ' + (a.antialias ? a.samples : 0) +
+             ' - anisotropy up to ' + (an ? g.getParameter(an.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 'none') +
+             ' - ' + g.getParameter(g.VERSION);
+      }
+      el.textContent = t;
     }
     function reportWindowSize () {
       if (typeof Module === 'undefined' || typeof Module._sr_WasmWindowResized !== 'function') return;
@@ -345,6 +385,11 @@
       var w = Math.round(window.innerWidth * s);
       var h = Math.round(Math.max(240, window.innerHeight - ARMA_CHROME_H) * s);
       Module._sr_WasmWindowResized(w, h);
+      armaGlInfo();
+      // The canvas only follows the display once the wasm re-init has run, so
+      // read the numbers again shortly after; the first call reports the state
+      // of the moment, the second the state the frame is drawn into.
+      setTimeout(armaGlInfo, 1500);
     }
     // Debounce: the resize event fires continuously while the user drags the
     // window edge, and the wasm re-init re-creates the GL context (heavy).

@@ -256,6 +256,20 @@ silently lost a fix.
   `https://smarioman.github.io/armagetronad/?args=--playback,perp2.aarec`.
   Viewer-side settings still come from the player's own configuration; the
   published numbers were taken with `webgl/harness/autoexec.cfg`.
+- `?ss=<factor>` — lift the render-target scale above the display's own pixel
+  ratio: the page uses `max(devicePixelRatio, ss)`, still capped at 4.2 Mpx.
+  Measured against the reference pair, `&ss=2` does not improve parity -- averaged
+  back down to 1280x800 its saturated-green count in the rows 540-620 band is 0
+  where the desktop has 1882, because averaging dilutes the desktop's hot
+  one-pixel line rather than reproducing it.  It exists to A/B the two on one
+  machine.  Below the canvas the page now prints what the browser actually
+  delivered -- render target in device pixels, the scale in force, the device
+  pixel ratio, multisamples, the anisotropy ceiling and the context version --
+  so a report about a comparison states measured browser values instead of
+  requests; the desktop build's own log says the same three things about its
+  context.  Measured on the reference pair in this harness: `1280x800 px
+  (scale 1, device pixel ratio 1) - multisample 0 - anisotropy up to 16 - WebGL
+  1.0 (OpenGL ES 2.0 Chromium)`, and `2560x1600 px (scale 2 ...)` with `&ss=2`.
 - `?proxy=wss://host/` — WebSocket bridge base for network play, remembered in
   `localStorage` (`arma_proxy_base`). Without a proxy the client tries direct
   `ws(s)://ip:port`, which the stock server does not speak, so the hosted page
@@ -343,8 +357,11 @@ object carries `GL_LINEAR_MIPMAP_LINEAR` / `GL_LINEAR`, `GL_CLAMP_TO_EDGE` on
 both axes, and `GL_TEXTURE_MAX_ANISOTROPY_EXT = 1.0` -- the desktop build's own
 floor texture reports the same four values, so neither side ever asks for
 anisotropic filtering (`src/` contains no multisample or anisotropy request at
-all). The browser context itself reports `SAMPLES 0`, `SAMPLE_BUFFERS 0` (the
-page does request `antialias: true`; SwiftShader does not deliver it),
+all). The browser context itself reports `SAMPLES 0`, `SAMPLE_BUFFERS 0`: the
+page asks for `antialias: false`, matching the desktop build, whose context
+carries no MSAA either -- an earlier revision of the page did request
+`antialias: true`, and that extra 4x cost the far floor grid 35-55 % of its
+contrast, which is why it was removed.
 `ALIASED_LINE_WIDTH_RANGE` 1..1 and max texture size 8192. An earlier revision
 of this file listed 4 sample buffers and 8x anisotropy in use; both figures are
 now contradicted by the direct measurements above.
