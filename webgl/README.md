@@ -88,6 +88,7 @@ so native builds compile and behave exactly as before.
 | `src/tools/tDirectories.cpp`, `tResourceManager.cpp`, `tConfiguration.cpp` | No binreloc in the browser: paths resolve to the preload root, user data to `$HOME/.armagetronad/var` (mounted as IndexedDB by the page). |
 | `src/ui/uMenu.*`, `uInput*.cpp` | Menu rendering/keyboard handling for the event-loop model and browser focus rules. |
 | `src/tron/*` | Startup sequence, splash/logo handling, server browser/favorites for the transport change. |
+| `src/tron/gCycle.cpp` | Two cycle primitives the fixed-function emulation draws wrong are routed around on the port only: the chat pyramid's triangle pair goes through client arrays (the emulation counts that primitive's vertices from one uniform stride, gets 5.2 for six and drops the last), and the headlight fan is compiled out (its radial falloff needs a `GL_ARB_fragment_program`, which the emulation cannot express). Both are `#ifdef __EMSCRIPTEN__`; see "Cycle geometry the emulation mis-sizes" below. |
 | `src/render/rSDL.h`, `src/render/rSDL12KeySyms.h`, `src/ui/uInputQueue.*` | The port's SDL layer numbers non-ASCII keys `0x400 \| SDL2 scancode` while the game, its configuration defaults and its `.aarec` archives are all SDL 1.2 numbering.  A generated header redefines the 56 SDLK_* constants whose numbers differ and `su_GetSDLInput()` runs incoming browser events (numbers in `0x400..0x4FF`) through the same pair table, while numbers that already came out of an archive pass through untouched, so bindings, replayed input and HUD key labels match the desktop. |
 | `src/tools/wdbg.h` | Console logging that compiles to nothing unless the build adds `-DWASM_DBG`. |
 
@@ -703,17 +704,27 @@ nothing.
 
 ### What a matched pair does and does not pin down
 
-Computer players are not reproducible, so a pair is only world-matched while the
-camera is still on the recorded human player.  The AI draws its randomness from
-`tRandomizer::GetInstance()` (`gAIBase.cpp:96,119`), which calls the C library's
-`rand()`; that generator is seeded from the wall clock at `ePlayer.cpp:1132` and
-nothing archives its draws.  The recording pins only the seed of the *other*
-generator (`tRandom.cpp:193-197`) and that class' per-draw archiving is commented
-out (`tRandom.cpp:253-267`).  Measured on the reference recording: at gt 2.6 the
-desktop and the port agree on the camera to 0.04 world units; by gt 4.6 and 6.5
-they are 4.3 and 5.6 units apart, the camera having switched to a computer player
-running its own random path.  Region statistics are only meaningful at the first
-gate, and a run with many computer players is for looking at, not for measuring.
+Computer players used not to be reproducible.  The AI draws its randomness from
+`tRandomizer::GetInstance()` (`gAIBase.cpp:96,119`), which called the C
+library's `rand()`; that generator was seeded from the wall clock at
+`ePlayer.cpp:1132` and nothing archived its draws, so each build drove its own
+computer players.  Measured on the reference recording before the change: the
+builds agreed on the camera to 0.04 world units at gt 2.6 but were 4.3 and 5.6
+units apart by gt 4.6 and 6.5, the camera having switched to a computer player
+running its own random path.  Every replay generator is now seeded from its own
+archive section and numbered by position inside that section, so a pair stays
+world-matched for the whole run and a run with many computer players is usable
+for measuring, not just for looking at.
+
+A matched pair is still not bit-identical in pose.  Measured on the current
+builds at frame 323 (desktop gt 2.1486, port gt 2.1495): all four live cycles
+agree exactly on heading and to 0.026 world units on position, which is exactly
+cycle speed 20 units/s times the 0.9 ms the two game clocks sit apart at that
+frame.  One of the four has died on both builds by frame 373, the same one.  A
+sub-millisecond clock offset is invisible on a body but not on a line: it moves
+a distant wall or floor grid line by a pixel or two, so a per-pixel difference
+image taken over thin far structures is not evidence about the renderer, while
+the band statistics (peak height, lit-run width, line counts per row) are.
 
 At that gate, both builds free of page-side GL hooks (native `hpbR0-00`, port
 `ppR0-00`), mean luminance / pixels over 150 / pixels over 240 in fixed boxes:
@@ -738,6 +749,32 @@ grid lines from 18 to 2 -- the q = 0 rim vertices of the infinite planes then
 resolve to nothing -- while an analytic-derivative `texture2DLodEXT` variant
 changes nothing at this pose and is not applied.  See the note in
 `webgl/build.sh` where that patch used to hang out.
+
+### Cycle geometry the emulation mis-sizes
+
+The chat pyramid painted a wedge of the player's colour across the view.  Its
+two triangles went through the immediate-mode path, where the legacy GL
+emulation derives the submitted vertex count by dividing by one uniform
+per-vertex stride: a vertex of this primitive costs three position floats plus
+four colour floats, so the six-vertex batch is counted as 5.2 and only five
+reach `drawArrays`; the rasterised triangle then takes a corner from the wrong
+record.  Measured on the frame-exact n280 pair, mean luminance 24.0 in the
+40x355 band the wedge covers against the desktop's 3.11, with about 3.7k extra
+lit pixels.  The same six corners and two colours now go through
+`atglDrawArrays`, the client-array route the cycle shadow already uses, and that
+band measures 3.13 against the desktop's 3.11.  The desktop keeps its original
+immediate-mode calls (`src/tron/gCycle.cpp:4542-4554`).
+
+The headlight fan is latent rather than an observed difference: `USE_HEADLIGHT`
+is commented out at `src/tron/gCycle.h:31`, so neither build draws it today.  It
+is guarded on the port for the day the feature is enabled: the fan's radial
+falloff comes from a `GL_ARB_fragment_program`, which the fixed-function
+emulation has no equivalent of, so the fan -- outer vertices at each sensor's
+hit point, up to `arena_size*500*sqrt(2)` away, drawn additively with `GL_ONE,
+GL_ONE` and no depth write -- would arrive flat and fully bright and lay a solid
+wedge of every cycle's colour over the floor, the walls and the cycles in front
+of the camera.  Giving the port that light pool needs the falloff expressed as a
+texture.
 
 ### Comparison instrumentation
 
@@ -883,6 +920,12 @@ from the browser menu's redraw).
 - The top level main menu cannot be left. The native build exits the process
   there; a page has no process to exit into, so leaving that menu re-opens it
   and its "Exit game" item is not shown.
+- No cycle headlight pool.  The feature is off in the game itself
+  (`USE_HEADLIGHT`, commented out at `src/tron/gCycle.h:31`); if it were
+  enabled, the port would need its radial falloff expressed as a texture,
+  because the desktop gets that falloff from a `GL_ARB_fragment_program` the
+  fixed-function emulation cannot express and an unguarded port fan would paint
+  flat and fully bright.
 
 ## Deployment
 

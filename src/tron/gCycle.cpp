@@ -4506,6 +4506,39 @@ void gCycle::Render(const eCamera *cam){
                 glScalef(.5,.5,.5);
 
 
+#ifdef __EMSCRIPTEN__
+                // The port has to take this primitive through client arrays.
+                // The legacy GL emulation derives the submitted vertex count
+                // from a single uniform per-vertex stride, but a vertex of
+                // this primitive costs three position floats plus four colour
+                // floats, so the six-vertex batch is counted as 5.2 and only
+                // five reach drawArrays; the rasterised triangle then takes a
+                // corner from the wrong record and paints a wedge of the
+                // player's colour across the view.  Measured on the
+                // frame-exact n280 pair: 40x355 band mean 24.0 against the
+                // desktop's 3.11, and ~3.7k extra lit pixels.  Same six
+                // corners, same two colours, through atglDrawArrays (see
+                // rRender.h and the cycle shadow below for the same route).
+                {
+                    const GLfloat pv[18] = {
+                        0, 0, 3,   0,  1, 4.5f,  0, -1, 4.5f,
+                        0, 0, 3,   1,  0, 4.5f, -1,  0, 4.5f
+                    };
+                    GLfloat pc[24];
+                    for (int k = 0; k < 3; k++)
+                    {
+                        pc[ 0 + k * 4] = colorPyramid.r;
+                        pc[ 1 + k * 4] = colorPyramid.g;
+                        pc[ 2 + k * 4] = colorPyramid.b;
+                        pc[ 3 + k * 4] = alpha;
+                        pc[12 + k * 4] = colorPyramid.r * .7f;
+                        pc[13 + k * 4] = colorPyramid.g * .7f;
+                        pc[14 + k * 4] = colorPyramid.b * .7f;
+                        pc[15 + k * 4] = alpha;
+                    }
+                    atglDrawArrays(GL_TRIANGLES, 6, pv, NULL, pc);
+                }
+#else
                 BeginTriangles();
 
                 glColor4f( colorPyramid.r,colorPyramid.g,colorPyramid.b, alpha );
@@ -4519,12 +4552,22 @@ void gCycle::Render(const eCamera *cam){
                 glVertex3f(-1,0,4.5);
 
                 RenderEnd();
+#endif
 
                 glPopMatrix();
             }
         }
 
-#ifdef USE_HEADLIGHT
+#if defined(USE_HEADLIGHT) && !defined(__EMSCRIPTEN__)
+// USE_HEADLIGHT is commented out (gCycle.h:31), so neither build draws this
+// fan today.  The guard is for the day it is enabled: the fan's radial falloff
+// comes from the GL_ARB_fragment program below, which the WebGL desktop-GL
+// emulation has no equivalent of, so on the browser build the fan -- outer
+// vertices at each sensor's hit point, up to arena_size*500*sqrt(2) away, drawn
+// additively with GL_ONE/GL_ONE and no depth write -- would be painted flat and
+// fully bright, a solid wedge of the cycle's colour in front of every cycle
+// instead of a light pool.  Giving the port that pool needs the falloff
+// expressed as a texture, not as a fragment program.
         // Headlight contributed by Jonathan
         if(headlights) {
             if(!cycleprograminited) { // set to false on every sr_InitDisplay, without it I lost my program when I switched to windowed
