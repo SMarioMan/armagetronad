@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>armagetronad webgl - floor sampler LOD diagnostic</title>
+<style>
+ body{background:#111;color:#ddd;font:14px/1.45 monospace;margin:12px}
+ canvas{display:block;margin-top:8px;image-rendering:pixelated;border:1px solid #444}
+ pre{white-space:pre-wrap;background:#181818;padding:8px;border:1px solid #333}
+</style>
+</head>
+<body>
+<h2>Floor sampler level-of-detail diagnostic</h2>
+<p>
+The arena floor is textured projectively (<code>GL_TEXTURE_GEN_S/T</code> with
+<code>GL_OBJECT_LINEAR</code>), so the shader samples with
+<code>texture2DProj</code>. OpenGL derives the mip level of a projective sampler
+from the derivatives of the <em>divided</em> coordinate; several WebGL drivers
+derive it from the raw interpolated coordinate instead, which chooses a coarser
+level on a surface that runs away from the camera. That is the mechanism that can
+make distant floor grid lines disappear in the browser build while the desktop
+build keeps them.
+</p>
+<p>
+The same grazing floor plane is drawn four times below. Whichever strip looks
+like the desktop build's distant floor is the computation the browser build
+should use. The numbers under the canvas are measured by this page from the
+rendered pixels, so they can be read out and reported without screenshot analysis:
+<b>far grid contrast</b> is the mean brightness above the local floor background
+in the distance band, <b>lit px</b> counts pixels that still show a grid line.
+</p>
+<pre id="info">measuring...</pre>
+<canvas id="c" width="1260" height="720"></canvas>
+<script>
+(function(){
+var canvas=document.getElementById("c"), info=document.getElementById("info");
+var gl=canvas.getContext("webgl",{antialias:true,preserveDrawingBuffer:true});
+if(!gl){info.textContent="WebGL is not available in this browser.";}
+else try{run(gl);}catch(e){info.textContent="diagnostic failed: "+(e&&e.message||e);}
+
+function run(gl){
+ var deriv=gl.getExtension("OES_standard_derivatives");
+ var lodext=gl.getExtension("EXT_shader_texture_lod");
+ var aniso=gl.getExtension("EXT_texture_filter_anisotropic")||
+           gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
+ var lines=[];
+ lines.push("RENDERER        : "+gl.getParameter(gl.RENDERER));
+ lines.push("VENDOR          : "+gl.getParameter(gl.VENDOR));
+ lines.push("VERSION         : "+gl.getParameter(gl.VERSION));
+ lines.push("OES_standard_derivatives : "+(deriv?"yes":"NO"));
+ lines.push("EXT_shader_texture_lod   : "+(lodext?"yes":"NO"));
+ lines.push("anisotropy               : "+(aniso?"max "+gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT):"none"));
+
+ // floor texture: dark base, one texel grid lines every 32 texels (like floor.png)
+ var N=256,tex=gl.createTexture();
+ var px=new Uint8Array(N*N*4);
+ for(var y=0;y<N;y++)for(var x=0;x<N;x++){
+   var i=(y*N+x)*4, on=(x%32===0)||(y%32===0);
+   px[i]=10; px[i+1]=on?140:18; px[i+2]=10; px[i+3]=255;
+ }
+ gl.bindTexture(gl.TEXTURE_2D,tex);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,N,N,0,gl.RGBA,gl.UNSIGNED_BYTE,px);
+ gl.generateMipmap(gl.TEXTURE_2D);
+ if(aniso)gl.texParameterf(gl.TEXTURE_2D,aniso.TEXTURE_MAX_ANISOTROPY_EXT,1);
+
+ // floor plane running from just in front of the eye to far away; a grid cell is
+ // 4 world units (32 texels at uv = world/8), close to the arena floor's density.
+ var verts=[];
+ function quad(x0,z0,x1,z1){
+   verts.push(x0,0,z0, x0/8,z0/8,  x1,0,z0, x1/8,z0/8,  x1,0,z1, x1/8,z1/8);
+   verts.push(x0,0,z0, x0/8,z0/8,  x1,0,z1, x1/8,z1/8,  x0,0,z1, x0/8,z1/8);
+ }
+ quad(-80,-2,80,-900);
+ var buf=gl.createBuffer();
+ gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts),gl.STATIC_DRAW);
+
+ function perspective(fov,aspect,near,far){
+   var f=1/Math.tan(fov/2),nf=1/(near-far);
+   return [f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0];
+ }
+ // eye 1.7 above the floor, looking 20 degrees down at the plane
+ var eyep=20*Math.PI/180, eye=[0,1.7,0];
+ var fdir=[0,-Math.sin(eyep),-Math.cos(eyep)];
+ var sdir=[1,0,0], udir=[0,Math.cos(eyep),-Math.sin(eyep)];
+ var view=[ sdir[0],udir[0],-fdir[0],0,  sdir[1],udir[1],-fdir[1],0,
+            sdir[2],udir[2],-fdir[2],0,
+            -(sdir[0]*eye[0]+sdir[1]*eye[1]+sdir[2]*eye[2]),
+            -(udir[0]*eye[0]+udir[1]*eye[1]+udir[2]*eye[2]),
+            (fdir[0]*eye[0]+fdir[1]*eye[1]+fdir[2]*eye[2]), 1 ];
+ function mul(a,b){
+   var r=new Array(16);
+   for(var c=0;c<4;c++)for(var row=0;row<4;row++){
+     var s=0;for(var k=0;k<4;k++)s+=a[k*4+row]*b[c*4+k];
+     r[c*4+row]=s;
+   }
+   return r;
+ }
+ var stripW=Math.floor(canvas.width/4);
+ var mvp=mul(perspective(Math.PI/3,stripW/canvas.height,0.05,4000),view);
+
+ var VS=
+ "attribute vec3 a_pos;\nattribute vec2 a_tc;\n"+
+ "uniform mat4 u_mvp;\nvarying vec4 v_tc;\n"+
+ "void main(){v_tc=vec4(a_tc,0.0,1.0);gl_Position=u_mvp*vec4(a_pos,1.0);}\n";
+
+ // A: whatever the driver does for texture2DProj -- what the game build ships now
+ var FS_A=
+ "#extension GL_OES_standard_derivatives : enable\n"+
+ "precision highp float;varying vec4 v_tc;uniform sampler2D u_tex;\n"+
+ "void main(){gl_FragColor=texture2DProj(u_tex,v_tc);}\n";
+
+ // B: level from the derivatives of the DIVIDED coordinate (what the spec says)
+ var FS_B=
+ "#extension GL_OES_standard_derivatives : enable\n"+
+ "#extension GL_EXT_shader_texture_lod : enable\n"+
+ "precision highp float;varying vec4 v_tc;uniform sampler2D u_tex;\n"+
+ "void main(){\n"+
+ "  vec2 sd=v_tc.xy/v_tc.w;\n"+
+ // derivatives in texture units: the mip level of a 256x256 texture is the
+ // log2 of the footprint measured in texels, so the uv gradients get scaled
+ // by the texture size before the log.
+ "  vec2 gx=vec2(dFdx(sd.x),dFdx(sd.y));\n"+
+ "  vec2 gy=vec2(dFdy(sd.x),dFdy(sd.y));\n"+
+ "  float lod=log2(max(max(length(gx),length(gy))*256.0,1e-6));\n"+
+ "  gl_FragColor=texture2DLodEXT(u_tex,sd,lod);\n"+
+ "}\n";
+
+ // C: level from the derivatives of the UNDIVIDED coordinate (the driver shortcut)
+ var FS_C=
+ "#extension GL_OES_standard_derivatives : enable\n"+
+ "#extension GL_EXT_shader_texture_lod : enable\n"+
+ "precision highp float;varying vec4 v_tc;uniform sampler2D u_tex;\n"+
+ "void main(){\n"+
+ "  vec2 sd=v_tc.xy/v_tc.w;\n"+
+ // the shortcut version: gradients of the un-divided coordinate, also scaled
+ // to texels so the two variants differ only in what they differentiate.
+ "  vec2 gx=vec2(dFdx(v_tc.x),dFdx(v_tc.y));\n"+
+ "  vec2 gy=vec2(dFdy(v_tc.x),dFdy(v_tc.y));\n"+
+ "  float lod=log2(max(max(length(gx),length(gy))*256.0,1e-6));\n"+
+ "  gl_FragColor=texture2DLodEXT(u_tex,sd,lod);\n"+
+ "}\n";
+
+ // D: the plain, non-projective sampler.  With w = 1 (what the game's texture
+ // matrices produce) a conforming projective sampler has to agree with this one.
+ var FS_D=
+ "precision highp float;varying vec4 v_tc;uniform sampler2D u_tex;\n"+
+ "void main(){gl_FragColor=texture2D(u_tex,v_tc.xy);}\n";
+
+ function prog(fs){
+   var v=gl.createShader(gl.VERTEX_SHADER);gl.shaderSource(v,VS);gl.compileShader(v);
+   if(!gl.getShaderParameter(v,gl.COMPILE_STATUS))throw new Error("vertex: "+gl.getShaderInfoLog(v));
+   var f=gl.createShader(gl.FRAGMENT_SHADER);gl.shaderSource(f,fs);gl.compileShader(f);
+   if(!gl.getShaderParameter(f,gl.COMPILE_STATUS))throw new Error("fragment: "+gl.getShaderInfoLog(f));
+   var p=gl.createProgram();gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);
+   if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error("link: "+gl.getProgramInfoLog(p));
+   return p;
+ }
+
+ var strips=[["A  texture2DProj (driver picks the level)",FS_A],
+             ["B  LodEXT, divided partials (spec path)",lodext?FS_B:null],
+             ["C  LodEXT, undivided partials (driver shortcut)",lodext?FS_C:null],
+             ["D  plain texture2D (reference)",FS_D]];
+ gl.enable(gl.DEPTH_TEST);
+ gl.clearColor(0,0,0,1);
+ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ var fails=[];
+ for(var i=0;i<strips.length;i++){
+   if(!strips[i][1]){fails.push(strips[i][0]+" : skipped, EXT_shader_texture_lod missing");continue;}
+   gl.viewport(i*stripW,0,stripW,canvas.height);
+   var p;
+   try{p=prog(strips[i][1]);}catch(e){fails.push(strips[i][0]+" -> "+e.message);continue;}
+   gl.useProgram(p);
+   gl.uniformMatrix4fv(gl.getUniformLocation(p,"u_mvp"),false,new Float32Array(mvp));
+   gl.uniform1i(gl.getUniformLocation(p,"u_tex"),0);
+   var la=gl.getAttribLocation(p,"a_pos"),ta=gl.getAttribLocation(p,"a_tc");
+   gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+   gl.enableVertexAttribArray(la);gl.vertexAttribPointer(la,3,gl.FLOAT,false,20,0);
+   gl.enableVertexAttribArray(ta);gl.vertexAttribPointer(ta,2,gl.FLOAT,false,20,12);
+   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);
+   gl.drawArrays(gl.TRIANGLES,0,6);
+   gl.deleteProgram(p);
+ }
+
+ // measure: the distance band sits just under the horizon, where the grid either
+ // survives or washes out; near band is the reference both should match.
+ var w=canvas.width,h=canvas.height;
+ var buf2=new Uint8Array(w*h*4);
+ gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,buf2);
+ function lum(x,y){var i=((y*w)+x)*4;return 0.299*buf2[i]+0.587*buf2[i+1]+0.114*buf2[i+2];}
+ function stats(x0,x1,y0,y1){
+   // readPixels origin is bottom-left; bands are given top-down
+   var vals=[],rows=y0;
+   for(var y=y0;y<y1;y++){
+     var yy=h-1-y, row=[];
+     for(var x=x0;x<x1;x++)row.push(lum(x,yy));
+     row.sort(function(a,b){return a-b});
+     var base=row[Math.floor(row.length*0.6)];       // floor background
+     var peak=0,lit=0;
+     for(var k=0;k<row.length;k++){
+       var d=row[k]-base;
+       if(d>peak)peak=d;
+      if(d>0.5*peak&&d>6)lit++;
+    }
+     vals.push({peak:peak,lit:lit,base:base});
+   }
+   var sp=0,sl=0;
+   for(var r=0;r<vals.length;r++){sp+=vals[r].peak;sl+=vals[r].lit;}
+   return {contrast:sp/vals.length,lit:sl/vals.length,base:vals[Math.floor(vals.length/2)].base};
+ }
+ lines.push("");
+ lines.push("strip                                    far band contrast   far lit px   near contrast");
+ for(i=0;i<strips.length;i++){
+   var x0=i*stripW,x1=x0+stripW;
+   if(!strips[i][1]){lines.push(pad(strips[i][0],40)+"  --");continue;}
+   var far=stats(x0+8,x1-8,Math.floor(h*0.20),Math.floor(h*0.34));
+   var near=stats(x0+8,x1-8,Math.floor(h*0.80),Math.floor(h*0.94));
+   lines.push(pad(strips[i][0],40)+pad(far.contrast.toFixed(1),18)+pad(far.lit.toFixed(1),13)+near.contrast.toFixed(1));
+ }
+ if(fails.length)lines.push("", "shader problems:", fails.join("\n"));
+  lines.push("", "A = left quarter, B = second, C = third, D = right quarter.");
+  lines.push("Compare 'far band contrast' with how the desktop build's distant floor looks;");
+  lines.push("if A sits far below D, the projective call is costing the browser build its grid.");
+  lines.push("D is the non-projective reference: with w = 1, A and D should be indistinguishable.");
+ function pad(s,n){s=String(s);while(s.length<n)s+=" ";return s;}
+ info.textContent=lines.join("\n");
+ console.log("LODTEST " + lines.join(" | ").replace(/\s+/g," "));
+}
+})();
+</script>
+<p>
+Interpretation: <b>A</b> (left) uses <code>texture2DProj</code>, exactly what the
+browser build emits today, so its <i>far band contrast</i> is what the game shows on
+this machine. <b>B</b> (middle) computes the level from the divided coordinate's
+derivatives, which is what the OpenGL specification prescribes for projective
+texturing and what the desktop build's driver follows. <b>C</b> (right) shows the
+shortcut a non-conforming sampler takes; if A looks like C and much worse than B,
+the browser build's floor grid is being resolved by driver maths rather than by the
+game, and pinning the level (patch in <code>webgl/</code>) is the fix.
+</p>
+</body>
+</html>

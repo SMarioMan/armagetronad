@@ -130,5 +130,5 @@ wget-log*
 /src/armagetronad_main.js
 /src/armagetronad_main.wasm
 /src/armagetronad_main.data
-# the site page must not be swallowed by the blanket *.html rule above
-!webgl/site/index.html
+# the site pages must not be swallowed by the blanket *.html rule above
+!webgl/site/*.html
