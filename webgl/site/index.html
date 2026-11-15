@@ -318,10 +318,32 @@
     // size and are letterboxed by the CSS).
     var ARMA_CHROME_H = 56;
     var wasmResizeTimer = 0;
-    function reportWindowSize() {
-      if (typeof Module === 'undefined' || typeof Module._sr_WasmWindowResized !== 'function') return;
+    // The size reported to the wasm has to be in device pixels, not CSS pixels.
+    // innerWidth counts CSS pixels, which on a scaled desktop (a HiDPI panel at
+    // 125-150%, or a browser zoom away from 100%) is fewer than the pixels
+    // actually lit.  Reported in CSS pixels the game drew 1000x601 into a client
+    // area 1002x603 CSS px wide, i.e. 2004x1206 device pixels at
+    // devicePixelRatio 2: every floor grid line and wall edge that lands on 1.4
+    // device pixels in a desktop window lands on 0.7 here, so it breaks into an
+    // aliased dotted line and the distant rows fall into a coarse mip long
+    // before the desktop's do.  Scale by devicePixelRatio and cap the total, so
+    // a 3x phone or a 5x2 desktop does not ask the software renderer for an
+    // absurd pixel count.  Both axes scale by the same factor, so the canvas
+    // keeps its aspect ratio and the CSS fit above is unaffected.
+    var ARMA_MAX_PX = 4194304;            // about 2560x1638
+    function armaPixelScale () {
+      var dpr = window.devicePixelRatio || 1;
+      if (dpr <= 1) return 1;
       var w = window.innerWidth;
       var h = Math.max(240, window.innerHeight - ARMA_CHROME_H);
+      while (dpr > 1 && (w * dpr) * (h * dpr) > ARMA_MAX_PX) dpr -= 0.25;
+      return dpr < 1 ? 1 : dpr;
+    }
+    function reportWindowSize () {
+      if (typeof Module === 'undefined' || typeof Module._sr_WasmWindowResized !== 'function') return;
+      var s = armaPixelScale();
+      var w = Math.round(window.innerWidth * s);
+      var h = Math.round(Math.max(240, window.innerHeight - ARMA_CHROME_H) * s);
       Module._sr_WasmWindowResized(w, h);
     }
     // Debounce: the resize event fires continuously while the user drags the

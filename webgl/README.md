@@ -178,8 +178,19 @@ these patches on `src/armagetronad_main.js` after every link:
   Unconditional substitution therefore threw the body's green channel away and
   took its alpha from whatever `glColor` an earlier immediate pass had left
   behind; an alpha left at 0 by a fading trail hides the body outright.  The patch
-  now uploads `getVertexAttrib(colorLocation, ATTRIB_ARRAY_ENABLED)` once per lit
-  draw and the shader picks vertex colour or material uniforms on that flag.
+  now uploads `getVertexAttrib(colorLocation, VERTEX_ATTRIB_ARRAY_ENABLED)` once
+  per lit draw and the shader picks vertex colour or material uniforms on that
+  flag.  The pname matters: the version first shipped asked for
+  `ATTRIB_ARRAY_ENABLED`, which is not a WebGL constant, so the query was
+  rejected with INVALID_ENUM and answered null -- 3285 rejected calls in a run
+  frozen at recSec 16.033 of the reference replay, 6111 at 20.023 -- which pinned
+  the flag at 0 for every lit draw and filled the console until Chrome stopped
+  reporting WebGL errors at all.  Counting the corrected query on the same frozen
+  replay: one `u_colorFromArray` location, 3285 uploads, all of them 0, because
+  every lit draw in this recording is a model draw with the colour array off --
+  exactly the case the condition was written for -- so the two captures are
+  byte-identical 382141-byte PNGs and nothing shipped changes visually.  What the
+  fix restores is the condition's input and the error stream.
   Pose-matched `perp2` pair, both builds at `n352`, gt 2.6519, camera 107.8338
   69.5988, desktop reference frame at gt 2.6912: whole-frame mean channel
   difference 3.73 unconditional (what the site runs today) against 3.40
@@ -215,6 +226,26 @@ silently lost a fix.
 ## Page options
 
 - Click the canvas for keyboard focus; ⛶ or double-click toggles fullscreen.
+- The canvas backing store follows the display, not the CSS box: `innerWidth` and
+  `innerHeight` are multiplied by `devicePixelRatio` (capped so the total stays
+  under 4.2 Mpx) before being reported to `sr_WasmWindowResized`, the way a
+  desktop framebuffer matches the physical size of its window.  Reported in CSS
+  pixels, a scaled browser lights more pixels than the game draws: in a 1000x800
+  client area at `devicePixelRatio 2` the canvas was 1000x601 inside a box the
+  browser then stretched over 2004x1206, so a floor grid line that covers 1.4
+  device pixels in a desktop window covered 0.7 here and broke into an aliased
+  dotted line while the distant rows fell into a coarse mip.  The same page now
+  reports 2000x1202 there, and 2560x1202 in the 1280x800 window the rest of this
+  file's measurements were taken in.  Measured on the perimeter replay, floor
+  grid runs (width above half maximum, as a fraction of frame width) go
+  0.00442 -> 0.00559 in the near band and 0.00555 -> 0.00998 in the far band,
+  with resolvable peaks in the near band 37.6 -> 62.5 per 1000 sampled columns.
+  Peak-minus-median contrast falls as the runs widen (45.1 -> 26.4 near), which
+  is what a properly covered line does: the light spreads over more pixels
+  instead of spiking on one.  The two captures froze at recSec 8.72 and 8.89 of
+  the replay, 0.17 s of play apart, and the geometry being sampled is the static
+  stage grid.  At `devicePixelRatio 1` nothing is reported differently, so every
+  other number in this file still holds -- they were all taken at scale factor 1.
 - `?args=--playback,/path.rec` — command-line arguments; files named by
   `--playback`/`--record`/`--playback-bench` are fetched from the web root and
   written into the virtual FS before `main()`.
@@ -241,24 +272,23 @@ silently lost a fix.
   so it was reverted (numbers below).  It is a normal option either way: the
   video menu, or `FLOOR_DETAIL 0..3` on the console, persisted in IndexedDB.
 - The page creates the canvas' WebGL context in `preRun`, before SDL asks for
-  one, because SDL 1.2 requests neither multisampling nor a stencil buffer: the
-  context comes up with `antialias:false, stencil:false` and every 1 px light
-  cycle line is then an unantialiased staircase that reads as a chain of
-  separate rectangles. The same hook enables
-  `EXT_texture_filter_anisotropic` so that the sampler parameter exists at all;
-  the game never asks for anisotropic filtering and the desktop build's floor
-  texture measures `GL_TEXTURE_MAX_ANISOTROPY_EXT = 1.0`.  An explicit 1x pin
-  on the port was implemented, measured and reverted: on the rim wall seen
-  along its length (x 1200-1270, y 20-200, mean adjacent-pixel difference) it
-  does move that window toward the desktop, 0.494 -> 0.585 against the
-  desktop's 0.614, but in the far band y 380-460, where the grid is supposed
-  to stay resolvable, it moves away -- 3.17 bright grid peaks per column at
-  13.50 peak-minus-median on the desktop, 3.33 at 13.73 without the pin, 1.87
-  at 10.77 with it.  Excluding the floor texture group from the pin changes
-  nothing measurable, band for band, so the far-band cost comes from the pin on
-  other groups and cannot be separated from the near-wall gain.  The extension
-  state and the buffer attributes belong to the context created first, and
-  SDL's own `getContext()` call returns this same object.
+  one, because SDL 1.2 requests neither a stencil buffer nor multisampling, and a
+  canvas keeps the attributes of the context created first (SDL's own
+  `getContext()` then returns this same object, so the state described here is
+  the state the game actually runs with).  Multisampling is deliberately off: the
+  game never calls `SDL_GL_MULTISAMPLEBUFFERS`, so the desktop build has none
+  either.  Forcing `antialias:true` was tried and measured on matched replay
+  poses -- it cost the far floor grid 35-55 % of its contrast against the native
+  build (strip luminance 16.9/10.7, 15.6/7.2, 14.6/5.8 native/wasm) and removing
+  it brought the two together (16.9/15.4, 15.6/10.7, 14.6/6.9) with the grid
+  periods agreeing exactly (25/25, 23/23, 21/22 px).  Anisotropic filtering is
+  not forced either: the game never requests it and the desktop samples the floor
+  at the GL default 1.0.  An explicit 8x pin moved the near rim wall toward the
+  desktop (x 1200-1270, y 20-200, mean adjacent-pixel difference 0.494 -> 0.585
+  against the desktop's 0.614) but moved the far band away from it (3.33 bright
+  grid peaks per column at 13.50 peak-minus-median on the desktop, 3.33 at 13.73
+  without the pin, 1.87 at 10.77 with it), and excluding the floor texture group
+  changed nothing measurable, so the pin is not there.
 
 ## Visual parity against the native build
 

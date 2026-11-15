@@ -61,7 +61,7 @@ is that these draws match the desktop better with the substitution, so the
 conditional keeps it exactly where it was measured to help.
 
 The flag is read from the WebGL attribute state at that very draw
-(getVertexAttrib(colorLocation, ATTRIB_ARRAY_ENABLED)), not from
+(getVertexAttrib(colorLocation, VERTEX_ATTRIB_ARRAY_ENABLED)), not from
 GLImmediate.colorAttr: a model draw out of VBOs never touches the immediate
 renderer that sets that variable, so the flag would report some earlier pass.
 Page-side per-draw snapshots confirm the state they key on: every cycle model
@@ -127,11 +127,15 @@ PATCHES = [
     # the emulation's stale GLImmediate.clientColor.  GLImmediate.colorAttr
     # alone is not enough -- a model draw from VBOs bypasses the immediate
     # renderer that sets it, so the flag would report an earlier pass.
+    # The pname has to be the one WebGL actually defines.  With any other name
+    # the call is rejected with INVALID_ENUM, getVertexAttrib returns null and
+    # the flag sticks at 0 for every draw: ATTRIB_ARRAY_ENABLED did exactly
+    # that, one console line per lit draw (253 in a single perp2 replay).
     ('if(this.hasLighting){if(this.lightModelAmbientLocation)'
      'GLctx.uniform4fv(this.lightModelAmbientLocation,GLEmulation.lightModelAmbient);',
      'if(this.hasLighting){if(this.colorFromArrayLocation)'
      'GLctx.uniform1i(this.colorFromArrayLocation,(this.colorLocation!=null&&'
-     'GLctx.getVertexAttrib(this.colorLocation,GLctx.ATTRIB_ARRAY_ENABLED))?1:0);'
+     'GLctx.getVertexAttrib(this.colorLocation,GLctx.VERTEX_ATTRIB_ARRAY_ENABLED))?1:0);'
      'if(this.lightModelAmbientLocation)'
      'GLctx.uniform4fv(this.lightModelAmbientLocation,GLEmulation.lightModelAmbient);'),
 ]
