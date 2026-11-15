@@ -249,7 +249,7 @@ node --check src/armagetronad_main.js
 # ---- assemble the deployable site ------------------------------------------
 rm -rf webgl/dist
 mkdir -p webgl/dist
-cp webgl/site/index.html webgl/dist/index.html
+cp webgl/site/*.html webgl/dist/    # the player page plus any diagnostic page
 cp src/armagetronad_main.js src/armagetronad_main.wasm src/armagetronad_main.data webgl/dist/
 # The browser always asks for a favicon; without one every page load logs a
 # 404.  Ship the game's own 32x32 icon.
