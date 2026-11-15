@@ -1,0 +1,3886 @@
+
+VERSION L0.2.9.3_alpha_z3274_20261115
+
+DEDICATED 0
+CONFIG LAI_IQ 100
+
+CONFIG LALIVE_LOCX 0.45
+
+CONFIG LALIVE_LOCY -0.95
+
+CONFIG LALIVE_SIZE 0.13
+
+CONFIG LALLOW_CAM_1_0 1
+
+CONFIG LALLOW_CAM_1_1 1
+
+CONFIG LALLOW_CAM_1_2 1
+
+CONFIG LALLOW_CAM_1_3 1
+
+CONFIG LALLOW_CAM_1_4 1
+
+CONFIG LALLOW_CAM_1_5 1
+
+CONFIG LALLOW_CAM_1_6 1
+
+CONFIG LALLOW_CAM_2_0 1
+
+CONFIG LALLOW_CAM_2_1 1
+
+CONFIG LALLOW_CAM_2_2 1
+
+CONFIG LALLOW_CAM_2_3 1
+
+CONFIG LALLOW_CAM_2_4 1
+
+CONFIG LALLOW_CAM_2_5 1
+
+CONFIG LALLOW_CAM_2_6 1
+
+CONFIG LALLOW_CAM_3_0 1
+
+CONFIG LALLOW_CAM_3_1 1
+
+CONFIG LALLOW_CAM_3_2 1
+
+CONFIG LALLOW_CAM_3_3 1
+
+CONFIG LALLOW_CAM_3_4 1
+
+CONFIG LALLOW_CAM_3_5 1
+
+CONFIG LALLOW_CAM_3_6 1
+
+CONFIG LALLOW_CAM_4_0 1
+
+CONFIG LALLOW_CAM_4_1 1
+
+CONFIG LALLOW_CAM_4_2 1
+
+CONFIG LALLOW_CAM_4_3 1
+
+CONFIG LALLOW_CAM_4_4 1
+
+CONFIG LALLOW_CAM_4_5 1
+
+CONFIG LALLOW_CAM_4_6 1
+
+CONFIG LAUTHORITY_BLACKLIST 
+
+CONFIG LAUTHORITY_WHITELIST 
+
+CONFIG LAUTO_AIS 0
+
+CONFIG LAUTO_INCAM_1 0
+
+CONFIG LAUTO_INCAM_2 0
+
+CONFIG LAUTO_INCAM_3 0
+
+CONFIG LAUTO_INCAM_4 0
+
+CONFIG LAUTO_IQ 0
+
+CONFIG LAUTO_LOGIN_1 0
+
+CONFIG LAUTO_LOGIN_2 0
+
+CONFIG LAUTO_LOGIN_3 0
+
+CONFIG LAUTO_LOGIN_4 0
+
+CONFIG LAXES_INDICATOR 0
+
+CONFIG LBIG_BROTHER 0
+
+CONFIG LBOOKMARK_0_ADDRESS 
+
+CONFIG LBOOKMARK_0_NAME 
+
+CONFIG LBOOKMARK_0_PORT 4534
+
+CONFIG LBOOKMARK_10_ADDRESS 
+
+CONFIG LBOOKMARK_10_NAME 
+
+CONFIG LBOOKMARK_10_PORT 4534
+
+CONFIG LBOOKMARK_1_ADDRESS 
+
+CONFIG LBOOKMARK_1_NAME 
+
+CONFIG LBOOKMARK_1_PORT 4534
+
+CONFIG LBOOKMARK_2_ADDRESS 
+
+CONFIG LBOOKMARK_2_NAME 
+
+CONFIG LBOOKMARK_2_PORT 4534
+
+CONFIG LBOOKMARK_3_ADDRESS 
+
+CONFIG LBOOKMARK_3_NAME 
+
+CONFIG LBOOKMARK_3_PORT 4534
+
+CONFIG LBOOKMARK_4_ADDRESS 
+
+CONFIG LBOOKMARK_4_NAME 
+
+CONFIG LBOOKMARK_4_PORT 4534
+
+CONFIG LBOOKMARK_5_ADDRESS 
+
+CONFIG LBOOKMARK_5_NAME 
+
+CONFIG LBOOKMARK_5_PORT 4534
+
+CONFIG LBOOKMARK_6_ADDRESS 
+
+CONFIG LBOOKMARK_6_NAME 
+
+CONFIG LBOOKMARK_6_PORT 4534
+
+CONFIG LBOOKMARK_7_ADDRESS 
+
+CONFIG LBOOKMARK_7_NAME 
+
+CONFIG LBOOKMARK_7_PORT 4534
+
+CONFIG LBOOKMARK_8_ADDRESS 
+
+CONFIG LBOOKMARK_8_NAME 
+
+CONFIG LBOOKMARK_8_PORT 4534
+
+CONFIG LBOOKMARK_9_ADDRESS 
+
+CONFIG LBOOKMARK_9_NAME 
+
+CONFIG LBOOKMARK_9_PORT 4534
+
+CONFIG LBOOKMARK__MASTER0_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER0_NAME 
+
+CONFIG LBOOKMARK__MASTER0_PORT 4534
+
+CONFIG LBOOKMARK__MASTER10_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER10_NAME 
+
+CONFIG LBOOKMARK__MASTER10_PORT 4534
+
+CONFIG LBOOKMARK__MASTER1_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER1_NAME 
+
+CONFIG LBOOKMARK__MASTER1_PORT 4534
+
+CONFIG LBOOKMARK__MASTER2_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER2_NAME 
+
+CONFIG LBOOKMARK__MASTER2_PORT 4534
+
+CONFIG LBOOKMARK__MASTER3_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER3_NAME 
+
+CONFIG LBOOKMARK__MASTER3_PORT 4534
+
+CONFIG LBOOKMARK__MASTER4_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER4_NAME 
+
+CONFIG LBOOKMARK__MASTER4_PORT 4534
+
+CONFIG LBOOKMARK__MASTER5_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER5_NAME 
+
+CONFIG LBOOKMARK__MASTER5_PORT 4534
+
+CONFIG LBOOKMARK__MASTER6_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER6_NAME 
+
+CONFIG LBOOKMARK__MASTER6_PORT 4534
+
+CONFIG LBOOKMARK__MASTER7_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER7_NAME 
+
+CONFIG LBOOKMARK__MASTER7_PORT 4534
+
+CONFIG LBOOKMARK__MASTER8_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER8_NAME 
+
+CONFIG LBOOKMARK__MASTER8_PORT 4534
+
+CONFIG LBOOKMARK__MASTER9_ADDRESS 
+
+CONFIG LBOOKMARK__MASTER9_NAME 
+
+CONFIG LBOOKMARK__MASTER9_PORT 4534
+
+CONFIG LBRAKE_GAUGE_LOCX 0.48
+
+CONFIG LBRAKE_GAUGE_LOCY -0.9
+
+CONFIG LBRAKE_GAUGE_SIZE 0.175
+
+CONFIG LCAMCENTER_1 1
+
+CONFIG LCAMCENTER_2 1
+
+CONFIG LCAMCENTER_3 1
+
+CONFIG LCAMCENTER_4 1
+
+CONFIG LCAMWOBBLE_1 0
+
+CONFIG LCAMWOBBLE_2 0
+
+CONFIG LCAMWOBBLE_3 0
+
+CONFIG LCAMWOBBLE_4 0
+
+CONFIG LCHAT_TOOLTIP 0 0 0 0 0 
+
+CONFIG LCLIENT_PORT 4534
+
+CONFIG LCM_LOCY -0.5
+
+CONFIG LCOLOR_B_1 0
+
+CONFIG LCOLOR_B_2 3
+
+CONFIG LCOLOR_B_3 3
+
+CONFIG LCOLOR_B_4 3
+
+CONFIG LCOLOR_G_1 15
+
+CONFIG LCOLOR_G_2 15
+
+CONFIG LCOLOR_G_3 3
+
+CONFIG LCOLOR_G_4 15
+
+CONFIG LCOLOR_R_1 0
+
+CONFIG LCOLOR_R_2 15
+
+CONFIG LCOLOR_R_3 15
+
+CONFIG LCOLOR_R_4 3
+
+CONFIG LCOLOR_STRINGS 1
+
+CONFIG LCONSOLE_COLUMNS 0
+
+CONFIG LCONSOLE_INDENT 3
+
+CONFIG LCONSOLE_LOG 0
+
+CONFIG LCONSOLE_ROWS 5
+
+CONFIG LCONSOLE_ROWS_MAX 19
+
+CONFIG LCUSTOM_SERVER_NAME 
+
+CONFIG LCYCLE_BRAKE_TOOLTIP 0 1 0 0 0 
+
+CONFIG LCYCLE_TURN_LEFT_TOOLTIP 0 2 1 1 1 
+
+CONFIG LCYCLE_TURN_RIGHT_TOOLTIP 0 3 1 1 1 
+
+CONFIG LDEFAULT_KICK_REASON 
+
+CONFIG LDEFAULT_KICK_TO_REASON 
+
+CONFIG LENABLE_FRIENDS 0
+
+CONFIG LEXPLOSION 1
+
+CONFIG LEXPLOSION_RADIUS 4
+
+CONFIG LFAILED_ATTEMPTS 0
+
+CONFIG LFASTEST_LOCX -0.2
+
+CONFIG LFASTEST_LOCY -0.95
+
+CONFIG LFASTEST_SIZE 0.13
+
+CONFIG LFAV_NUM_PER_TEAM_PLAYER_1 3
+
+CONFIG LFAV_NUM_PER_TEAM_PLAYER_2 3
+
+CONFIG LFAV_NUM_PER_TEAM_PLAYER_3 3
+
+CONFIG LFAV_NUM_PER_TEAM_PLAYER_4 3
+
+CONFIG LFILTER_COLOR_STRINGS 0
+
+CONFIG LFILTER_DARK_COLOR_STRINGS 0
+
+CONFIG LFINISH_TYPE 1
+
+CONFIG LFIRST_USE 0
+
+CONFIG LFRIEND_1 
+
+CONFIG LFRIEND_10 
+
+CONFIG LFRIEND_2 
+
+CONFIG LFRIEND_3 
+
+CONFIG LFRIEND_4 
+
+CONFIG LFRIEND_5 
+
+CONFIG LFRIEND_6 
+
+CONFIG LFRIEND_7 
+
+CONFIG LFRIEND_8 
+
+CONFIG LFRIEND_9 
+
+CONFIG LGAME_TIMEOUT 10
+
+CONFIG LGAME_TYPE 1
+
+CONFIG LGLANCE_BACK_TOOLTIP 0 1 1 1 1 
+
+CONFIG LGLANCE_LEFT_TOOLTIP 0 1 1 1 1 
+
+CONFIG LGLANCE_RIGHT_TOOLTIP 0 1 1 1 1 
+
+CONFIG LGL_EXTENSIONS GL_ARB_multisample\\ GL_EXT_abgr\\ GL_EXT_bgra\\ GL_EXT_blend_color\\ GL_EXT_blend_minmax\\ GL_EXT_blend_subtract\\ GL_EXT_copy_texture\\ GL_EXT_subtexture\\ GL_EXT_texture_object\\ GL_EXT_vertex_array\\ GL_EXT_compiled_vertex_array\\ GL_EXT_texture\\ GL_EXT_texture3D\\ GL_IBM_rasterpos_clip\\ GL_ARB_point_parameters\\ GL_EXT_draw_range_elements\\ GL_EXT_packed_pixels\\ GL_EXT_point_parameters\\ GL_EXT_rescale_normal\\ GL_EXT_separate_specular_color\\ GL_EXT_texture_edge_clamp\\ GL_SGIS_generate_mipmap\\ GL_SGIS_texture_border_clamp\\ GL_SGIS_texture_edge_clamp\\ GL_SGIS_texture_lod\\ GL_ARB_framebuffer_sRGB\\ GL_ARB_multitexture\\ GL_EXT_framebuffer_sRGB\\ GL_IBM_multimode_draw_arrays\\ GL_IBM_texture_mirrored_repeat\\ GL_3DFX_texture_compression_FXT1\\ GL_ARB_texture_cube_map\\ GL_ARB_texture_env_add\\ GL_ARB_transpose_matrix\\ GL_EXT_blend_func_separate\\ GL_EXT_fog_coord\\ GL_EXT_multi_draw_arrays\\ GL_EXT_secondary_color\\ GL_EXT_texture_env_add\\ GL_EXT_texture_filter_anisotropic\\ GL_EXT_texture_lod_bias\\ GL_INGR_blend_func_separate\\ GL_NV_blend_square\\ GL_NV_light_max_exponent\\ GL_NV_texgen_reflection\\ GL_NV_texture_env_combine4\\ GL_S3_s3tc\\ GL_SUN_multi_draw_arrays\\ GL_ARB_texture_border_clamp\\ GL_ARB_texture_compression\\ GL_EXT_framebuffer_object\\ GL_EXT_texture_compression_s3tc\\ GL_EXT_texture_env_combine\\ GL_EXT_texture_env_dot3\\ GL_MESA_window_pos\\ GL_NV_packed_depth_stencil\\ GL_NV_texture_rectangle\\ GL_ARB_depth_texture\\ GL_ARB_occlusion_query\\ GL_ARB_shadow\\ GL_ARB_texture_env_combine\\ GL_ARB_texture_env_crossbar\\ GL_ARB_texture_env_dot3\\ GL_ARB_texture_mirrored_repeat\\ GL_ARB_window_pos\\ GL_ATI_fragment_shader\\ GL_EXT_stencil_two_side\\ GL_EXT_texture_cube_map\\ GL_NV_copy_depth_to_color\\ GL_NV_depth_clamp\\ GL_NV_fog_distance\\ GL_NV_half_float\\ GL_APPLE_packed_pixels\\ GL_ARB_draw_buffers\\ GL_ARB_fragment_program\\ GL_ARB_fragment_shader\\ GL_ARB_shader_objects\\ GL_ARB_vertex_program\\ GL_ARB_vertex_shader\\ GL_ATI_draw_buffers\\ GL_ATI_texture_env_combine3\\ GL_ATI_texture_float\\ GL_EXT_shadow_funcs\\ GL_EXT_stencil_wrap\\ GL_MESA_pack_invert\\ GL_NV_primitive_restart\\ GL_ARB_depth_clamp\\ GL_ARB_fragment_program_shadow\\ GL_ARB_half_float_pixel\\ GL_ARB_occlusion_query2\\ GL_ARB_point_sprite\\ GL_ARB_shading_language_100\\ GL_ARB_sync\\ GL_ARB_texture_non_power_of_two\\ GL_ARB_vertex_buffer_object\\ GL_ATI_blend_equation_separate\\ GL_EXT_blend_equation_separate\\ GL_OES_read_format\\ GL_ARB_color_buffer_float\\ GL_ARB_pixel_buffer_object\\ GL_ARB_texture_compression_rgtc\\ GL_ARB_texture_float\\ GL_ARB_texture_rectangle\\ GL_ATI_texture_compression_3dc\\ GL_EXT_packed_float\\ GL_EXT_pixel_buffer_object\\ GL_EXT_texture_compression_dxt1\\ GL_EXT_texture_compression_rgtc\\ GL_EXT_texture_mirror_clamp\\ GL_EXT_texture_rectangle\\ GL_EXT_texture_sRGB\\ GL_EXT_texture_shared_exponent\\ GL_ARB_framebuffer_object\\ GL_EXT_framebuffer_blit\\ GL_EXT_framebuffer_multisample\\ GL_EXT_packed_depth_stencil\\ GL_ARB_vertex_array_object\\ GL_ATI_separate_stencil\\ GL_ATI_texture_mirror_once\\ GL_EXT_draw_buffers2\\ GL_EXT_draw_instanced\\ GL_EXT_gpu_program_parameters\\ GL_EXT_gpu_shader4\\ GL_EXT_texture_array\\ GL_EXT_texture_compression_latc\\ GL_EXT_texture_integer\\ GL_EXT_texture_sRGB_decode\\ GL_EXT_timer_query\\ GL_OES_EGL_image\\ GL_EXT_texture_buffer_object\\ GL_AMD_texture_texture4\\ GL_ARB_copy_buffer\\ GL_ARB_depth_buffer_float\\ GL_ARB_draw_instanced\\ GL_ARB_half_float_vertex\\ GL_ARB_instanced_arrays\\ GL_ARB_map_buffer_range\\ GL_ARB_texture_buffer_object\\ GL_ARB_texture_rg\\ GL_ARB_texture_swizzle\\ GL_ARB_vertex_array_bgra\\ GL_EXT_texture_swizzle\\ GL_EXT_vertex_array_bgra\\ GL_NV_conditional_render\\ GL_AMD_conservative_depth\\ GL_AMD_draw_buffers_blend\\ GL_AMD_seamless_cubemap_per_texture\\ GL_AMD_shader_stencil_export\\ GL_ARB_ES2_compatibility\\ GL_ARB_blend_func_extended\\ GL_ARB_compatibility\\ GL_ARB_debug_output\\ GL_ARB_draw_buffers_blend\\ GL_ARB_draw_elements_base_vertex\\ GL_ARB_explicit_attrib_location\\ GL_ARB_fragment_coord_conventions\\ GL_ARB_provoking_vertex\\ GL_ARB_sample_shading\\ GL_ARB_sampler_objects\\ GL_ARB_seamless_cube_map\\ GL_ARB_shader_stencil_export\\ GL_ARB_shader_texture_lod\\ GL_ARB_tessellation_shader\\ GL_ARB_texture_buffer_object_rgb32\\ GL_ARB_texture_cube_map_array\\ GL_ARB_texture_gather\\ GL_ARB_texture_multisample\\ GL_ARB_texture_query_lod\\ GL_ARB_texture_rgb10_a2ui\\ GL_ARB_uniform_buffer_object\\ GL_ARB_vertex_type_2_10_10_10_rev\\ GL_ATI_meminfo\\ GL_EXT_provoking_vertex\\ GL_EXT_texture_snorm\\ GL_EXT_texture_storage\\ GL_MESA_texture_signed_rgba\\ GL_NV_copy_image\\ GL_NV_texture_barrier\\ GL_ARB_draw_indirect\\ GL_ARB_get_program_binary\\ GL_ARB_gpu_shader5\\ GL_ARB_gpu_shader_fp64\\ GL_ARB_robustness\\ GL_ARB_separate_shader_objects\\ GL_ARB_shader_bit_encoding\\ GL_ARB_shader_precision\\ GL_ARB_shader_subroutine\\ GL_ARB_texture_compression_bptc\\ GL_ARB_timer_query\\ GL_ARB_transform_feedback2\\ GL_ARB_transform_feedback3\\ GL_ARB_vertex_attrib_64bit\\ GL_ARB_viewport_array\\ GL_EXT_direct_state_access\\ GL_EXT_vertex_attrib_64bit\\ GL_AMD_multi_draw_indirect\\ GL_ANGLE_texture_compression_dxt3\\ GL_ANGLE_texture_compression_dxt5\\ GL_ARB_base_instance\\ GL_ARB_compressed_texture_pixel_storage\\ GL_ARB_conservative_depth\\ GL_ARB_internalformat_query\\ GL_ARB_map_buffer_alignment\\ GL_ARB_shader_atomic_counters\\ GL_ARB_shader_image_load_store\\ GL_ARB_shading_language_420pack\\ GL_ARB_shading_language_packing\\ GL_ARB_texture_storage\\ GL_ARB_transform_feedback_instanced\\ GL_EXT_framebuffer_multisample_blit_scaled\\ GL_EXT_transform_feedback\\ GL_AMD_query_buffer_object\\ GL_AMD_shader_trinary_minmax\\ GL_AMD_vertex_shader_layer\\ GL_AMD_vertex_shader_viewport_index\\ GL_ARB_ES3_compatibility\\ GL_ARB_arrays_of_arrays\\ GL_ARB_clear_buffer_object\\ GL_ARB_compute_shader\\ GL_ARB_copy_image\\ GL_ARB_explicit_uniform_location\\ GL_ARB_fragment_layer_viewport\\ GL_ARB_framebuffer_no_attachments\\ GL_ARB_invalidate_subdata\\ GL_ARB_multi_draw_indirect\\ GL_ARB_program_interface_query\\ GL_ARB_robust_buffer_access_behavior\\ GL_ARB_shader_image_size\\ GL_ARB_shader_storage_buffer_object\\ GL_ARB_stencil_texturing\\ GL_ARB_texture_buffer_range\\ GL_ARB_texture_query_levels\\ GL_ARB_texture_storage_multisample\\ GL_ARB_texture_view\\ GL_ARB_vertex_attrib_binding\\ GL_KHR_debug\\ GL_KHR_robustness\\ GL_KHR_texture_compression_astc_ldr\\ GL_NV_shader_atomic_float\\ GL_AMD_pinned_memory\\ GL_ARB_buffer_storage\\ GL_ARB_clear_texture\\ GL_ARB_enhanced_layouts\\ GL_ARB_indirect_parameters\\ GL_ARB_internalformat_query2\\ GL_ARB_multi_bind\\ GL_ARB_query_buffer_object\\ GL_ARB_seamless_cubemap_per_texture\\ GL_ARB_shader_draw_parameters\\ GL_ARB_shader_group_vote\\ GL_ARB_shading_language_include\\ GL_ARB_texture_mirror_clamp_to_edge\\ GL_ARB_texture_stencil8\\ GL_ARB_vertex_type_10f_11f_11f_rev\\ GL_EXT_debug_label\\ GL_EXT_shader_framebuffer_fetch\\ GL_EXT_shader_integer_mix\\ GL_NVX_gpu_memory_info\\ GL_ARB_ES3_1_compatibility\\ GL_ARB_clip_control\\ GL_ARB_conditional_render_inverted\\ GL_ARB_cull_distance\\ GL_ARB_derivative_control\\ GL_ARB_direct_state_access\\ GL_ARB_get_texture_sub_image\\ GL_ARB_pipeline_statistics_query\\ GL_ARB_shader_texture_image_samples\\ GL_ARB_texture_barrier\\ GL_ARB_transform_feedback_overflow_query\\ GL_ARM_shader_framebuffer_fetch_depth_stencil\\ GL_EXT_polygon_offset_clamp\\ GL_EXT_shader_image_load_formatted\\ GL_KHR_blend_equation_advanced\\ GL_KHR_blend_equation_advanced_coherent\\ GL_KHR_context_flush_control\\ GL_KHR_robust_buffer_access_behavior\\ GL_ARB_ES3_2_compatibility\\ GL_ARB_gpu_shader_int64\\ GL_ARB_parallel_shader_compile\\ GL_ARB_post_depth_coverage\\ GL_ARB_shader_atomic_counter_ops\\ GL_ARB_shader_ballot\\ GL_ARB_shader_clock\\ GL_ARB_shader_viewport_layer_array\\ GL_ARB_texture_filter_minmax\\ GL_EXT_texture_filter_minmax\\ GL_EXT_texture_sRGB_R8\\ GL_EXT_texture_sRGB_RG8\\ GL_KHR_no_error\\ GL_KHR_texture_compression_astc_sliced_3d\\ GL_ARB_gl_spirv\\ GL_ARB_spirv_extensions\\ GL_MESA_shader_integer_functions\\ GL_ARB_polygon_offset_clamp\\ GL_ARB_texture_filter_anisotropic\\ GL_EXT_memory_object\\ GL_EXT_memory_object_fd\\ GL_KHR_parallel_shader_compile\\ GL_NV_alpha_to_coverage_dither_control\\ GL_EXT_EGL_image_storage\\ GL_EXT_shader_framebuffer_fetch_non_coherent\\ GL_EXT_texture_shadow_lod\\ GL_INTEL_shader_atomic_float_minmax\\ GL_MESA_framebuffer_flip_y\\ GL_OVR_multiview\\ GL_OVR_multiview2\\ GL_EXT_EGL_sync\\ GL_EXT_EGL_image_storage_compression\\ GL_NV_ES1_1_compatibility\\ GL_EXT_shader_clock\\ 
+
+CONFIG LGL_RENDERER llvmpipe\\ (LLVM\\ 20.1.2,\\ 256\\ bits)
+
+CONFIG LGL_VENDOR Mesa
+
+CONFIG LGL_VERSION 4.5\\ (Compatibility\\ Profile)\\ Mesa\\ 25.2.8-0ubuntu0.24.04.4
+
+CONFIG LHASH_METHOD_BLACKLIST bmd5
+
+CONFIG LHELP_INTRODUCTORY_BLURB 
+
+CONFIG LHIDE_IDENTITY_1 0
+
+CONFIG LHIDE_IDENTITY_2 0
+
+CONFIG LHIDE_IDENTITY_3 0
+
+CONFIG LHIDE_IDENTITY_4 0
+
+CONFIG LHUD_MAX_WIDTH 1.33333
+
+CONFIG LINGAME_MENU_TOOLTIP 1 0 0 0 0 
+
+CONFIG LINSTANT_CHAT_STRING_1_1 /team\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_1_10 Rubber\\ kills\\ gameplay!
+
+CONFIG LINSTANT_CHAT_STRING_1_11 Every\\ time\\ you\\ double\\ bind,\\ God\\ kills\\ a\\ kitten.
+
+CONFIG LINSTANT_CHAT_STRING_1_12 http://www.armagetronad.net
+
+CONFIG LINSTANT_CHAT_STRING_1_13 Only\\ idiots\\ keep\\ their\\ instant\\ chat\\ at\\ default\\ values.
+
+CONFIG LINSTANT_CHAT_STRING_1_14 /me\\ wanted\\ to\\ download\\ pr0n,\\ but\\ only\\ got\\ this\\ stupid\\ game.
+
+CONFIG LINSTANT_CHAT_STRING_1_15 Speed\\ for\\ weaks!
+
+CONFIG LINSTANT_CHAT_STRING_1_16 This\\ server\\ sucks!\\ I\\'m\\ going\\ home.
+
+CONFIG LINSTANT_CHAT_STRING_1_17 Grind\\ EVERYTHING!\\ And\\ 180\\ some\\ more!
+
+CONFIG LINSTANT_CHAT_STRING_1_18 Look\\ ma,\\ no\\ left\\ turns!
+
+CONFIG LINSTANT_CHAT_STRING_1_19 Ah,\\ a\\ nice,\\ big,\\ roomy\\ box\\ all\\ for\\ me!
+
+CONFIG LINSTANT_CHAT_STRING_1_2 /msg\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_1_20 Go\\ that\\ way!\\ No,\\ the\\ other\\ way!
+
+CONFIG LINSTANT_CHAT_STRING_1_21 WD!\\ No\\ points!
+
+CONFIG LINSTANT_CHAT_STRING_1_22 /me\\ is\\ a\\ noob.
+
+CONFIG LINSTANT_CHAT_STRING_1_23 /me\\ just\\ installed\\ this\\ game\\ and\\ still\\ doesn\\'t\\ know\\ how\\ to\\ talk.
+
+CONFIG LINSTANT_CHAT_STRING_1_24 /team\\ You\\ all\\ suck,\\ I\\ want\\ a\\ new\\ team.
+
+CONFIG LINSTANT_CHAT_STRING_1_25 Are\\ you\\ the\\ real\\ \\"Player\\ 1\\"?
+
+CONFIG LINSTANT_CHAT_STRING_1_3 /me\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_1_4 LOL!
+
+CONFIG LINSTANT_CHAT_STRING_1_5 /team\\ 1\\ Yes\\ Oui\\ Ja
+
+CONFIG LINSTANT_CHAT_STRING_1_6 /team\\ 0\\ No\\ Non\\ Nein
+
+CONFIG LINSTANT_CHAT_STRING_1_7 /team\\ I\\'m\\ going\\ in!
+
+CONFIG LINSTANT_CHAT_STRING_1_8 Give\\ the\\ rim\\ a\\ break;\\ hug\\ a\\ tree\\ instead.
+
+CONFIG LINSTANT_CHAT_STRING_1_9 Lag\\ is\\ a\\ myth.\\ It\\ is\\ only\\ in\\ your\\ brain.
+
+CONFIG LINSTANT_CHAT_STRING_2_1 /team\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_2_10 Rubber\\ kills\\ gameplay!
+
+CONFIG LINSTANT_CHAT_STRING_2_11 Every\\ time\\ you\\ double\\ bind,\\ God\\ kills\\ a\\ kitten.
+
+CONFIG LINSTANT_CHAT_STRING_2_12 http://www.armagetronad.net
+
+CONFIG LINSTANT_CHAT_STRING_2_13 Only\\ idiots\\ keep\\ their\\ instant\\ chat\\ at\\ default\\ values.
+
+CONFIG LINSTANT_CHAT_STRING_2_14 /me\\ wanted\\ to\\ download\\ pr0n,\\ but\\ only\\ got\\ this\\ stupid\\ game.
+
+CONFIG LINSTANT_CHAT_STRING_2_15 Speed\\ for\\ weaks!
+
+CONFIG LINSTANT_CHAT_STRING_2_16 This\\ server\\ sucks!\\ I\\'m\\ going\\ home.
+
+CONFIG LINSTANT_CHAT_STRING_2_17 Grind\\ EVERYTHING!\\ And\\ 180\\ some\\ more!
+
+CONFIG LINSTANT_CHAT_STRING_2_18 Look\\ ma,\\ no\\ left\\ turns!
+
+CONFIG LINSTANT_CHAT_STRING_2_19 Ah,\\ a\\ nice,\\ big,\\ roomy\\ box\\ all\\ for\\ me!
+
+CONFIG LINSTANT_CHAT_STRING_2_2 /msg\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_2_20 Go\\ that\\ way!\\ No,\\ the\\ other\\ way!
+
+CONFIG LINSTANT_CHAT_STRING_2_21 WD!\\ No\\ points!
+
+CONFIG LINSTANT_CHAT_STRING_2_22 /me\\ is\\ a\\ noob.
+
+CONFIG LINSTANT_CHAT_STRING_2_23 /me\\ just\\ installed\\ this\\ game\\ and\\ still\\ doesn\\'t\\ know\\ how\\ to\\ talk.
+
+CONFIG LINSTANT_CHAT_STRING_2_24 /team\\ You\\ all\\ suck,\\ I\\ want\\ a\\ new\\ team.
+
+CONFIG LINSTANT_CHAT_STRING_2_25 Are\\ you\\ the\\ real\\ \\"Player\\ 1\\"?
+
+CONFIG LINSTANT_CHAT_STRING_2_3 /me\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_2_4 LOL!
+
+CONFIG LINSTANT_CHAT_STRING_2_5 /team\\ 1\\ Yes\\ Oui\\ Ja
+
+CONFIG LINSTANT_CHAT_STRING_2_6 /team\\ 0\\ No\\ Non\\ Nein
+
+CONFIG LINSTANT_CHAT_STRING_2_7 /team\\ I\\'m\\ going\\ in!
+
+CONFIG LINSTANT_CHAT_STRING_2_8 Give\\ the\\ rim\\ a\\ break;\\ hug\\ a\\ tree\\ instead.
+
+CONFIG LINSTANT_CHAT_STRING_2_9 Lag\\ is\\ a\\ myth.\\ It\\ is\\ only\\ in\\ your\\ brain.
+
+CONFIG LINSTANT_CHAT_STRING_3_1 /team\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_3_10 Rubber\\ kills\\ gameplay!
+
+CONFIG LINSTANT_CHAT_STRING_3_11 Every\\ time\\ you\\ double\\ bind,\\ God\\ kills\\ a\\ kitten.
+
+CONFIG LINSTANT_CHAT_STRING_3_12 http://www.armagetronad.net
+
+CONFIG LINSTANT_CHAT_STRING_3_13 Only\\ idiots\\ keep\\ their\\ instant\\ chat\\ at\\ default\\ values.
+
+CONFIG LINSTANT_CHAT_STRING_3_14 /me\\ wanted\\ to\\ download\\ pr0n,\\ but\\ only\\ got\\ this\\ stupid\\ game.
+
+CONFIG LINSTANT_CHAT_STRING_3_15 Speed\\ for\\ weaks!
+
+CONFIG LINSTANT_CHAT_STRING_3_16 This\\ server\\ sucks!\\ I\\'m\\ going\\ home.
+
+CONFIG LINSTANT_CHAT_STRING_3_17 Grind\\ EVERYTHING!\\ And\\ 180\\ some\\ more!
+
+CONFIG LINSTANT_CHAT_STRING_3_18 Look\\ ma,\\ no\\ left\\ turns!
+
+CONFIG LINSTANT_CHAT_STRING_3_19 Ah,\\ a\\ nice,\\ big,\\ roomy\\ box\\ all\\ for\\ me!
+
+CONFIG LINSTANT_CHAT_STRING_3_2 /msg\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_3_20 Go\\ that\\ way!\\ No,\\ the\\ other\\ way!
+
+CONFIG LINSTANT_CHAT_STRING_3_21 WD!\\ No\\ points!
+
+CONFIG LINSTANT_CHAT_STRING_3_22 /me\\ is\\ a\\ noob.
+
+CONFIG LINSTANT_CHAT_STRING_3_23 /me\\ just\\ installed\\ this\\ game\\ and\\ still\\ doesn\\'t\\ know\\ how\\ to\\ talk.
+
+CONFIG LINSTANT_CHAT_STRING_3_24 /team\\ You\\ all\\ suck,\\ I\\ want\\ a\\ new\\ team.
+
+CONFIG LINSTANT_CHAT_STRING_3_25 Are\\ you\\ the\\ real\\ \\"Player\\ 1\\"?
+
+CONFIG LINSTANT_CHAT_STRING_3_3 /me\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_3_4 LOL!
+
+CONFIG LINSTANT_CHAT_STRING_3_5 /team\\ 1\\ Yes\\ Oui\\ Ja
+
+CONFIG LINSTANT_CHAT_STRING_3_6 /team\\ 0\\ No\\ Non\\ Nein
+
+CONFIG LINSTANT_CHAT_STRING_3_7 /team\\ I\\'m\\ going\\ in!
+
+CONFIG LINSTANT_CHAT_STRING_3_8 Give\\ the\\ rim\\ a\\ break;\\ hug\\ a\\ tree\\ instead.
+
+CONFIG LINSTANT_CHAT_STRING_3_9 Lag\\ is\\ a\\ myth.\\ It\\ is\\ only\\ in\\ your\\ brain.
+
+CONFIG LINSTANT_CHAT_STRING_4_1 /team\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_4_10 Rubber\\ kills\\ gameplay!
+
+CONFIG LINSTANT_CHAT_STRING_4_11 Every\\ time\\ you\\ double\\ bind,\\ God\\ kills\\ a\\ kitten.
+
+CONFIG LINSTANT_CHAT_STRING_4_12 http://www.armagetronad.net
+
+CONFIG LINSTANT_CHAT_STRING_4_13 Only\\ idiots\\ keep\\ their\\ instant\\ chat\\ at\\ default\\ values.
+
+CONFIG LINSTANT_CHAT_STRING_4_14 /me\\ wanted\\ to\\ download\\ pr0n,\\ but\\ only\\ got\\ this\\ stupid\\ game.
+
+CONFIG LINSTANT_CHAT_STRING_4_15 Speed\\ for\\ weaks!
+
+CONFIG LINSTANT_CHAT_STRING_4_16 This\\ server\\ sucks!\\ I\\'m\\ going\\ home.
+
+CONFIG LINSTANT_CHAT_STRING_4_17 Grind\\ EVERYTHING!\\ And\\ 180\\ some\\ more!
+
+CONFIG LINSTANT_CHAT_STRING_4_18 Look\\ ma,\\ no\\ left\\ turns!
+
+CONFIG LINSTANT_CHAT_STRING_4_19 Ah,\\ a\\ nice,\\ big,\\ roomy\\ box\\ all\\ for\\ me!
+
+CONFIG LINSTANT_CHAT_STRING_4_2 /msg\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_4_20 Go\\ that\\ way!\\ No,\\ the\\ other\\ way!
+
+CONFIG LINSTANT_CHAT_STRING_4_21 WD!\\ No\\ points!
+
+CONFIG LINSTANT_CHAT_STRING_4_22 /me\\ is\\ a\\ noob.
+
+CONFIG LINSTANT_CHAT_STRING_4_23 /me\\ just\\ installed\\ this\\ game\\ and\\ still\\ doesn\\'t\\ know\\ how\\ to\\ talk.
+
+CONFIG LINSTANT_CHAT_STRING_4_24 /team\\ You\\ all\\ suck,\\ I\\ want\\ a\\ new\\ team.
+
+CONFIG LINSTANT_CHAT_STRING_4_25 Are\\ you\\ the\\ real\\ \\"Player\\ 1\\"?
+
+CONFIG LINSTANT_CHAT_STRING_4_3 /me\\ \\
+
+CONFIG LINSTANT_CHAT_STRING_4_4 LOL!
+
+CONFIG LINSTANT_CHAT_STRING_4_5 /team\\ 1\\ Yes\\ Oui\\ Ja
+
+CONFIG LINSTANT_CHAT_STRING_4_6 /team\\ 0\\ No\\ Non\\ Nein
+
+CONFIG LINSTANT_CHAT_STRING_4_7 /team\\ I\\'m\\ going\\ in!
+
+CONFIG LINSTANT_CHAT_STRING_4_8 Give\\ the\\ rim\\ a\\ break;\\ hug\\ a\\ tree\\ instead.
+
+CONFIG LINSTANT_CHAT_STRING_4_9 Lag\\ is\\ a\\ myth.\\ It\\ is\\ only\\ in\\ your\\ brain.
+
+CONFIG LKEYBOARD 332	PLAYER_BIND	ZOOM_IN	1
+
+CONFIG LKEYBOARD	327	PLAYER_BIND	BANK_DOWN	1
+
+CONFIG LKEYBOARD	326	PLAYER_BIND	BANK_UP	1
+
+CONFIG LKEYBOARD	325	PLAYER_BIND	LOOK_LEFT	1
+
+CONFIG LKEYBOARD	324	PLAYER_BIND	LOOK_RIGHT	1
+
+CONFIG LKEYBOARD	319	PLAYER_BIND	TOGGLE_FULLSCREEN	0
+
+CONFIG LKEYBOARD	316	PLAYER_BIND	SCREENSHOT	0
+
+CONFIG LKEYBOARD	294	PLAYER_BIND	SCREENSHOT	0
+
+CONFIG LKEYBOARD	293	PLAYER_BIND	INSTANT_CHAT_12	1
+
+CONFIG LKEYBOARD	292	PLAYER_BIND	INSTANT_CHAT_11	1
+
+CONFIG LKEYBOARD	291	PLAYER_BIND	INSTANT_CHAT_10	1
+
+CONFIG LKEYBOARD	290	PLAYER_BIND	INSTANT_CHAT_9	1
+
+CONFIG LKEYBOARD	289	PLAYER_BIND	INSTANT_CHAT_8	1
+
+CONFIG LKEYBOARD	288	PLAYER_BIND	INSTANT_CHAT_7	1
+
+CONFIG LKEYBOARD	287	PLAYER_BIND	INSTANT_CHAT_6	1
+
+CONFIG LKEYBOARD	286	PLAYER_BIND	INSTANT_CHAT_5	1
+
+CONFIG LKEYBOARD	285	PLAYER_BIND	INSTANT_CHAT_4	1
+
+CONFIG LKEYBOARD	284	PLAYER_BIND	INSTANT_CHAT_3	1
+
+CONFIG LKEYBOARD	283	PLAYER_BIND	INSTANT_CHAT_2	1
+
+CONFIG LKEYBOARD	282	PLAYER_BIND	INSTANT_CHAT_1	1
+
+CONFIG LKEYBOARD	281	PLAYER_BIND	MESS_DOWN	0
+
+CONFIG LKEYBOARD	280	PLAYER_BIND	MESS_UP	0
+
+CONFIG LKEYBOARD	279	PLAYER_BIND	MESS_END	0
+
+CONFIG LKEYBOARD	278	PLAYER_BIND	TOGGLE_SPECTATOR	1
+
+CONFIG LKEYBOARD	271	PLAYER_BIND	CHAT	1
+
+CONFIG LKEYBOARD	270	PLAYER_BIND	MOVE_DOWN	1
+
+CONFIG LKEYBOARD	269	PLAYER_BIND	MOVE_UP	1
+
+CONFIG LKEYBOARD	266	PLAYER_BIND	GLANCE_RIGHT	1
+
+CONFIG LKEYBOARD	262	PLAYER_BIND	LOOK_RIGHT	1
+
+CONFIG LKEYBOARD	261	PLAYER_BIND	MOVE_FORWARD	1
+
+CONFIG LKEYBOARD	260	PLAYER_BIND	LOOK_LEFT	1
+
+CONFIG LKEYBOARD	259	PLAYER_BIND	MOVE_RIGHT	1
+
+CONFIG LKEYBOARD	258	PLAYER_BIND	MOVE_BACK	1
+
+CONFIG LKEYBOARD	257	PLAYER_BIND	MOVE_LEFT	1
+
+CONFIG LKEYBOARD	256	PLAYER_BIND	GLANCE_LEFT	1
+
+CONFIG LKEYBOARD	116	PLAYER_BIND	INSTANT_CHAT_1	1
+
+CONFIG LKEYBOARD	112	PLAYER_BIND	PAUSE_GAME	0
+
+CONFIG LKEYBOARD	110	PLAYER_BIND	TOGGLE_FULLSCREEN	0
+
+CONFIG LKEYBOARD	102	PLAYER_BIND	TOGGLE_FULLSCREEN	0
+
+CONFIG LKEYBOARD	98	PLAYER_BIND	TOGGLE_SPECTATOR	1
+
+CONFIG LKEYBOARD	96	PLAYER_BIND	CONSOLE_INPUT	0
+
+CONFIG LKEYBOARD	94	PLAYER_BIND	CONSOLE_INPUT	0
+
+CONFIG LKEYBOARD	61	PLAYER_BIND	INSTANT_CHAT_24	1
+
+CONFIG LKEYBOARD	57	PLAYER_BIND	INSTANT_CHAT_21	1
+
+CONFIG LKEYBOARD	56	PLAYER_BIND	INSTANT_CHAT_20	1
+
+CONFIG LKEYBOARD	55	PLAYER_BIND	INSTANT_CHAT_19	1
+
+CONFIG LKEYBOARD	54	PLAYER_BIND	INSTANT_CHAT_18	1
+
+CONFIG LKEYBOARD	53	PLAYER_BIND	INSTANT_CHAT_17	1
+
+CONFIG LKEYBOARD	52	PLAYER_BIND	INSTANT_CHAT_16	1
+
+CONFIG LKEYBOARD	51	PLAYER_BIND	INSTANT_CHAT_15	1
+
+CONFIG LKEYBOARD	50	PLAYER_BIND	INSTANT_CHAT_14	1
+
+CONFIG LKEYBOARD	49	PLAYER_BIND	INSTANT_CHAT_13	1
+
+CONFIG LKEYBOARD	48	PLAYER_BIND	INSTANT_CHAT_22	1
+
+CONFIG LKEYBOARD	45	PLAYER_BIND	INSTANT_CHAT_23	1
+
+CONFIG LKEYBOARD	27	PLAYER_BIND	INGAME_MENU	0
+
+CONFIG LKEYBOARD	19	PLAYER_BIND	PAUSE_GAME	0
+
+CONFIG LKEYBOARD	13	PLAYER_BIND	CHAT	1
+
+CONFIG LKEYBOARD	9	PLAYER_BIND	SCORE	0
+
+CONFIG LKEYBOARD	8	PLAYER_BIND	INSTANT_CHAT_25	1
+
+CONFIG LLANGUAGE_FIRST American\\ English
+
+CONFIG LLANGUAGE_SECOND American\\ English
+
+CONFIG LMAX_FPS 60
+
+CONFIG LMAX_IN_RATE 32
+
+CONFIG LMAX_OUT_RATE 16
+
+CONFIG LMESSAGE_OF_DAY 
+
+CONFIG LMIN_PLAYERS 4
+
+CONFIG LMOVIEPACK 1
+
+CONFIG LNAME_TEAM_AFTER_PLAYER_1 0
+
+CONFIG LNAME_TEAM_AFTER_PLAYER_2 0
+
+CONFIG LNAME_TEAM_AFTER_PLAYER_3 0
+
+CONFIG LNAME_TEAM_AFTER_PLAYER_4 0
+
+CONFIG LNUM_AIS 0
+
+CONFIG LPING_CHARITY 100
+
+CONFIG LPING_LOCX 0.8
+
+CONFIG LPING_LOCY -0.95
+
+CONFIG LPING_SIZE 0.13
+
+CONFIG LPLAYER_1 Player\\ 1
+
+CONFIG LPLAYER_2 Player\\ 2
+
+CONFIG LPLAYER_3 Player\\ 3
+
+CONFIG LPLAYER_4 Player\\ 4
+
+CONFIG LPLAYER_LIST_HIDDEN_PLAYER_PREFIX 0xaaaaaa
+
+CONFIG LPLAY_TIME_ONLINE 0
+
+CONFIG LPLAY_TIME_TEAM 0
+
+CONFIG LPLAY_TIME_TOTAL 0.387868
+
+CONFIG LPREDICT_OBJECTS 0
+
+CONFIG LROUND_CENTER_MESSAGE 
+
+CONFIG LROUND_CONSOLE_MESSAGE 
+
+CONFIG LRUBBER_GAUGE_LOCX -0.48
+
+CONFIG LRUBBER_GAUGE_LOCY -0.9
+
+CONFIG LRUBBER_GAUGE_SIZE 0.175
+
+CONFIG LSAVED_IN_VERSION 0.2.9.3_alpha_z3274_20261115
+
+CONFIG LSCORE_LOCX -0.95
+
+CONFIG LSCORE_LOCY -0.85
+
+CONFIG LSCORE_SIZE 0.13
+
+CONFIG LSERVER_DNS 
+
+CONFIG LSERVER_IP ANY
+
+CONFIG LSERVER_NAME Unnamed\\ Server
+
+CONFIG LSERVER_PORT 4534
+
+CONFIG LSHOW_ALIVE 1
+
+CONFIG LSHOW_BRAKE 1
+
+CONFIG LSHOW_FASTEST 1
+
+CONFIG LSHOW_HUD 1
+
+CONFIG LSHOW_OWN_IP 0
+
+CONFIG LSHOW_PING 1
+
+CONFIG LSHOW_RUBBER 1
+
+CONFIG LSHOW_SCORE 1
+
+CONFIG LSHOW_SPEED 1
+
+CONFIG LSHOW_TIME 0
+
+CONFIG LSHOW_TIME_24 0
+
+CONFIG LSIMPLE_TRAIL 0
+
+CONFIG LSIZE_FACTOR -3
+
+CONFIG LSMART_GLANCE_CUSTOM_1 1
+
+CONFIG LSMART_GLANCE_CUSTOM_2 1
+
+CONFIG LSMART_GLANCE_CUSTOM_3 1
+
+CONFIG LSMART_GLANCE_CUSTOM_4 1
+
+CONFIG LSOFTWARE_RENDERER 0
+
+CONFIG LSPARKS 1
+
+CONFIG LSPECTATOR_MODE_1 0
+
+CONFIG LSPECTATOR_MODE_2 0
+
+CONFIG LSPECTATOR_MODE_3 0
+
+CONFIG LSPECTATOR_MODE_4 0
+
+CONFIG LSPEED_FACTOR 0
+
+CONFIG LSPEED_GAUGE_LOCX 0
+
+CONFIG LSPEED_GAUGE_LOCY -0.9
+
+CONFIG LSPEED_GAUGE_SIZE 0.175
+
+CONFIG LSP_AI_IQ 30
+
+CONFIG LSP_AUTO_AIS 1
+
+CONFIG LSP_AUTO_IQ 1
+
+CONFIG LSP_EXPLOSION_RADIUS 4
+
+CONFIG LSP_FINISH_TYPE 1
+
+CONFIG LSP_GAME_TYPE 1
+
+CONFIG LSP_MIN_PLAYERS 0
+
+CONFIG LSP_NUM_AIS 10
+
+CONFIG LSP_SIZE_FACTOR 2
+
+CONFIG LSP_SPEED_FACTOR 0
+
+CONFIG LSP_TEAMS_MAX 16
+
+CONFIG LSP_TEAMS_MIN 1
+
+CONFIG LSP_TEAM_BALANCE_ON_QUIT 0
+
+CONFIG LSP_TEAM_BALANCE_WITH_AIS 1
+
+CONFIG LSP_TEAM_MAX_IMBALANCE 1
+
+CONFIG LSP_TEAM_MAX_PLAYERS 10
+
+CONFIG LSP_TEAM_MIN_PLAYERS 1
+
+CONFIG LSP_WALLS_LENGTH 1000
+
+CONFIG LSP_WALLS_STAY_UP_DELAY 600
+
+CONFIG LSP_WIN_ZONE_MIN_LAST_DEATH 1e+06
+
+CONFIG LSP_WIN_ZONE_MIN_ROUND_TIME 100000
+
+CONFIG LSTART_CAM_1 1
+
+CONFIG LSTART_CAM_2 1
+
+CONFIG LSTART_CAM_3 1
+
+CONFIG LSTART_CAM_4 1
+
+CONFIG LSTART_FOV_1 90
+
+CONFIG LSTART_FOV_2 90
+
+CONFIG LSTART_FOV_3 90
+
+CONFIG LSTART_FOV_4 90
+
+CONFIG LSWAP_MODE 1
+
+CONFIG LSWITCH_VIEW_TOOLTIP 0 2 1 1 1 
+
+CONFIG LTEAMS_MAX 16
+
+CONFIG LTEAMS_MIN 2
+
+CONFIG LTEAM_BALANCE_ON_QUIT 0
+
+CONFIG LTEAM_BALANCE_WITH_AIS 1
+
+CONFIG LTEAM_MAX_IMBALANCE 1
+
+CONFIG LTEAM_MAX_PLAYERS 10
+
+CONFIG LTEAM_MIN_PLAYERS 1
+
+CONFIG LTITLE_OF_DAY 
+
+CONFIG LTOGGLE_SPECTATOR_TOOLTIP 0 0 0 0 0 
+
+CONFIG LUSER_1 @forums
+
+CONFIG LUSER_2 @forums
+
+CONFIG LUSER_3 @forums
+
+CONFIG LUSER_4 @forums
+
+CONFIG LVIEWPORT_CONF 0
+
+CONFIG LVIEWPORT_TO_PLAYER_1 0
+
+CONFIG LVIEWPORT_TO_PLAYER_2 1
+
+CONFIG LVIEWPORT_TO_PLAYER_3 2
+
+CONFIG LVIEWPORT_TO_PLAYER_4 3
+
+CONFIG LVOTE_KICK_REASON 
+
+CONFIG LWALLS_LENGTH -1
+
+CONFIG LWALLS_STAY_UP_DELAY 2
+
+CONFIG LWHITE_SPARKS 0
+
+CONFIG LWIN_ZONE_MIN_LAST_DEATH 30
+
+CONFIG LWIN_ZONE_MIN_ROUND_TIME 60
+
+CONFIG LWORD_DELIMITERS !?.:;_()-,\\ 
+
+CONFIG LWRAP_MENU 1
+
+CONFIG LRESOURCE_REPOSITORY_SERVER	http://resource.armagetronad.net/resource/ # default resource repository, determined by the server
+
+CONFIG LRESOURCE_REPOSITORY_CLIENT	http://resource.armagetronad.net/resource/ # fallback resource repository determined on the client (no use changing it on the server)
+
+CONFIG LARENA_AXES 4                                          # sets the number of possible driving directions (used only when map is axes-independent)
+
+CONFIG LMAP_FILE    Anonymous/polygon/regular/square-1.0.1.aamap.xml   # sets the file path for the map, and if required, the URI to download the map from, in parenthesis
+
+CONFIG LBACKWARD_COMPATIBILITY 1000 # Maximum number of network protocol versions backward compatibility ( will be clamped to maximal supported value; set to zero to not accept logins from older clients )
+
+CONFIG LNEW_FEATURE_DELAY 0         # Disable features that only came in during the last X protocol versions.
+
+CONFIG LMIN_PROTOCOL_VERSION 0      # Minimum protocol version allowed to play.
+
+CONFIG LMAX_PROTOCOL_VERSION 0      # If > 0, maximum protocol version allowed to play; features not supported by this version are going to be permanently disabled.
+
+CONFIG LMAX_CLIENTS 16              # maximum number of clients that can connect to this machine
+
+CONFIG LMAX_CLIENTS_SAME_IP_SOFT 4  # maximum number of clients from the same IP (soft limit, more users from the same IP will be kicked when the server is full and someone new connects)
+
+CONFIG LMAX_CLIENTS_SAME_IP_HARD 8  # maximum number of clients from the same IP (hard limit, more logins will be ignored)
+
+CONFIG LMAX_PLAYERS_SAME_IP      4  # maximum number of players from the same IP (note that each client can legally host up to four players)
+
+CONFIG LNETWORK_MIN_BAN          120 # when a banned client tries to connect, update the remaining ban-time to be at least this many seconds 
+
+CONFIG LNETWORK_AUTOBAN_FACTOR   10  
+
+CONFIG LNETWORK_AUTOBAN_OFFSET   5
+
+CONFIG LNETWORK_AUTOBAN_MAX_KPH  30  # maximal value the kicks per hour can actually have (influences the measurement process )
+
+CONFIG LNETWORK_SPECTATOR_TIME  0    # if > 0, this is the maximal time in seconds a client without players is tolerated
+
+CONFIG LALLOW_ENEMIES_SAME_IP     0  # if set to 1, this allows two players that apparently come from the same machine to fight for points with each other
+
+CONFIG LALLOW_ENEMIES_SAME_CLIENT 0  # if set to 1, this allows two players that play on the same client to fight for points with each other
+
+CONFIG LALLOW_CONTROL_DURING_CHAT 0  # if set to 1, this allows a player to issue cycle and camera control commands during chat (losing the chatbot and the yellow chat pyramid). This feature was buggy and has been disabled for 0.2.8.0.
+
+CONFIG LALLOW_IMPOSTERS 0            # allow two players to have the same name
+
+CONFIG LTIMEBOT_SENSITIVITY 1.0      # The sensitivity of the timebot detection code. 1.0 is the default and you 
+
+CONFIG LTIMEBOT_KICK_SEVERITY .5     # If players get kicked by the timebot detection, it's done with this severity level.
+
+CONFIG LTIMEBOT_ACTION_MEDIUM 1      # Action to take on a medium suspicion of timebottery. 0: do nothing, 1: log it, 2: message moderators, 3: message all players, 4: kick the offending player.
+
+CONFIG LTIMEBOT_ACTION_HIGH 1        # Action to take on a high suspicion of timebottery. 0: do nothing, 1: log it, 2: message moderators, 3: message all players, 4: kick the offending player.
+
+CONFIG LTIMEBOT_ACTION_MAX 1         # Action to take on a very high suspicion of timebottery. 0: do nothing, 1: log it, 2: message moderators, 3: message all players, 4: kick the offending player.
+
+CONFIG LCYCLE_TURN_MEMORY 3         # number of pending turn commands a cycle memorizes before opposing turns cancel each other
+
+CONFIG LCYCLE_SPEED 30.0            # basic cycle speed (m/s)
+
+CONFIG LCYCLE_SPEED_MIN .25         # minimal cycle speed as ratio to CYCLE_SPEED
+
+CONFIG LCYCLE_SPEED_DECAY_BELOW 5.0 # rate of cycle speed approaching the value of CYCLE_SPEED from below
+
+CONFIG LCYCLE_SPEED_DECAY_ABOVE .1  # rate of cycle speed approaching the value of CYCLE_SPEED from above
+
+CONFIG LCYCLE_START_SPEED 20.0      # speed at startup
+
+CONFIG LCYCLE_ACCEL 10.0            # wall acceleration multiplicator
+
+CONFIG LCYCLE_ACCEL_SELF 1.0        # multiplicator to CYCLE_ACCEL for your own wall
+
+CONFIG LCYCLE_ACCEL_TEAM 1.0        # multiplicator to CYCLE_ACCEL for your temmates' walls
+
+CONFIG LCYCLE_ACCEL_ENEMY 1.0       # multiplicator to CYCLE_ACCEL for your enemies' walls
+
+CONFIG LCYCLE_ACCEL_RIM 0.0         # multiplicator to CYCLE_ACCEL for the rim walls
+
+CONFIG LCYCLE_ACCEL_SLINGSHOT 1.0   # multiplicator to CYCLE_ACCEL if you're between your wall and another wall
+
+CONFIG LCYCLE_ACCEL_TUNNEL 1.0      # multiplicator to CYCLE_ACCEL if you're between two walls that are not your own
+
+CONFIG LCYCLE_ACCEL_OFFSET 2.0      # acceleration offset. Must be positive or smaller than -CYCLE_WALL_NEAR, otherwise there is a risk of a division by zero.
+
+CONFIG LCYCLE_WALL_NEAR 6.0         # the distance from a wall below which wall-acceleration kicks in
+
+CONFIG LCYCLE_SOUND_SPEED 30.0      # sound speed divisor 
+
+CONFIG LCYCLE_BRAKE 30.0            # deceleration by braking (set to zero to disable brakes and to a negative value to turn brakes into a turbo)
+
+CONFIG LCYCLE_BOOST_SELF     0.0      # Speed boost when breaking from your own wall
+
+CONFIG LCYCLE_BOOST_TEAM     0.0      # Speed boost when breaking from a teammate's wall
+
+CONFIG LCYCLE_BOOST_ENEMY    0.0      # Speed boost when breaking from an enemy wall
+
+CONFIG LCYCLE_BOOST_RIM      0.0      # Speed boost when breaking from the rim wall
+
+CONFIG LCYCLE_BOOSTFACTOR_SELF   1.0  # Factor your speed is multiplied with when breaking from your own wall
+
+CONFIG LCYCLE_BOOSTFACTOR_TEAM   1.0  # Factor your speed is multiplied with when breaking from a teammate's wall
+
+CONFIG LCYCLE_BOOSTFACTOR_ENEMY  1.0  # Factor your speed is multiplied with when breaking from an enemy wall
+
+CONFIG LCYCLE_BOOSTFACTOR_RIM    1.0  # Factor your speed is multiplied with when breaking from the rim wall
+
+CONFIG LCYCLE_DELAY  .1             # minimum time between turns in seconds. Never enable the topology police if this is set lower than 0.001. Only values bigger than zero are supported.
+
+CONFIG LCYCLE_DELAY_TIMEBASED 1.0   # turn delays will be based on the time since the last turn if this is set to 1 (default) and the distance if this is set to 0. Intermediate values and values out of these bounds are supported as well.
+
+CONFIG LCYCLE_TURN_SPEED_FACTOR .95 # at every turn a cycle's speed is multiplied by this value
+
+CONFIG LCYCLE_RUBBER  1.0          # niceness when hitting a wall
+
+CONFIG LCYCLE_PING_RUBBER 3.0      # niceness when hitting a wall: bonus for higher ping players
+
+CONFIG LCYCLE_RUBBER_TIMEBASED 0.0 # rubber usage is based on distance travelled if this is set to 0 (default) and the time passed if this is set to 1. Intermediate values and values out of these bounds are supported as well.
+
+CONFIG LCYCLE_RUBBER_SPEED 40.0                  # logarithmic speed of wall approximation when rubber is in effect ( every second, you get closer to the wall by a factor of ~0.4^{this value} )
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE .001            # The minimal distance rubber code keeps cycles from walls
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE_RATIO .0001     # Additional distance for every length unit of the wall you have in front of you
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE_RESERVOIR .005  # Additional distance if you have an empty rubber meter (gets faded out gradually as you use up all your rubber)
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE_UNPREPARED .005 # Additional distance for unprepared grinds; it gets applied when the cycle's last turn was just a fraction of a second ago and faded out preparation times larger than CYCLE_RUBBER_MINDISTANCE_PREPARATION.
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE_PREPARATION .2  # Timescale in seconds a cycle's last turn time is compared with to determine the effect of CYCLE_RUBBER_MINDISTANCE_UNPREPARED.
+
+CONFIG LCYCLE_RUBBER_MINADJUST .05               # when adjusting to or 180ing into a wall, allow going closer by at least this amount ( relative to the last distance ). A value of zero may lead to cycles ending up on the wrong side of their own walls.
+
+CONFIG LCYCLE_RUBBER_LEGACY 0                    # fallback to old, frame-dependant rubber code when old clients are present if this is 1
+
+CONFIG LCYCLE_RUBBER_TIME 10.0                   # Timescale rubber is restored on
+
+CONFIG LCYCLE_RUBBER_DELAY 0.0                   # during this fraction of the cycle delay time, rubber efficiency will be multiplied...
+
+CONFIG LCYCLE_RUBBER_DELAY_BONUS .5              # by this factor ( meaning that rubber usage goes up by the inverse; a value of zero means rubber is completely disabled )
+
+CONFIG LCYCLE_RUBBER_WALL_SHRINK 0               # With finite length trails, the used rubber is multiplied with this value and subtracted from the wall length. A value of 1 lets the trail recede at constant speed. All values are supported, but negative values may degrade performance and cause false positives from the topology police if that is enabled.
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE_GAP 0           # If > 0, CYCLE_RUBBER_MINDISTANCE effectively is never taken to be bigger than this value times the size of any detected gaps the cycle can squeeze through.
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE_GAP_BACKDOOR  0 # As above, but this value is applied only to 'backdoor' gaps, gaps that lead you away from an enemy. If = 0, CYCLE_RUBBER_MINDISTANCE_GAP applies to backdoors, too. If you want to discourage backdooring, set this to something bigger than 1, 1.5 would be recommended.
+
+CONFIG LCYCLE_RUBBER_MINDISTANCE_GAP_SIDE .5     # Gap detection only sees gaps that the cycle may reach in no less than this many seconds.
+
+CONFIG LCYCLE_BRAKE_REFILL .1    # refill rate of brake reservoir
+
+CONFIG LCYCLE_BRAKE_DEPLETE 1.0  # depletion rate of brake reservoir ( set to 0 to reenable pre 0.2.5 behaviour of infinite brakes )
+
+CONFIG LCYCLE_WIDTH 0            # the width of a cycle in meters. If set, a cycle will take damage (=use up rubber or explode) if it drives through a tunnel narrower than this.
+
+CONFIG LCYCLE_WIDTH_SIDE 0       # the minimal distance a cycle needs to have from every wall. If set, a cycle will take damage (=use up rubber or explode) if it drives closer.
+
+CONFIG LCYCLE_WIDTH_RUBBER_MIN 1 # minimum rubber usage when a cycle is found in a situation illegal by the two above settings. The minimal value is applied if the space is almost enough.
+
+CONFIG LCYCLE_WIDTH_RUBBER_MAX 1 # maximum rubber usage when a cycle is found in a situation illegal by the two above settings. This value is applied if there truly is no space left.
+
+CONFIG LCYCLE_DIST_WALL_SHRINK        0.0  # Distance multiplier in wall length calculation. All values are legal.
+
+CONFIG LCYCLE_DIST_WALL_SHRINK_OFFSET 0.0  # Distance offset in wall length calculation.
+
+CONFIG LCYCLE_INVULNERABLE_TIME 0.0        # Time in seconds a cycle is invulnerable after a respawn.
+
+CONFIG LCYCLE_WALL_TIME 0.0                # Time in seconds a cycle does not make a wall after a respawn.
+
+CONFIG LCYCLE_FIRST_SPAWN_PROTECTION 0     # Set to 1 if the invulnerability and wall delay should already be active on the initial spawn at the beginning of a round.
+
+CONFIG LCYCLE_SYNC_INTERVAL_ENEMY 1.0           # Time in seconds between server-client updates of enemy cycles
+
+CONFIG LCYCLE_SYNC_INTERVAL_SELF  0.1           # Time in seconds between server-client updates of enemy cycles owned by the client itself
+
+CONFIG LCYCLE_AVOID_OLDCLIENT_BAD_SYNC 0        # If set to 1, old clients will not get sync messages in situations that are known to confuse them
+
+CONFIG LCYCLE_FAIR_ANTILAG 1                    # If set to 1, this deactivates the anti lag-sliding code when old clients are connected
+
+CONFIG LCYCLE_TIME_TOLERANCE .1                 # Maximum time difference of execution of turns on server and client ( for clients that send timing information )
+
+CONFIG LCYCLE_PACKETLOSS_TOLERANCE 0.0          # Cycle death is prevented as long as the player's failure to turn can be explained by the loss of this many network packets. Enabling this allows cheating with modified clients.
+
+CONFIG LCYCLE_SYNC_FF 10.0                      # Speed of simulation of the extrapolating sync; decrease for lower CPU load, but higher effective ping
+
+CONFIG LCYCLE_SYNC_FF_STEPS 1                   # Number of extrapolation simulation timesteps each real timestep; increase for better accuracy
+
+CONFIG LCYCLE_SMOOTH_TIME .3                    # Timescale for smoothing options. Increasing this will make interpolation smoother, but less accurate. Decreasing it will make network synchronization jumpy.
+
+CONFIG LCYCLE_SMOOTH_MIN_SPEED .2               # Minimum speed of smooth correction relative to cycle speed
+
+CONFIG LCYCLE_SMOOTH_THRESHOLD .2               # Only syncs that differ from your position by less than this amount ( measured in speed ) will be smoothed slowly, bigger deviations will get faster handling.
+
+CONFIG LCYCLE_MAX_REFCOUNT 30000                # Maximum allowed reference count on cycles before they self destruct.
+
+CONFIG LTOPOLOGY_POLICE 0       # the topology police is your last defense against tunneling players. It tries to
+
+CONFIG LTOPOLOGY_POLICE_PARALLEL 1 # if TOPOLOGY_POLICE is set to 1, this flag can be disabled to disable checks for parallel walls.
+
+CONFIG LCHATBOT_ALWAYS_ACTIVE 0            # if set to 1, the chatbot is active all of the time
+
+CONFIG LCHATBOT_NEW_WALL_BLINDNESS .3      # the chatbot won't see walls that were built less than this many seconds ago
+
+CONFIG LCHATBOT_MIN_TIMESTEP .3            # minimal time in seconds between chatbot thoughts
+
+CONFIG LCHATBOT_DELAY .5                   # time between entering chat and chatbot activation
+
+CONFIG LCHATBOT_RANGE 1.0                  # time in seconds the bot is capable of planning ahead
+
+CONFIG LCHATBOT_DECAY .02                  # rate at which the quality of the chatbot decays over time
+
+CONFIG LHISTORY_SIZE_CONSOLE 10     # number of lines kept in the console history
+
+CONFIG LHISTORY_SIZE_CHAT 10        # number of lines kept in the chat history
+
+CONFIG LRECORDING_DEBUGLEVEL 0        # level of additional debug only information in recording file.
+
+CONFIG Linclude settings_visual.cfg
+
+CONFIG LGRID_SIZE 1.0            # grid size
+
+CONFIG LFADEOUT_NAME_DELAY 5.0   # Time the player names are shown. Set to 0 if you don't want to show them at all or -1 if you want to show them always.
+
+CONFIG LSHOW_OWN_NAME   0    # Should your own name be shown above your cycle, too? 
+
+CONFIG LPLAYER_RANDOM_COLOR 0     # if set to 1, a random generator will try to pick a color for you that
+
+CONFIG LCYCLE_BLINK_FREQUENCY  10          # Frequency in Hz an invulnerable cycle blinks with.
+
+CONFIG LHUD_CACHE_THRESHOLD    0.0001      # Update threshold for HUD gauges, only in effect when display lists are activated: if the relative change times the amount of time since the last update is bigger than this, the gauge gets updated.
+
+CONFIG LCAMERA_FOLLOW_START_X -30 # fixed external camera start position
+
+CONFIG LCAMERA_FOLLOW_START_Y -30 # ( relative to cycle )
+
+CONFIG LCAMERA_FOLLOW_START_Z  80
+
+CONFIG LCAMERA_SMART_START_X   10 # smart camera start position
+
+CONFIG LCAMERA_SMART_START_Y   30 # ( relative to cycle )
+
+CONFIG LCAMERA_SMART_START_Z   2
+
+CONFIG LCAMERA_FREE_START_X    10 # free camera start position
+
+CONFIG LCAMERA_FREE_START_Y   -70 # ( relative to cycle )
+
+CONFIG LCAMERA_FREE_START_Z    100
+
+CONFIG LCAMERA_CUSTOM_BACK    6         # how much the custom camera is moved back
+
+CONFIG LCAMERA_CUSTOM_RISE    4         # the height of the custom camera above the cycle
+
+CONFIG LCAMERA_CUSTOM_BACK_FROMSPEED .5 # how much the camera is moved back for every m/s speed
+
+CONFIG LCAMERA_CUSTOM_RISE_FROMSPEED .4 # the height of the camera above the cycle for every m/s speed
+
+CONFIG LCAMERA_CUSTOM_PITCH   -.58      # inclination of the camera
+
+CONFIG LCAMERA_CUSTOM_ZOOM    0         # how much the camera zooms in your cycle at the beginning of the round (to show the team's formation)
+
+CONFIG LCAMERA_CUSTOM_TURN_SPEED     4  # speed the custom camera turns with
+
+CONFIG LCAMERA_CUSTOM_TURN_SPEED_180 4  # factor to the turn speed after a quick reversal
+
+CONFIG LCAMERA_GLANCE_BACK    6         # how much the glance camera is moved back
+
+CONFIG LCAMERA_GLANCE_RISE    4         # the height of the glance camera above the cycle
+
+CONFIG LCAMERA_GLANCE_BACK_FROMSPEED .5 # how much the camera is moved back for every m/s speed
+
+CONFIG LCAMERA_GLANCE_RISE_FROMSPEED .4 # the height of the camera above the cycle for every m/s speed
+
+CONFIG LCAMERA_GLANCE_PITCH   -.58      # inclination of the camera
+
+CONFIG LCAMERA_IN_TURN_SPEED         40        # speed the internal camera turns with
+
+CONFIG LCAMERA_VISIBILITY_LOWER_WALL       1   # if set, walls are lowered when they block the view and the camera is not moved
+
+CONFIG LCAMERA_VISIBILITY_LOWER_WALL_SMART 0   # like CAMERA_VISIBILITY_LOWER_WALL, but special setting for the smart camera
+
+CONFIG LBUG_TRANSPARENCY 0                     # unsupported: make all rim walls semi-transparent by rendering them without occlusion tests
+
+CONFIG LBUG_TRANSPARENCY_DEMAND 0              # unsupported: use transparency instead of lowering walls
+
+CONFIG LFONT_MIN_R .5
+
+CONFIG LFONT_MIN_G .5
+
+CONFIG LFONT_MIN_B .5
+
+CONFIG LFONT_MIN_TOTAL .7
+
+CONFIG LFONT_BIG_THRESHOLD_WIDTH  10
+
+CONFIG LFONT_BIG_THRESHOLD_HEIGHT 20
+
+CONFIG LCAMERA_VISIBILITY_RECOVERY_SPEED 1  # the speed the external visibility targets recovers from wall hits
+
+CONFIG LCAMERA_VISIBILITY_WALL_DISTANCE  .5 # the distance the visibility targets keep from walls
+
+CONFIG LCAMERA_VISIBILITY_CLIP_SPEED     40 # speed with which the visibility targets is brought into view
+
+CONFIG LCAMERA_VISIBILITY_EXTENSION      1  # distance (measured in seconds, gets multiplied by speed) of the visibility targets from the watched object
+
+CONFIG LCAMERA_VISIBILITY_SIDESKEW      .5  # extra forward component of the sideways visibility targets
+
+CONFIG LARENA_WALL_SHADOW_SIZE 0.1      # maximal size of the arena wall shadow compared to the camera/wall height
+
+CONFIG LARENA_WALL_SHADOW_SIDEDIST 10.0 # shadows are drawn when the cycle gets closer to the line the wall follows than this
+
+CONFIG LARENA_WALL_SHADOW_DIST 30.0     # shadows are drawn when the cycle's path gets closer to the wall than this
+
+CONFIG LARENA_WALL_SHADOW_NEAR 1.0      # getting closer to the wall than this distance does not increase the shadow much
+
+CONFIG LCAMERA_SMART_DISTANCE 4.0               # typical distance the camera keeps from the cycle
+
+CONFIG LCAMERA_SMART_HEIGHT 2.0                 # typical height in speed units
+
+CONFIG LCAMERA_SMART_TURN_GRINDING 5.0          # Amount of turning from grinding walls
+
+CONFIG LCAMERA_SMART_MIN_DISTANCE 10.0          # minimal distance of the camera to the cycle in .3 meters
+
+CONFIG LCAMERA_SMART_HEIGHT_EXTRA .5            # extra factor for height. Either this or the previous setting is redundant :)
+
+CONFIG LCAMERA_SMART_HEIGHT_TURNING .5          # influence of turning on camera height
+
+CONFIG LCAMERA_SMART_HEIGHT_GRINDING 0.0        # influence of grinding on camera height. In 0.2.7.1, this was set to 2, causing the camera to tilt down too far.
+
+CONFIG LCAMERA_SMART_HEIGHT_OBSTACLE 1.0        # influence of obstacles in front of the cycle
+
+CONFIG LCAMERA_SMART_CENTER_POS_SMOOTH 6.0      # speed of cycle position smoothing
+
+CONFIG LCAMERA_SMART_CENTER_DIR_SMOOTH 3.0      # speed of cycle direction smoothing
+
+CONFIG LCAMERA_SMART_CENTER_LOOKAHEAD .5        # amount of lookahead on top of smoothing, relative to speed
+
+CONFIG LCAMERA_SMART_CENTER_MAX_LOOKAHEAD 5     # maximal amount of lookahead on top of smoothing
+
+CONFIG LCAMERA_SMART_AVOID_FRONT 10.0           # factor moving the camera to the side if it is in front of the cycle
+
+CONFIG LCAMERA_SMART_AVOID_FRONT2 0.1           # another factor moving the camera to the side if it is in front of the cycle
+
+CONFIG LCAMERA_SMART_CYCLESPEED 20.0            # typical cycle speed
+
+CONFIG LCAMERA_SMART_DISTANCESCALE .2           # distance scale measured relative to cycle speed
+
+CONFIG LCAMERA_SMART_MIN_DISTANCESCALE 5.0      # minimal distance scale in meters
+
+INCLUDE_END
+CONFIG LCAMERA_FORBID_SMART 0           # forbid smart camera
+
+CONFIG LCAMERA_FORBID_IN    0           # forbid internal camera
+
+CONFIG LCAMERA_FORBID_FREE 0            # forbid free camera
+
+CONFIG LCAMERA_FORBID_FOLLOW 0          # forbid fixed external camera
+
+CONFIG LCAMERA_FORBID_CUSTOM 0          # forbid custom external camera
+
+CONFIG LCAMERA_FORBID_SERVER_CUSTOM 1   # forbid server defined custom external camera
+
+CONFIG LCAMERA_FORBID_CUSTOM_GLANCE 0   # forbid use of special glance camera settings
+
+CONFIG LCAMERA_OVERRIDE_CUSTOM_GLANCE 0 # override custom glance settings with values from the server
+
+CONFIG LCAMERA_OVERRIDE_CUSTOM_GLANCE_SERVER_CUSTOM 0 # the same, but only affects the server custom camera
+
+CONFIG LCAMERA_SERVER_CUSTOM_BACK    30           # how much the camera is moved back
+
+CONFIG LCAMERA_SERVER_CUSTOM_RISE    20           # the height of the camera above the cycle
+
+CONFIG LCAMERA_SERVER_CUSTOM_BACK_FROMSPEED    0  # how much the camera is moved back for every m/s speed
+
+CONFIG LCAMERA_SERVER_CUSTOM_RISE_FROMSPEED    0  # the height of the camera above the cycle for every m/s speed
+
+CONFIG LCAMERA_SERVER_CUSTOM_PITCH   -.7          # inclination of the camera
+
+CONFIG LCAMERA_SERVER_GLANCE_BACK    30           # how much the camera is moved back
+
+CONFIG LCAMERA_SERVER_GLANCE_RISE    20           # the height of the camera above the cycle
+
+CONFIG LCAMERA_SERVER_GLANCE_BACK_FROMSPEED    0  # how much the camera is moved back for every m/s speed
+
+CONFIG LCAMERA_SERVER_GLANCE_RISE_FROMSPEED    0  # the height of the camera above the cycle for every m/s speed
+
+CONFIG LCAMERA_SERVER_GLANCE_PITCH   -.7          # inclination of the camera
+
+CONFIG LCAMERA_SERVER_CUSTOM_TURN_SPEED     -1    # speed the custom camera turns with
+
+CONFIG LCAMERA_SERVER_CUSTOM_TURN_SPEED_180 4     # factor to the turn speed after a quick reversal
+
+CONFIG LSCORE_WIN 10       # points you gain for being last one alive
+
+CONFIG LSCORE_SUICIDE -4   # points you gain for every stupid death (race
+
+CONFIG LSCORE_KILL 3       # points you gain for everyone racing into your wall
+
+CONFIG LSCORE_DIE  -2      # points you gain for every time you race into
+
+CONFIG LLIMIT_SCORE 100    # score limit (all limits for one match)
+
+CONFIG LLIMIT_ROUNDS 10    # max number of rounds to play
+
+CONFIG LLIMIT_TIME  30     # max time (in minutes)
+
+CONFIG LSPAWN_WINGMEN_BACK 2.202896 # determines how much each wingman is placed backwards
+
+CONFIG LSPAWN_WINGMEN_SIDE 2.75362  # determines how much each wingman is placed sidewards
+
+CONFIG LENEMY_TEAMMATE_PENALTY 2500.0   # Penalty on the effective time in seconds if the influence is from a teammate
+
+CONFIG LENEMY_DEAD_PENALTY 0.0          # Penalty on the effective time in seconds if the influence comes from a dead player
+
+CONFIG LENEMY_CHATBOT_PENALTY 30.0      # Penalty in seconds if the victim is in chatbot state and the influence is just the chatbot evading a wall
+
+CONFIG LENEMY_CURRENTTIME_INFLUENCE 0.0 # If set to 1, not the build time of the encountered wall, but the current time enters the comparison. Arbitrary blending values are allowed.
+
+CONFIG LENEMY_SUICIDE_TIMEOUT 10000.0   # If no enemy influence can be found for the last this many seconds, the death counts as a suicide.
+
+CONFIG LSP_SCORE_WIN 10       # points you gain for being last one alive
+
+CONFIG LSP_LIMIT_SCORE 100000 # score limit (all limits for one match)
+
+CONFIG LSP_LIMIT_ROUNDS 10     # max number of rounds to play
+
+CONFIG LSP_LIMIT_TIME   30    # max time (in minutes)
+
+CONFIG LCOLOR_STRINGS 1             # Generate strings that will be rendered with color effects.
+
+CONFIG LFILTER_COLOR_STRINGS 0      # Filter color codes from all strings coming in over the network.
+
+CONFIG LFILTER_COLOR_NAMES 0        # Filter color codes from player names.
+
+CONFIG LFILTER_NAME_ENDS 1          # Filter whitespace from beginning and end of player names.
+
+CONFIG LFILTER_NAME_MIDDLE 1        # Filter excess whitespace and other junk from the middle of player names.
+
+CONFIG LFILTER_COLOR_SERVER_NAMES 0 # Filter color codes from server names in the server browser. Only affects the client.
+
+CONFIG LSILENCE_DEFAULT 0  # silence new players by default?
+
+CONFIG LENABLE_CHAT 1      # allow public messages?
+
+CONFIG LLADDER_PERCENT_BET 10 # percentage of your score to be put in the pot
+
+CONFIG LLADDER_MIN_BET 1      # minimum credits to be put in the pot
+
+CONFIG LLADDER_TAX 1          # percentage the IRS takes from the pot
+
+CONFIG LLADDER_LOSE_PERCENT_ON_LOAD .2   # you lose this percentage of your
+
+CONFIG LLADDER_LOSE_MIN_ON_LOAD .2       # but minimum this value
+
+CONFIG LLADDER_GAIN_EXTRA 1              # the winner gets his ping+ping charity
+
+CONFIG LGAME_TIMEOUT 10.0       # base for game synchronization timeouts. 
+
+CONFIG LLAST_CHAT_BREAK_TIME -1.0      # Last round time a player in chat mode is able to pause the timer
+
+CONFIG LEXTRA_ROUND_TIME 0.0           # Length of an extra pause at the beginning of the round
+
+CONFIG LPLAYER_CHAT_WAIT_MAX 0.0       # Maximum time in seconds to wait for a single player to stop chatting.
+
+CONFIG LPLAYER_CHAT_WAIT_FRACTION 0.0  # Maximum fraction of time to wait for a single player to stop chatting.
+
+CONFIG LPLAYER_CHAT_WAIT_SINGLE 0      # Set to 1 if only one player should get his chat wait time reduced at any given time.
+
+CONFIG LPLAYER_CHAT_WAIT_TEAMLEADER 1  # Set to 0 if all players, not just team leaders, should be allowed to pause the timer.
+
+CONFIG LCHATTER_REMOVE_TIME 180  # Time in seconds after which a permanent chatter is removed from the game
+
+CONFIG LIDLE_REMOVE_TIME 0       # Time in seconds after which an inactive player is removed from the game
+
+CONFIG LIDLE_KICK_TIME 0         # Time in seconds after which an inactive player is kicked
+
+CONFIG LKEEP_PLAYER_SLOT 0       # Set to 1 if spectators should be auto-removed if the server gets full so potential 
+
+CONFIG LDOUBLEBIND_TIME -10.0   # Time in seconds during which no two different keyboard events can 
+
+CONFIG LWIN_ZONE_RANDOMNESS .8  # randomness factor of the initial position. Set it to 0 to fix the winzone in the center of the area, 1 to spread it all over the arena.
+
+CONFIG LWIN_ZONE_EXPANSION   1  # expansion speed of the winzone in m/s
+
+CONFIG LWIN_ZONE_INITIAL_SIZE 5 # radius in m the win zone starts with
+
+CONFIG LWIN_ZONE_DEATHS 0       # set to 1 to turn the winzone into a deathzone
+
+CONFIG LFORTRESS_CONQUEST_RATE .5        # the number of enemies inside the fortress zone is counted, multiplied with this value and added to the "conquered" variable. Increase this to make conquering easier.
+
+CONFIG LFORTRESS_DEFEND_RATE .25         # the number of owners inside the fortress zone is counted, multiplied with this value and subtracted from the "conquered" variable. Increase to make defending easier.
+
+CONFIG LFORTRESS_CONQUEST_DECAY_RATE .1  # this value is subtracted. Increase to make defending easier.
+
+CONFIG LFORTRESS_CONQUEST_TIMEOUT 0      # timeouts for enemy contacts with the zone. If a zone would collapse without a defender (as on Sumo), the zone will collapse harmlessly after all enemy contacts timed out.
+
+CONFIG LFORTRESS_CONQUERED_SCORE 0        # the conquering party gets this many points (divided among the conquerors)
+
+CONFIG LFORTRESS_HELD_SCORE 0             # points a team owning a zone gets at the end of the round if both team and zone survived
+
+CONFIG LFORTRESS_CONQUERED_WIN 0          # if set to 1, the conquering party wins the round
+
+CONFIG LFORTRESS_CONQUERED_KILL_MIN 0     # the closest X players of the owning team get killed at least
+
+CONFIG LFORTRESS_CONQUERED_KILL_RATIO 0.0 # this fraction of the players of the owning team get killed
+
+CONFIG LFORTRESS_SURVIVE_WIN 1            # if set to 1, the last team with an unconquered zone wins the round
+
+CONFIG LFORTRESS_MAX_PER_TEAM 0           # if > 0, this is the maximal number of fortress zones ownable by a team. Closer zones are preferred. Use this to prune non-inhabited zones in multi-team maps.
+
+CONFIG LSPAWN_POINT_GROUP_SIZE 0          # if > 2, this is interpreted as the number of spawn points in a spawn point group. AA then tries not to spawn one player alone in one spawn point group by redistributing them slightly.
+
+CONFIG LFORTRESS_COLLAPSE_SPEED .5        # speed (units: 1/s) at which a collapsing fortress vanishes. The inverse of this value is the time between the conquest and the time the zone vanishes (and potentially kills its owners)
+
+CONFIG LSETTING_LEGACY_BEHAVIOR_BREAKING     2  # For settings that absolutely break the client and make play impossible. Example of an affected setting: MAP_FILE
+
+CONFIG LSETTING_LEGACY_BEHAVIOR_BUMPY        2  # For settings that allow play on old clients in principle, but with severe limitations (cycles bouncing around, player commands not executed on time). Example: CYCLE_DELAY_TIMEBASED
+
+CONFIG LSETTING_LEGACY_BEHAVIOR_ANNOYING     0  # For settings that only cause minor annoyances on old clients, like enemy cycles stopping for .1 seconds after each turn. Example: CYCLE_RUBBER_MINDISTANCE
+
+CONFIG LSETTING_LEGACY_BEHAVIOR_CHEATING     2  # For settings where the default behavior could be considered cheating if non-default was set. Example: DOUBLEBIND_TIME
+
+CONFIG LSETTING_LEGACY_BEHAVIOR_VISUAL       0  # For settings that only affect status displays and visuals, not game physics. Example: CYCLE_RUBBER_* (the client displays the rubber meter, but it's not used for anything)
+
+CONFIG LMAP_FILE_OVERRIDE    3
+
+CONFIG LBROWSER_QUERY_FILTER         1     # query filter. Set to 0 to poll all servers, 1 to query servers with nonnegative score bias, 2 to query only those with positive bias and 3 to not query at all. Non-queried servers will appear to have ping 999; the player info comes indirectly from the master server.
+
+CONFIG LBROWSER_QUERIES_SIMULTANEOUS 20    # max. number of simultaneous query messages that are sent
+
+CONFIG LBROWSER_QUERY_DELAY_SINGLE   0.5   # time delay between queries of the same server
+
+CONFIG LBROWSER_QUERY_DELAY_GLOBAL   0.025 # time delay between all queries
+
+CONFIG LBROWSER_NUM_QUERIES          3     # number of queries per try
+
+CONFIG LBROWSER_CONTACTLOSS          4     # number of failed contact attempts before a server can be considered lost
+
+CONFIG LCULL_DELAY_END         3
+
+CONFIG LCULL_DELAY_PER_SECOND  3
+
+CONFIG LCULL_DELAY_MIN         10
+
+CONFIG LCYCLE_MIN_WALLDROP_INTERVAL .05
+
+CONFIG LTIMESTEP_MAX .2       # the maximal size of the small timesteps
+
+CONFIG LTIMESTEP_MAX_COUNT 10 # the maximal number of small timesteps to divide a large timestep in
+
+CONFIG LCYCLE_PACKETMISS_TOLERANCE 3
+
+CONFIG LLAG_CREDIT 0.5
+
+CONFIG LLAG_CREDIT_SINGLE 0.1
+
+CONFIG LLAG_CREDIT_VARIANCE 3.0
+
+CONFIG LLAG_CREDIT_TIME 600
+
+CONFIG LLAG_SWEET_SPOT .2
+
+CONFIG LLAG_MAX_SPEEDUP_TIMER .2
+
+CONFIG LLAG_SLOW_TIME 30.0
+
+CONFIG LLAG_FAST_TIME 2.0
+
+CONFIG LLAG_SLOW_WEIGHT 0.2
+
+CONFIG LLAG_FAST_WEIGHT 1.0
+
+CONFIG LLAG_OFFSET_CLIENT 0.0
+
+CONFIG LLAG_OFFSET_SERVER 0.0
+
+CONFIG LLAG_OFFSET_LEGACY 0.0
+
+CONFIG LTIME_FACTOR 1.0
+
+CONFIG LCYCLE_RUBBER_MALUS_TURN 0                       # rubber usage gets increased by this amount after each turn...
+
+CONFIG LCYCLE_RUBBER_MALUS_TIME 5                       # but the effect wears off after about this many seconds
+
+CONFIG LSIMULATE_RECEIVE_PACKET_LOSS 0.0
+
+CONFIG LSIMULATE_SEND_PACKET_LOSS 0.0
+
+CONFIG LFIRST_USE 0
+
+CONFIG LSP_WALLS_STAY_UP_DELAY 600
+
+CONFIG LSP_NUM_AIS 0
+
+CONFIG LSP_AI_IQ 30
+
+CONFIG LAUTO_AIS 0
+
+CONFIG LSP_WALLS_LENGTH 1000
+
+CONFIG LMAX_FPS 60
+
+CONFIG LSHOW_HUD 0
+
+CONFIG LSP_SIZE_FACTOR 2
+
+CONFIG LCOLOR_R_1 0
+
+CONFIG LCOLOR_G_1 15
+
+CONFIG LCOLOR_B_1 0
+
+CONFIG LCOLOR_R_2 15
+
+CONFIG LCOLOR_G_2 15
+
+CONFIG LCOLOR_B_2 3
+
+CONFIG LCOLOR_R_3 15
+
+CONFIG LCOLOR_G_3 3
+
+CONFIG LCOLOR_B_3 3
+
+CONFIG LCOLOR_R_4 3
+
+CONFIG LCOLOR_G_4 15
+
+CONFIG LCOLOR_B_4 3
+
+CONFIG LSOFTWARE_RENDERER 0
+
+CONFIG LFIRST_USE 0
+
+CONFIG LSP_WALLS_STAY_UP_DELAY 600
+
+CONFIG LSP_NUM_AIS 0
+
+CONFIG LSP_AI_IQ 30
+
+CONFIG LAUTO_AIS 0
+
+CONFIG LSP_WALLS_LENGTH 1000
+
+CONFIG LMAX_FPS 60
+
+CONFIG LSHOW_HUD 0
+
+CONFIG LSP_SIZE_FACTOR 2
+
+CONFIG LCOLOR_R_1 0
+
+CONFIG LCOLOR_G_1 15
+
+CONFIG LCOLOR_B_1 0
+
+CONFIG LCOLOR_R_2 15
+
+CONFIG LCOLOR_G_2 15
+
+CONFIG LCOLOR_B_2 3
+
+CONFIG LCOLOR_R_3 15
+
+CONFIG LCOLOR_G_3 3
+
+CONFIG LCOLOR_B_3 3
+
+CONFIG LCOLOR_R_4 3
+
+CONFIG LCOLOR_G_4 15
+
+CONFIG LCOLOR_B_4 3
+
+CONFIG LSOFTWARE_RENDERER 0
+
+DEBUGLEVEL 0
+FILE_OPEN 1 0
+FILE_READ L# all values have a range of 0 to 10. More is only meaningful for the range variable.
+ 0
+FILE_READ L# the "meta"-meaning of a value was used by me to deduce the AI abilities from the abilities of the real program.
+ 0
+FILE_READ L# 1st column "name": Program name
+ 0
+FILE_READ L# 2nd column "rs": Program reaction speed (meta: program execution speed)
+ 0
+FILE_READ L# 3rd column "er": Reaction in an emergency
+ 0
+FILE_READ L# 4th column "vr": Program viewing range
+ 0
+FILE_READ L# 5th column "trace": wall tracing ability (meta: how good can the program handle texts?)
+ 0
+FILE_READ L# 6th column "close": close combat ability (meta: how good can you control the prog with keyboard alone?)
+ 0
+FILE_READ L# 7th column "path": pathfinding ability  (meta: mouse control quality)
+ 0
+FILE_READ L# 8th column "loop": ability to detect closed areas and to close the enemy in (meta: is the program secure?)
+ 0
+FILE_READ L# 9th column "cycle": ability to evade or cross enemy cycles (meta: is there a feud going on with users of another similar program?)
+ 0
+FILE_READ L#10th column "tunl": ability to avoid dangerous tunnels ( meta: is it stable?)
+ 0
+FILE_READ L#11th column "tr-det": ability to react on enemy cycles tracing the own wall (meta: meaningful error messages)
+ 0
+FILE_READ L#12th column "state": state the AI starts in (0: survive, 1: trace, 2: closecombat, 3: pathfind)
+ 0
+FILE_READ L#13th column "str": time the AI drives straight on at the beginning
+ 0
+FILE_READ L#14th column "sttch": time before the first state change
+ 0
+FILE_READ L# Feel free to modify the AIs or add new ones; but be aware that the interpretation
+ 0
+FILE_READ L# of these values is not yet final. PLEASE DON'T send me your changes. They'll
+ 0
+FILE_READ L# probably be useless when I get them.
+ 0
+FILE_READ L#name		rs  er  vr  trace  close  path  loop  cycle  tunl  tr-det  state  str  sttch
+ 0
+FILE_READ LOutlook	3	 3	  0	0	    0	     0	  0	  0	   4	   0	     0	   10	  10
+ 0
+FILE_READ LNotepad	9	 5	  0	0	    6	     6	  10	  0	   10	   0	     0	   10	  10
+ 0
+FILE_READ LWord		4	 5	  3	1	    5	     10	  0	  0	   0	   0	     0	   10	  10
+ 0
+FILE_READ LExcel		6	 2	  3	1	    5	     10	  0	  0	   0	   0	     0	   10   10
+ 0
+FILE_READ LEmacs		5	 2	  3	10	    10	  0	  10	  10   	8	   5	     0	   10	  10
+ 0
+FILE_READ LVi		   10	 6	  0	10	    10     0	  10	  10	   10	   0	     0	   10	  10
+ 0
+FILE_READ LPine		7	 5	  1	10	    10	  0	  5	  10	   10	   10	     0	   10	  10
+ 0
+FILE_READ LElm		9	7	  1	10	    10	  0	  10	  10	   10	   0	     0	   10   10
+ 0
+FILE_READ LLaTeX		7	5	  4	10	    0	     0	  10	  0	   10	   5	     0	   10	  10
+ 0
+FILE_READ LTeX		10	7	  4	10	    0	     0	  10	  0	   10	   5	     0	   10	  10
+ 0
+FILE_READ LGcc		8	6	  6	0	    0	     0	  10	  5	   7	   7	     0	   10	  10
+ 0
+FILE_READ LGdb		8	10	  6	0	    0	     0	  10	  5	   7	   7	     0	   7	  10
+ 0
+FILE_READ LMSVC++	6	6	  5	5	    10	  10	  10	  5	   7	   7	     0	   7	  10
+ 0
+FILE_READ LPhotoshop 2	4	  3	0	    0	     10	  10	  10  	10  	10      0	   7	  10
+ 0
+FILE_READ LGimp		3	2	  3	0	    0	     10	  10	  10	   10  	10	     0	   7	  10
+ 0
+FILE_READ LWindows	7	8	  8	10	    10	  10	  10	  10	   10	   10	     0	   5	  10
+ 0
+FILE_READ LLinux		7	8	  8	10	    10	  10	  10	  10	   10	   10	     0	   5	  10
+ 0
+FILE_READ LUnreal	10	10	  2	10	    10	  10	  10	  10	   10	   10	     1	   5	  10
+ 0
+FILE_READ LQuake		10	10	  2	10	    10	  10	  10	  10	   10	   10	     1	   5	  10
+ 0
+FILE_READ LCycles3D	10	10	  10	30	    1	     1	  10	  10	   10  	10	     1	   7	  10
+ 0
+FILE_READ LglTron	10	10	  10	30	    1	     1	  10	  10	   10	   10	     1	   7	  10
+ 0
+FILE_READ LArmagetron	10	10	10	30	1	1	10	10	10	10	1	7	10
+ 1
+SPLASH 0
+INPUT 1 0 17
+ENDINPUT
+T 0 0
+T 0 42613
+T 0 58744
+T 0 76323
+T 0 92441
+T 0 109259
+T 0 126585
+T 0 142687
+T 0 160264
+T 0 176050
+T 0 193616
+T 0 210039
+T 0 226587
+T 0 242614
+T 0 260138
+T 0 276250
+T 0 292815
+T 0 310160
+T 0 326819
+T 0 343315
+T 0 360033
+T 0 376565
+T 0 392760
+T 0 409352
+T 0 425980
+T 0 443026
+T 0 458801
+T 0 476168
+T 0 493825
+T 0 509727
+T 0 525518
+T 0 542534
+T 0 560109
+T 0 576855
+T 0 593470
+T 0 609939
+T 0 626769
+T 0 642441
+T 0 659300
+T 0 676169
+T 0 692862
+T 0 710545
+T 0 726661
+T 0 742481
+T 0 760186
+T 0 776785
+T 0 793294
+T 0 810135
+T 0 826887
+T 0 843505
+T 0 860132
+T 0 876663
+T 0 893147
+T 0 909809
+T 0 926487
+T 0 942541
+T 0 959616
+T 0 975682
+T 0 992801
+T 1 9737
+T 1 26902
+T 1 43226
+T 1 59781
+T 1 76411
+T 1 93673
+T 1 110622
+T 1 126475
+T 1 143805
+T 1 159400
+T 1 176367
+T 1 193215
+T 1 209888
+T 1 227128
+T 1 242447
+T 1 258817
+T 1 276332
+T 1 293501
+T 1 309921
+T 1 326125
+T 1 342463
+T 1 359841
+T 1 377026
+T 1 392594
+T 1 409015
+T 1 426225
+T 1 442984
+T 1 460164
+T 1 477077
+T 1 493289
+T 1 510528
+T 1 525950
+T 1 543252
+T 1 559473
+T 1 575950
+T 1 593129
+T 1 609970
+T 1 626258
+T 1 642708
+T 1 659782
+T 1 675960
+T 1 692987
+T 1 709450
+T 1 726655
+T 1 742898
+T 1 760339
+T 1 775651
+T 1 793642
+T 1 809169
+T 1 825710
+T 1 843110
+T 1 860201
+T 1 875866
+T 1 893821
+T 1 909340
+T 1 926601
+T 1 943512
+T 1 959347
+T 1 975539
+T 1 993297
+T 2 9396
+T 2 26538
+T 2 42664
+T 2 58616
+T 2 76901
+T 2 92757
+T 2 109495
+T 2 126645
+T 2 143232
+T 2 160284
+T 2 177005
+T 2 192388
+T 2 209323
+T 2 226442
+T 2 243036
+T 2 259784
+T 2 276395
+T 2 293837
+T 2 309226
+T 2 325956
+T 2 342325
+T 2 360427
+T 2 376352
+T 2 393428
+T 2 410362
+T 2 426365
+T 2 443302
+T 2 459690
+T 2 476460
+T 2 493231
+T 2 509451
+T 2 525418
+T 2 543656
+T 2 559780
+T 2 576888
+T 2 593047
+T 2 610236
+T 2 626324
+T 2 643103
+T 2 660212
+T 2 677143
+T 2 693138
+T 2 710382
+T 2 727309
+T 2 743102
+T 2 760144
+T 2 777020
+T 2 793067
+T 2 810433
+T 2 826752
+T 2 843028
+T 2 860075
+T 2 876272
+T 2 893185
+T 2 909921
+T 2 926894
+T 2 942268
+T 2 959704
+T 2 976174
+T 2 993066
+T 3 9777
+T 3 26086
+T 3 43396
+T 3 60150
+T 3 76118
+T 3 93277
+T 3 109576
+T 3 126201
+T 3 143453
+T 3 159369
+T 3 175959
+T 3 193079
+T 3 209500
+T 3 226660
+T 3 243333
+T 3 259956
+T 3 276251
+T 3 293290
+T 3 310202
+T 3 326870
+T 3 342220
+T 3 359514
+T 3 376518
+T 3 393654
+T 3 409637
+T 3 426952
+T 3 442532
+T 3 460763
+T 3 476271
+T 3 493074
+T 3 509902
+T 3 526879
+T 3 542353
+T 3 560510
+T 3 576816
+T 3 592714
+T 3 609368
+T 3 626455
+T 3 643031
+T 3 659587
+T 3 675707
+T 3 692944
+T 3 709419
+T 3 725621
+T 3 742802
+T 3 758957
+T 3 777317
+T 3 793352
+T 3 810566
+T 3 826945
+T 3 843280
+T 3 860277
+T 3 877148
+T 3 893002
+T 3 909480
+T 3 926749
+T 3 943148
+T 3 960263
+T 3 976300
+T 3 993195
+T 4 10013
+T 4 26327
+T 4 42187
+T 4 60504
+T 4 76507
+T 4 93357
+T 4 110622
+T 4 126083
+T 4 142172
+T 4 160400
+T 4 176434
+T 4 193527
+T 4 209271
+T 4 227334
+T 4 243216
+T 4 259207
+T 4 275950
+T 4 293130
+T 4 309569
+T 4 326521
+T 4 343387
+T 4 359430
+T 4 376025
+T 4 393092
+T 4 409482
+T 4 426647
+T 4 443667
+T 4 459551
+T 4 476726
+T 4 492212
+T 4 510033
+T 4 527044
+T 4 543104
+T 4 559329
+T 4 577315
+T 4 593622
+T 4 609814
+T 4 627219
+T 4 643451
+T 4 659467
+T 4 676557
+T 4 693405
+T 4 708844
+T 4 726753
+T 4 743032
+T 4 760306
+T 4 776042
+T 4 792867
+T 4 809561
+T 4 826361
+T 4 842865
+T 4 858947
+INPUT 1 0 2 1 36 13 0 13
+T 4 858984
+ENDINPUT
+T 4 876144
+INPUT 1 0 3 0 36 13 0 0
+ENDINPUT
+T 4 893420
+T 4 910042
+T 4 927043
+T 4 942188
+T 4 960290
+T 4 976226
+T 4 993017
+T 5 10176
+T 5 25286
+T 5 43356
+T 5 60241
+T 5 76129
+T 5 93137
+T 5 109504
+T 5 125618
+T 5 142686
+T 5 159759
+T 5 176348
+T 5 192758
+T 5 209211
+T 5 226213
+T 5 242385
+T 5 260369
+T 5 275809
+T 5 293260
+T 5 309205
+T 5 327126
+T 5 343005
+T 5 359316
+T 5 376032
+T 5 392905
+T 5 410040
+T 5 426939
+T 5 441963
+T 5 460347
+T 5 475809
+T 5 493652
+T 5 509085
+T 5 526555
+T 5 543279
+T 5 559871
+T 5 576887
+T 5 592912
+T 5 609557
+T 5 626559
+T 5 643473
+T 5 659379
+T 5 676491
+T 5 693535
+T 5 710503
+T 5 726511
+T 5 743681
+T 5 759522
+T 5 776577
+T 5 793154
+T 5 809314
+T 5 826560
+T 5 843241
+T 5 859770
+T 5 876246
+T 5 892957
+T 5 909651
+T 5 925942
+T 5 942851
+T 5 959639
+T 5 976640
+T 5 993280
+T 6 10092
+T 6 27027
+T 6 42744
+T 6 60344
+T 6 75904
+T 6 93831
+T 6 109459
+T 6 126388
+T 6 143338
+T 6 160024
+T 6 176353
+T 6 192973
+T 6 209477
+T 6 226871
+T 6 242403
+T 6 259949
+T 6 276411
+T 6 293169
+T 6 309300
+T 6 326340
+T 6 342546
+T 6 359106
+T 6 376292
+T 6 393341
+INPUT 1 0 2 1 116 274 0 0
+INPUT 1 0 3 0 116 274 0 0
+ENDINPUT
+T 6 409297
+T 6 427072
+T 6 442874
+T 6 458804
+T 6 476274
+T 6 493098
+T 6 509526
+T 6 526474
+T 6 543017
+T 6 560108
+T 6 576412
+T 6 593421
+T 6 608814
+T 6 626882
+T 6 643019
+T 6 659013
+T 6 676505
+T 6 693011
+T 6 709881
+T 6 727023
+T 6 742017
+T 6 760263
+T 6 775863
+T 6 793264
+T 6 809441
+T 6 825966
+T 6 842420
+T 6 860215
+T 6 876591
+T 6 893043
+T 6 910204
+T 6 926458
+T 6 942788
+T 6 959998
+T 6 976251
+T 6 992952
+T 7 9649
+T 7 26516
+T 7 43222
+T 7 59213
+T 7 76655
+T 7 93495
+T 7 109571
+T 7 126183
+INPUT 1 0 2 1 36 13 0 13
+FILE_OPEN 1 0
+FILE_READ L
+ 1
+FILE_OPEN 1 0
+FILE_READ L
+ 1
+FILE_OPEN 1 0
+FILE_READ L
+ 1
+FILE_OPEN 1 0
+FILE_READ L6        player_1
+ 0
+FILE_READ L0        web_userx
+ 1
+T 7 126855
+T 7 127503
+SMOOTHTIME 0
+INPUT 1 0 3 0 36 13 0 0
+ENDINPUT
+RANDOM 380456039
+RANDOM 747682844
+T 7 142202
+T 7 158810
+T 7 176571
+T 7 192786
+T 7 210185
+T 7 226209
+T 7 243180
+T 7 259936
+T 7 276022
+T 7 293152
+T 7 309337
+T 7 326593
+T 7 342306
+T 7 360085
+T 7 375846
+T 7 392737
+T 7 409457
+T 7 426160
+T 7 441997
+T 7 460650
+T 7 475726
+T 7 493498
+T 7 509668
+T 7 526252
+T 7 543597
+T 7 560108
+T 7 576856
+T 7 593414
+T 7 609312
+T 7 626263
+T 7 642948
+T 7 659527
+T 7 676560
+T 7 693501
+T 7 709941
+T 7 727135
+T 7 743323
+T 7 759828
+T 7 776210
+T 7 794008
+T 7 809382
+T 7 826508
+T 7 842661
+T 7 859645
+T 7 876800
+T 7 893647
+T 7 910032
+T 7 927079
+T 7 943278
+T 7 959829
+T 7 976100
+T 7 993372
+T 8 9431
+T 8 26651
+T 8 43800
+T 8 59931
+T 8 76393
+T 8 93425
+T 8 109895
+T 8 127099
+T 8 143377
+T 8 160147
+T 8 176110
+T 8 193482
+T 8 209548
+T 8 227767
+T 8 243622
+T 8 259892
+T 8 277319
+T 8 293369
+T 8 310018
+T 8 326551
+T 8 343402
+T 8 359796
+T 8 376108
+T 8 394227
+T 8 409983
+T 8 427020
+T 8 443909
+T 8 459961
+T 8 476671
+T 8 493623
+T 8 509785
+T 8 527683
+T 8 543433
+T 8 560401
+T 8 576818
+T 8 593242
+T 8 609710
+T 8 626757
+T 8 642907
+INPUT 1 0 2 1 36 13 0 13
+ENDINPUT
+T 8 660188
+INPUT 1 0 3 0 36 13 0 0
+ENDINPUT
+T 8 676153
+T 8 693281
+T 8 709281
+T 8 727358
+T 8 743345
+T 8 759927
+T 8 776978
+T 8 793740
+T 8 809945
+T 8 826963
+T 8 843665
+T 8 860555
+T 8 877630
+T 8 893676
+T 8 910649
+T 8 927418
+T 8 943558
+T 8 960675
+T 8 977543
+T 8 993469
+T 9 10619
+T 9 26676
+T 9 43195
+T 9 60089
+T 9 76764
+T 9 93890
+T 9 110103
+T 9 127107
+T 9 143807
+T 9 160760
+T 9 177569
+T 9 193527
+T 9 210579
+T 9 226871
+T 9 243738
+T 9 260271
+T 9 276781
+T 9 293889
+T 9 310365
+T 9 327273
+T 9 344028
+T 9 360760
+T 9 376605
+T 9 393662
+T 9 410550
+T 9 426712
+T 9 443117
+T 9 459816
+T 9 476216
+T 9 494241
+T 9 509797
+T 9 526902
+T 9 543439
+T 9 559643
+T 9 576952
+T 9 593858
+T 9 610299
+T 9 627149
+T 9 643757
+T 9 659378
+T 9 676823
+T 9 693627
+T 9 709957
+T 9 727068
+T 9 743851
+T 9 760554
+T 9 777545
+T 9 793353
+T 9 809377
+T 9 827465
+T 9 843186
+T 9 860256
+T 9 876731
+T 9 893506
+T 9 909989
+T 9 926709
+T 9 943293
+T 9 959604
+T 9 977323
+T 9 994291
+T 10 10037
+T 10 27477
+T 10 42679
+T 10 59947
+T 10 76512
+T 10 92830
+T 10 110356
+T 10 126455
+T 10 144121
+T 10 159535
+T 10 177477
+T 10 193629
+T 10 210553
+T 10 227417
+T 10 243669
+T 10 260838
+T 10 277602
+T 10 293536
+T 10 310587
+T 10 327234
+T 10 343138
+T 10 359791
+T 10 376411
+T 10 394298
+T 10 410040
+T 10 426957
+T 10 443868
+T 10 460630
+T 10 477489
+T 10 493744
+T 10 509766
+T 10 526019
+T 10 543091
+T 10 559563
+T 10 576326
+T 10 594262
+T 10 609575
+T 10 626767
+T 10 643324
+T 10 659880
+T 10 676701
+T 10 693747
+T 10 710988
+T 10 726805
+T 10 743583
+T 10 760581
+T 10 776732
+T 10 793506
+T 10 810535
+T 10 827404
+T 10 842739
+T 10 860442
+T 10 877606
+T 10 892890
+T 10 910729
+T 10 926693
+T 10 943315
+T 10 959540
+T 10 976949
+T 10 993918
+T 11 10314
+T 11 25785
+T 11 43418
+T 11 60284
+T 11 77024
+T 11 93641
+T 11 110327
+T 11 127158
+T 11 143822
+RANDOM 1421640010
+RANDOM 1535995573
+T 11 160548
+T 11 177106
+T 11 193992
+T 11 210555
+T 11 226509
+T 11 243309
+T 11 260340
+T 11 277270
+T 11 293955
+T 11 309765
+T 11 327752
+T 11 343282
+T 11 359959
+T 11 376661
+T 11 393625
+T 11 409735
+T 11 426497
+T 11 443269
+T 11 460323
+T 11 476124
+T 11 493462
+T 11 509613
+T 11 527365
+T 11 543538
+T 11 560448
+T 11 576632
+T 11 593544
+T 11 610037
+T 11 626482
+T 11 642886
+T 11 660806
+T 11 676185
+T 11 694151
+T 11 709669
+T 11 725926
+T 11 743601
+T 11 760503
+T 11 776908
+T 11 793931
+T 11 809368
+T 11 827398
+T 11 842994
+T 11 860537
+T 11 876308
+T 11 893332
+T 11 909650
+T 11 927490
+T 11 943863
+T 11 959582
+T 11 976904
+T 11 993858
+T 12 10713
+T 12 27419
+T 12 43177
+T 12 59502
+T 12 76928
+T 12 93462
+T 12 110327
+T 12 126880
+T 12 143832
+T 12 159933
+T 12 176678
+T 12 193206
+T 12 209764
+T 12 226766
+T 12 242932
+T 12 260774
+T 12 276170
+T 12 293556
+T 12 310288
+T 12 327313
+T 12 342870
+T 12 359950
+T 12 375914
+T 12 393851
+T 12 410714
+T 12 427445
+T 12 443424
+T 12 459893
+T 12 476276
+T 12 493343
+T 12 510557
+T 12 526265
+T 12 543977
+T 12 560081
+T 12 576487
+T 12 594217
+T 12 609761
+T 12 626832
+T 12 643293
+T 12 660206
+T 12 677152
+T 12 694232
+T 12 710675
+T 12 726808
+T 12 743098
+T 12 759504
+T 12 776752
+T 12 794091
+T 12 811277
+T 12 827209
+T 12 843331
+T 12 859580
+T 12 877798
+T 12 893833
+T 12 910922
+T 12 927198
+T 12 943367
+T 12 960748
+T 12 976640
+T 12 994093
+T 13 9951
+T 13 26193
+T 13 43558
+T 13 60691
+T 13 77022
+T 13 93293
+T 13 110405
+T 13 126710
+T 13 143876
+T 13 160865
+T 13 176788
+T 13 193615
+T 13 210605
+T 13 227629
+T 13 243443
+T 13 260617
+T 13 276857
+T 13 293711
+T 13 309874
+T 13 327244
+T 13 344379
+T 13 360630
+T 13 376923
+T 13 393288
+T 13 410536
+T 13 426552
+T 13 443665
+T 13 460625
+T 13 476709
+T 13 493215
+T 13 510138
+T 13 526216
+T 13 543863
+T 13 561044
+T 13 576748
+T 13 594066
+T 13 609565
+T 13 626977
+T 13 643799
+T 13 661121
+T 13 676581
+T 13 693084
+INPUT 1 0 2 1 111 273 0 0
+ENDINPUT
+T 13 709501
+T 13 725813
+T 13 742969
+T 13 759364
+T 13 776974
+T 13 793991
+T 13 810182
+T 13 827305
+T 13 843473
+T 13 860166
+T 13 877637
+T 13 893919
+T 13 909442
+T 13 927384
+T 13 942953
+T 13 959826
+T 13 976626
+T 13 992983
+T 14 10352
+T 14 26885
+T 14 43614
+T 14 60656
+T 14 76475
+T 14 93205
+T 14 109227
+T 14 127672
+T 14 143533
+T 14 160020
+T 14 176626
+T 14 193083
+T 14 209810
+T 14 225899
+T 14 243258
+T 14 260373
+T 14 277231
+T 14 293260
+T 14 310653
+T 14 326714
+T 14 343993
+T 14 360126
+T 14 376673
+T 14 394144
+T 14 410319
+T 14 427600
+T 14 443216
+T 14 460650
+T 14 476340
+T 14 492833
+T 14 511270
+T 14 527230
+T 14 543407
+T 14 560800
+T 14 576996
+T 14 593130
+T 14 610155
+T 14 627495
+T 14 642737
+T 14 660977
+T 14 676588
+T 14 692781
+T 14 710948
+T 14 727062
+T 14 743023
+T 14 759759
+T 14 776026
+T 14 793511
+T 14 810056
+T 14 826367
+T 14 842608
+T 14 860454
+T 14 876891
+T 14 893243
+T 14 909882
+T 14 927347
+T 14 942642
+T 14 960980
+T 14 976410
+T 14 993739
+T 15 9414
+T 15 26728
+T 15 43585
+T 15 60974
+T 15 77128
+T 15 93562
+T 15 110861
+T 15 126639
+T 15 144094
+T 15 160177
+T 15 177077
+T 15 193708
+T 15 210348
+T 15 227642
+T 15 243673
+T 15 260194
+T 15 276846
+T 15 293723
+T 15 310453
+T 15 326697
+T 15 343969
+T 15 361055
+T 15 376289
+T 15 393098
+T 15 409351
+T 15 427103
+T 15 443860
+T 15 460562
+T 15 476966
+T 15 494188
+T 15 509812
+T 15 527167
+T 15 543825
+T 15 560032
+T 15 576903
+T 15 593676
+T 15 609798
+T 15 627912
+T 15 643469
+T 15 659813
+T 15 676033
+T 15 693592
+T 15 709611
+T 15 727944
+T 15 743338
+T 15 760803
+T 15 776158
+T 15 793814
+T 15 810108
+T 15 827240
+T 15 842697
+T 15 860031
+T 15 876762
+T 15 894159
+T 15 909565
+T 15 927293
+T 15 943029
+T 15 960270
+T 15 976863
+T 15 994268
+T 16 9520
+T 16 27909
+T 16 43173
+T 16 60377
+T 16 77014
+T 16 94435
+T 16 109790
+T 16 127185
+T 16 143494
+T 16 160718
+T 16 177453
+T 16 193796
+T 16 211138
+T 16 227202
+T 16 243490
+T 16 259890
+T 16 277129
+T 16 293599
+T 16 310279
+T 16 327369
+T 16 344368
+T 16 360626
+T 16 377688
+T 16 394003
+T 16 409678
+T 16 426599
+T 16 442979
+T 16 460809
+T 16 476240
+T 16 493458
+T 16 510127
+T 16 527625
+T 16 543623
+T 16 560317
+T 16 577883
+T 16 593328
+T 16 610029
+T 16 627427
+T 16 643103
+T 16 660078
+T 16 676670
+T 16 693730
+T 16 709838
+T 16 727890
+T 16 743754
+T 16 761058
+T 16 776723
+T 16 793768
+T 16 810215
+T 16 826769
+T 16 843327
+T 16 860433
+T 16 876973
+T 16 894409
+T 16 910102
+T 16 927464
+T 16 943533
+T 16 961082
+T 16 976135
+T 16 994464
+T 17 10538
+T 17 27565
+T 17 43776
+T 17 60027
+T 17 77054
+T 17 93674
+T 17 110237
+T 17 127588
+T 17 143610
+T 17 160617
+T 17 176863
+T 17 193548
+T 17 210906
+T 17 226607
+T 17 243794
+T 17 259778
+T 17 276280
+T 17 292849
+T 17 311202
+T 17 327164
+T 17 344206
+T 17 360527
+T 17 377013
+T 17 393355
+T 17 410171
+T 17 426563
+T 17 443845
+T 17 460952
+T 17 476952
+T 17 494526
+T 17 510399
+T 17 526700
+T 17 544034
+T 17 559220
+T 17 576997
+T 17 593809
+T 17 610266
+T 17 626695
+T 17 643864
+T 17 659982
+T 17 677266
+T 17 693593
+T 17 709673
+INPUT 1 0 2 1 113 276 0 0
+ENDINPUT
+T 17 726744
+T 17 743521
+T 17 760913
+T 17 777354
+T 17 793797
+T 17 811086
+T 17 827052
+T 17 844373
+T 17 860829
+T 17 876847
+T 17 893033
+T 17 910494
+T 17 927373
+T 17 943604
+T 17 961015
+T 17 977105
+T 17 994417
+T 18 10630
+T 18 26385
+T 18 43159
+T 18 60597
+T 18 76432
+T 18 93557
+T 18 110359
+T 18 126477
+T 18 143584
+T 18 160729
+T 18 176410
+T 18 194376
+T 18 210653
+T 18 227634
+T 18 243829
+T 18 260801
+T 18 276304
+T 18 292878
+T 18 311278
+T 18 326629
+T 18 343384
+T 18 360331
+T 18 377221
+T 18 393534
+T 18 410704
+T 18 426236
+T 18 443987
+T 18 460197
+T 18 477064
+T 18 494568
+T 18 510418
+T 18 526237
+T 18 543297
+T 18 560571
+T 18 577367
+T 18 593722
+T 18 610700
+T 18 625886
+T 18 643168
+INPUT 1 0 3 0 113 276 0 0
+ENDINPUT
+T 18 659275
+T 18 676747
+T 18 694026
+T 18 709835
+T 18 726776
+T 18 743964
+T 18 759358
+T 18 777417
+T 18 793187
+T 18 810509
+T 18 826293
+T 18 843944
+T 18 860231
+T 18 877350
+T 18 892835
+T 18 910108
+T 18 926805
+T 18 943898
+T 18 960067
+T 18 976616
+T 18 993891
+T 19 10729
+T 19 26400
+T 19 43981
+T 19 60161
+T 19 77104
+T 19 93227
+T 19 110283
+T 19 127177
+T 19 143561
+T 19 159766
+T 19 177023
+T 19 194454
+T 19 210692
+T 19 226550
+T 19 243767
+T 19 260853
+T 19 276766
+T 19 293256
+T 19 310139
+T 19 326461
+T 19 343316
+T 19 360519
+T 19 376403
+T 19 393223
+T 19 410346
+T 19 426981
+T 19 443490
+T 19 460389
+T 19 477008
+T 19 494405
+T 19 510268
+T 19 527450
+T 19 543430
+T 19 560670
+T 19 577542
+T 19 593591
+T 19 610832
+T 19 626813
+T 19 644056
+T 19 660105
+T 19 677122
+T 19 693405
+T 19 710282
+T 19 726583
+T 19 743466
+T 19 760799
+T 19 777170
+T 19 794437
+T 19 810323
+T 19 827369
+T 19 843569
+T 19 860775
+T 19 876602
+T 19 893286
+T 19 910382
+T 19 926519
+T 19 943169
+T 19 960978
+T 19 976568
+T 19 993864
+T 20 10504
+T 20 27564
+T 20 42987
+T 20 60165
+T 20 77562
+T 20 93628
+T 20 110952
+T 20 126943
+T 20 143945
+T 20 160210
+T 20 177648
+T 20 193779
+T 20 211207
+T 20 227291
+T 20 244183
+T 20 260401
+T 20 276390
+T 20 293658
+T 20 310644
+T 20 326605
+T 20 343779
+T 20 360969
+T 20 377190
+T 20 393524
+T 20 410967
+T 20 427236
+T 20 444356
+T 20 460532
+T 20 477358
+T 20 493882
+T 20 510033
+T 20 527361
+T 20 543661
+T 20 560714
+T 20 576905
+T 20 594249
+T 20 610116
+T 20 627325
+T 20 644313
+T 20 660082
+T 20 677084
+T 20 694253
+T 20 710219
+T 20 726718
+T 20 743814
+T 20 760067
+T 20 776990
+T 20 794019
+T 20 809352
+T 20 827728
+T 20 843854
+T 20 859971
+T 20 876525
+T 20 893770
+T 20 910082
+T 20 927208
+T 20 942944
+T 20 960848
+T 20 976908
+T 20 993690
+T 21 10366
+T 21 25807
+T 21 42966
+T 21 60953
+T 21 76733
+T 21 93869
+T 21 109422
+T 21 127553
+T 21 143430
+T 21 160657
+T 21 177320
+T 21 193122
+T 21 210239
+T 21 227239
+T 21 244028
+T 21 260076
+T 21 277058
+T 21 294135
+T 21 310011
+T 21 327089
+T 21 343659
+T 21 360589
+T 21 376358
+T 21 394417
+T 21 410353
+T 21 427523
+T 21 443916
+T 21 460481
+T 21 476485
+T 21 493813
+T 21 509867
+T 21 526547
+T 21 543076
+T 21 559914
+T 21 577040
+T 21 593284
+T 21 609827
+T 21 626964
+T 21 643144
+T 21 660220
+T 21 677049
+T 21 694062
+T 21 709868
+T 21 726989
+T 21 743977
+T 21 760155
+T 21 777496
+T 21 793807
+T 21 810880
+T 21 826464
+T 21 843797
+T 21 860861
+T 21 876826
+T 21 894167
+T 21 910255
+T 21 927415
+T 21 943378
+T 21 960497
+T 21 977572
+T 21 993764
+T 22 10532
+T 22 27468
+T 22 43606
+T 22 60772
+T 22 75955
+T 22 93306
+T 22 109394
+T 22 127703
+T 22 142921
+T 22 160646
+T 22 176336
+T 22 193344
+T 22 210459
+T 22 226849
+T 22 243055
+T 22 260661
+T 22 276381
+T 22 294116
+T 22 309318
+T 22 327795
+T 22 343896
+T 22 360860
+T 22 377017
+T 22 394126
+T 22 410482
+T 22 426740
+T 22 442901
+T 22 460119
+T 22 476569
+T 22 493408
+T 22 509794
+T 22 527190
+T 22 543282
+T 22 559739
+T 22 576322
+T 22 592704
+T 22 610673
+T 22 626570
+T 22 643793
+T 22 660840
+INPUT 1 0 2 1 113 276 0 0
+ENDINPUT
+T 22 676037
+T 22 692802
+T 22 710088
+T 22 726728
+T 22 743383
+T 22 760922
+T 22 776268
+T 22 794410
+T 22 810327
+T 22 827109
+T 22 844223
+T 22 859942
+T 22 877403
+T 22 893824
+T 22 911154
+T 22 926540
+T 22 943550
+T 22 960812
+T 22 977036
+T 22 994307
+T 23 10375
+T 23 25807
+T 23 43212
+T 23 60132
+T 23 76999
+T 23 94273
+T 23 110287
+T 23 127374
+T 23 143226
+T 23 160377
+T 23 177515
+T 23 194356
+T 23 210310
+T 23 227456
+T 23 243352
+T 23 260071
+T 23 276756
+T 23 293045
+T 23 311230
+T 23 327135
+T 23 344032
+T 23 359829
+T 23 376871
+T 23 394221
+T 23 410073
+T 23 427127
+T 23 443358
+T 23 460270
+T 23 477397
+T 23 493557
+T 23 510107
+T 23 527091
+T 23 544059
+T 23 560019
+T 23 576785
+T 23 594004
+INPUT 1 0 3 0 113 276 0 0
+ENDINPUT
+T 23 611153
+T 23 626546
+T 23 642827
+T 23 659695
+T 23 676901
+T 23 694214
+T 23 710056
+T 23 727265
+T 23 743318
+T 23 759735
+T 23 776916
+T 23 793823
+T 23 811234
+T 23 827111
+T 23 843309
+T 23 859826
+T 23 876257
+T 23 893187
+T 23 909959
+T 23 927300
+T 23 943378
+T 23 959483
+T 23 977200
+T 23 993953
+T 24 9836
+T 24 26938
+T 24 44037
+T 24 60081
+T 24 76662
+T 24 93715
+T 24 110579
+T 24 126508
+T 24 142966
+T 24 160183
+T 24 177185
+T 24 194444
+T 24 210470
+T 24 226392
+T 24 243502
+T 24 260636
+T 24 277528
+T 24 293601
+T 24 310096
+T 24 327239
+T 24 343519
+T 24 360780
+T 24 376766
+T 24 394065
+T 24 410081
+T 24 427220
+T 24 443377
+T 24 460390
+T 24 477265
+T 24 494362
+T 24 510112
+T 24 527354
+T 24 543236
+T 24 559595
+T 24 576346
+T 24 594449
+T 24 610391
+T 24 626421
+T 24 644287
+T 24 660390
+T 24 676363
+T 24 693245
+T 24 710256
+T 24 727169
+T 24 742975
+T 24 760076
+T 24 777011
+T 24 793389
+T 24 809429
+T 24 826620
+T 24 843660
+T 24 859973
+T 24 876650
+T 24 894174
+T 24 909943
+T 24 926268
+T 24 944213
+T 24 960280
+T 24 976832
+T 24 993735
+T 25 10591
+T 25 26672
+T 25 43604
+T 25 60742
+T 25 76541
+T 25 93488
+T 25 110477
+T 25 126526
+T 25 143350
+T 25 160517
+T 25 177337
+T 25 193480
+T 25 210371
+T 25 227222
+T 25 244114
+T 25 259915
+T 25 277045
+T 25 293467
+T 25 310888
+T 25 326769
+T 25 344236
+T 25 360506
+T 25 376408
+T 25 393472
+T 25 410408
+T 25 427419
+T 25 444322
+T 25 460452
+T 25 477627
+T 25 493668
+T 25 510857
+T 25 526795
+T 25 542855
+T 25 559938
+T 25 576357
+T 25 592740
+T 25 609819
+T 25 626228
+T 25 643246
+T 25 660501
+T 25 676998
+T 25 693582
+T 25 709783
+T 25 727011
+T 25 743723
+T 25 760176
+T 25 777032
+T 25 793280
+T 25 809160
+T 25 826511
+T 25 843263
+T 25 860136
+T 25 876549
+T 25 893968
+T 25 909889
+T 25 927007
+T 25 944032
+T 25 960537
+T 25 976322
+T 25 992659
+T 26 10902
+T 26 26904
+T 26 43833
+T 26 60955
+T 26 76787
+T 26 93167
+T 26 109922
+T 26 127252
+T 26 143522
+T 26 160312
+T 26 177488
+T 26 193748
+T 26 210716
+T 26 226627
+T 26 243768
+T 26 260098
+T 26 276831
+T 26 293377
+T 26 310259
+T 26 327372
+T 26 343881
+T 26 360397
+T 26 377433
+T 26 393105
+T 26 410357
+T 26 427440
+T 26 443282
+T 26 460339
+T 26 476922
+T 26 494198
+T 26 509899
+T 26 526477
+T 26 543396
+T 26 560594
+T 26 577360
+T 26 593491
+T 26 610421
+T 26 627279
+T 26 643253
+T 26 659784
+T 26 676387
+T 26 693536
+T 26 710236
+T 26 727406
+T 26 743508
+T 26 760342
+T 26 776526
+T 26 793516
+T 26 810414
+T 26 826637
+T 26 843838
+T 26 860645
+T 26 876407
+T 26 893410
+T 26 910318
+T 26 926357
+T 26 944217
+T 26 959963
+T 26 976266
+T 26 993417
+T 27 9791
+T 27 27151
+T 27 44332
+T 27 60272
+T 27 75966
+T 27 92708
+T 27 110747
+T 27 126500
+T 27 143490
+T 27 160505
+T 27 176674
+T 27 194268
+T 27 210179
+T 27 227305
+T 27 244230
+T 27 259923
+T 27 276618
+T 27 294153
+T 27 310011
+T 27 326953
+T 27 344054
+T 27 360375
+T 27 377436
+T 27 393640
+T 27 410514
+T 27 427223
+T 27 443245
+T 27 460098
+T 27 476556
+T 27 493051
+T 27 509885
+T 27 526908
+T 27 544011
+T 27 560124
+T 27 576996
+T 27 594170
+T 27 610068
+T 27 626132
+INPUT 1 0 2 1 113 276 0 0
+ENDINPUT
+T 27 644142
+T 27 660373
+T 27 677619
+T 27 693754
+T 27 710149
+T 27 726769
+T 27 744049
+T 27 759906
+T 27 776918
+T 27 794125
+T 27 810391
+T 27 826699
+T 27 843748
+T 27 860443
+T 27 877527
+T 27 893491
+T 27 910115
+T 27 926716
+T 27 943660
+T 27 960422
+T 27 976574
+T 27 993725
+T 28 10015
+T 28 27343
+T 28 42723
+T 28 60171
+T 28 76777
+T 28 93980
+T 28 109907
+T 28 127010
+T 28 142541
+T 28 159864
+T 28 176849
+T 28 194004
+T 28 209671
+T 28 227148
+T 28 243699
+T 28 260081
+T 28 276424
+T 28 293499
+T 28 309764
+T 28 326993
+T 28 343935
+T 28 359951
+T 28 376945
+T 28 393244
+T 28 409965
+T 28 427222
+T 28 442709
+T 28 460837
+T 28 476340
+T 28 493210
+T 28 510010
+T 28 527128
+T 28 543289
+INPUT 1 0 3 0 113 276 0 0
+ENDINPUT
+T 28 559531
+T 28 576447
+T 28 593126
+T 28 609890
+T 28 626071
+T 28 643597
+T 28 660608
+T 28 676352
+T 28 693060
+T 28 709940
+T 28 726966
+T 28 743532
+T 28 759573
+T 28 776333
+T 28 793679
+T 28 810739
+T 28 827225
+T 28 843149
+T 28 859127
+T 28 876484
+T 28 892709
+T 28 910577
+T 28 926578
+T 28 943619
+T 28 960833
+T 28 977148
+T 28 994148
+T 29 10305
+T 29 27312
+T 29 42531
+T 29 60361
+T 29 77175
+T 29 94147
+T 29 109911
+T 29 126609
+T 29 143634
+T 29 159657
+T 29 176344
+T 29 194204
+T 29 209443
+T 29 227818
+T 29 243579
+T 29 260696
+T 29 276549
+T 29 293574
+T 29 310835
+T 29 326793
+T 29 343572
+T 29 359830
+T 29 376578
+T 29 393653
+T 29 410430
+T 29 427214
+T 29 443116
+T 29 459915
+T 29 476686
+T 29 493777
+T 29 510685
+T 29 526422
+T 29 543438
+T 29 560818
+T 29 576313
+T 29 593165
+T 29 609834
+T 29 627110
+T 29 643885
+T 29 660991
+T 29 676458
+T 29 693283
+T 29 710196
+T 29 726909
+T 29 743850
+T 29 759619
+T 29 776664
+T 29 793974
+T 29 809510
+T 29 826925
+T 29 843567
+T 29 860566
+T 29 876313
+T 29 892454
+T 29 910177
+T 29 926417
+T 29 943571
+T 29 959913
+T 29 976644
+T 29 993654
+T 30 10382
+T 30 27061
+T 30 43839
+T 30 43839
+T 30 73666
+T 30 90471
+T 30 106270
+T 30 123940
+T 30 141272
+T 30 156832
+T 30 172989
+T 30 190218
+T 30 207205
+T 30 223514
+T 30 240627
+T 30 257898
+T 30 273440
+T 30 289781
+T 30 307002
+T 30 324228
+T 30 340474
+T 30 356959
+T 30 374167
+T 30 390130
+T 30 408081
+T 30 424010
+T 30 441167
+T 30 456611
+T 30 474147
+T 30 490346
+T 30 507302
+T 30 523512
+T 30 539878
+T 30 556972
+T 30 573724
+T 30 590050
+T 30 607005
+T 30 623658
+T 30 640912
+T 30 657175
+T 30 674211
+T 30 690752
+T 30 707595
+T 30 723749
+T 30 741134
+T 30 757075
+T 30 773578
+T 30 790722
+T 30 807825
+T 30 823900
+T 30 840760
+T 30 857649
+T 30 874638
+T 30 890508
+T 30 907761
+T 30 924281
+T 30 939853
+T 30 956977
+T 30 973503
+T 30 990168
+T 31 7344
+T 31 24102
+T 31 40689
+T 31 57622
+T 31 74291
+T 31 90800
+T 31 107011
+T 31 123962
+T 31 140635
+T 31 157598
+T 31 173240
+T 31 190650
+T 31 207335
+T 31 224199
+T 31 240594
+T 31 257005
+T 31 273568
+T 31 290985
+T 31 307765
+T 31 323467
+T 31 341430
+T 31 356939
+T 31 374148
+T 31 391191
+T 31 407420
+T 31 424296
+T 31 441059
+T 31 456582
+T 31 473892
+T 31 490884
+T 31 508040
+T 31 523396
+T 31 540526
+T 31 557087
+INPUT 1 0 2 1 113 276 0 0
+ENDINPUT
+T 31 573300
+T 31 589867
+T 31 607927
+T 31 623459
+T 31 640281
+T 31 656579
+T 31 673746
+T 31 689944
+T 31 708022
+T 31 723484
+T 31 740303
+T 31 756522
+T 31 773715
+T 31 789788
+T 31 807659
+T 31 824374
+T 31 840661
+T 31 857314
+T 31 874222
+T 31 889635
+T 31 906881
+T 31 923363
+T 31 940716
+T 31 956291
+T 31 973505
+T 31 990631
+T 32 7213
+T 32 23915
+T 32 40369
+T 32 56805
+T 32 74220
+T 32 90392
+T 32 107327
+T 32 124002
+T 32 140925
+T 32 156996
+T 32 173948
+T 32 190433
+T 32 207598
+T 32 224203
+T 32 240494
+T 32 256731
+T 32 274839
+T 32 290456
+T 32 306517
+T 32 323472
+T 32 340394
+T 32 356893
+T 32 373958
+T 32 390388
+T 32 407640
+T 32 424302
+T 32 441297
+T 32 456736
+T 32 473952
+T 32 489668
+INPUT 1 0 3 0 113 276 0 0
+ENDINPUT
+T 32 507752
+T 32 524761
+T 32 540626
+T 32 557678
+T 32 574900
+T 32 590545
+T 32 607642
+T 32 623731
+T 32 640231
+T 32 656721
+T 32 673941
+T 32 690326
+T 32 707598
+T 32 723849
+T 32 740839
+T 32 758141
+T 32 773891
+T 32 790554
+T 32 807252
+T 32 824035
+T 32 840926
+T 32 857799
+T 32 874954
+T 32 890545
+T 32 907371
+T 32 924450
+T 32 940084
+T 32 957306
+T 32 974111
+T 32 990618
+T 33 7470
+T 33 24219
+T 33 41234
+T 33 56555
+T 33 73751
+T 33 90476
+T 33 107374
+T 33 123462
+T 33 141131
+T 33 157267
+T 33 174317
+T 33 190956
+T 33 206269
+T 33 223811
+T 33 241031
+T 33 258082
+T 33 273399
+T 33 289962
+T 33 306749
+T 33 323901
+T 33 340815
+T 33 357705
+T 33 374401
+T 33 390004
+T 33 407580
+T 33 424117
+T 33 441020
+T 33 457154
+T 33 474251
+T 33 490694
+T 33 507474
+T 33 524146
+T 33 540708
+T 33 557587
+T 33 574751
+T 33 590777
+T 33 607588
+T 33 624595
+T 33 640893
+T 33 656906
+T 33 674038
+T 33 690326
+T 33 707338
+T 33 724378
+T 33 740499
+T 33 756956
+T 33 773436
+T 33 790934
+T 33 807770
+T 33 823024
+T 33 840592
+T 33 856780
+T 33 874000
+T 33 890795
+T 33 907138
+T 33 924286
+T 33 940491
+T 33 956895
+T 33 973298
+T 33 989527
+T 34 8136
+INPUT 1 0 3 0 111 273 0 0
+ENDINPUT
+T 34 24361
+T 34 40935
+T 34 58109
+T 34 74028
+T 34 90854
+T 34 107875
+T 34 123378
+T 34 140526
+T 34 157179
+T 34 173528
+T 34 190007
+T 34 206340
+T 34 224046
+T 34 240144
+T 34 256443
+T 34 274144
+T 34 290621
+T 34 307143
+T 34 323690
+T 34 340529
+T 34 357294
+T 34 374232
+T 34 390758
+T 34 406972
+T 34 423690
+T 34 440601
+T 34 457530
+T 34 473672
+T 34 490745
+T 34 506825
+T 34 524179
+T 34 541275
+T 34 556853
+T 34 573663
+T 34 590637
+T 34 607789
+T 34 624288
+T 34 641525
+T 34 656850
+T 34 673926
+T 34 690431
+T 34 706487
+T 34 723965
+T 34 741017
+T 34 757574
+T 34 773723
+T 34 790262
+T 34 806770
+T 34 824016
+T 34 840587
+T 34 857600
+T 34 873888
+T 34 890005
+T 34 907210
+T 34 923627
+T 34 941511
+T 34 957000
+T 34 973367
+T 34 990447
+T 35 7407
+T 35 23944
+T 35 40770
+T 35 56898
+T 35 74250
+T 35 90936
+T 35 107858
+T 35 123522
+T 35 141455
+T 35 156624
+T 35 174712
+T 35 190239
+T 35 206652
+T 35 223735
+T 35 240613
+INPUT 1 0 2 1 9 27 0 27
+ENDINPUT
+END
+T 35 257201

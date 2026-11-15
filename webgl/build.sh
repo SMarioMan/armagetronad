@@ -261,5 +261,14 @@ cp textures/icon.png webgl/dist/favicon.png
 # part of the game.
 cp webgl/harness/perp2.aarec webgl/dist/perp2.aarec
 
+# The no-opponent replay behind the "pair without simulation drift" section of
+# webgl/README.md.  Computer players recompute their decisions per rendered
+# frame, so the two builds diverge a few seconds into perp2 and the far-field
+# scores there measure the drift, not the renderer.  With none of them, gated
+# frames land inside a world unit of each other and a whole-frame diff of 0.45
+# per channel is a measurement of the GL stack.  Aim the page at it with
+# index.html?args=--playback,perpA.aarec.
+cp webgl/harness/perpA.aarec webgl/dist/perpA.aarec
+
 echo "=== Build complete: webgl/dist ==="
 ls -la webgl/dist

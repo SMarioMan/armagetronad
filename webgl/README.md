@@ -672,6 +672,68 @@ bit-identical first, which is out of reach; the vertex data each build hands to
 GL (the port's page-side hook captures it, the desktop side needs an `LD_PRELOAD`
 shim) is the way to settle any residual rendering difference on the early gates.
 
+### A pair without simulation drift
+
+The note above treats bit-identical simulation as out of reach.  What drifts is
+the computer players, whose decisions get recomputed locally and compared with
+the recorded ones (`gAIBase.cpp:2906-2928` prints the mismatch).  Take them out
+and the two playbacks stay in one world.  `webgl/harness/perpA.aarec` is a
+lone-cycle round -- `SP_NUM_AIS 0`, `SHOW_HUD 0` and `DITHER 0` so the help
+text and the dither lattice cannot enter a diff, `SP_SIZE_FACTOR 2` so the
+cycle lives to the far end of the arena -- recorded on the desktop and replayed
+by both builds under `webgl/harness/autoexec_clean.cfg`.  Gated on game time,
+the desktop lands at gt 5.0160 / 10.0000 / 16.0668 and the port at 5.0003 /
+9.9670 / 16.0336, with the stamped camera 0.47, 0.99 and 0.99 world units apart
+at the three gates, and identical x, heading and height.
+
+Whole-frame mean absolute difference per channel: 0.45 at the first gate, 1.77
+and 1.96 at the other two.  Pixels differing by more than 30: 0.03 %, 0.08 %,
+0.19 %.  More than 60: 0.01 %, 0.02 %, 0.04 %.
+
+Grid placement in that pair agrees exactly.  Nine east-west floor lines at
+y 410, 420, 431, 442, 454, 466, 479, 493, 508 on both sides; seven north-south
+lines at x 581/582, 601, 620, 640, 659, 678, 698 on both; near-floor line peaks
+87.59 (desktop) against 87.63 (port).  What is left is contrast in the faint
+far detail: the east-west family peaks at 11.23 against the desktop's 13.35,
+16 % down, while the north-south family is within 2 % (13.26 against 13.57),
+and pixels above luma 8 in rows 505-620 number 28207 against 33419.
+
+The cycle body, box-aligned on the brightest green pixel of each frame and
+sampled in a 32x32 window at all three gates, is a match: pixels above luma 60
+171/177, 174/181, 171/179 (port/desktop), above 120 55/55, 51/50, 57/55, mean
+RGB (17.4, 38.9, 7.9) against (16.6, 36.6, 7.1) at the last gate.  The lighting
+corrections already in the build -- the colour-material substitution, and the
+decision to keep the specular term at shininess 0 -- have closed the body
+difference; the port is if anything slightly brighter.
+
+Texture data is not the cause of the far-grid residual.  The uploaded level-0
+bytes match the reference decode exactly: luminance sums 686040 for
+`textures/floor.png`, 1360 for `floor_a.png`, 1356 for `floor_b.png` on both
+paths, so stb_image on the port and libpng on the desktop deliver the same
+pixels.  Context state matches too: `SAMPLES=0`, aliased line width range
+[1,1], anisotropic extension present and left at 1.0 on both sides.
+
+Three levers aimed at the far-grid residual, measured on this pair, all
+rejected.  Un-mipmapped sampling (`GL_LINEAR` as every min filter, page side)
+puts 2347 pixels above luma 16 in the far band against the desktop's 247, and
+grows the mid band by 4446 pixels above luma 40 where the desktop has 206:
+moire, not detail.  Four-times anisotropic sampling on every texture lifts the
+east-west amplitudes to 1.67x the desktop's and the north-south family to 15.80
+against 13.57, overshooting a reference that samples at 1.0.  The analytic
+projective-LOD form (`harness/analytic_lod_patch.py`) improves the east-west
+peak to 12.58 but makes the port resolve nine north-south lines where the
+desktop resolves seven, raises the mid-floor peak to 109.22 against 101.27, and
+moves whole-frame agreement from 0.45 to 2.57; it confirms the decision recorded
+in `webgl/build.sh` to leave the shipped `texture2DProj` form alone, now on a
+pair that does not drift.
+
+What remains is the rasterizer's own level estimate: ANGLE over SwiftShader
+samples the far half of the east-west family about a third of a mip level
+coarser than llvmpipe, from the same coordinates, the same mip chain and the
+same blend.  GLSL ES 1.00 offers no sampler bias, and the explicit-LOD route
+that would pin the level down measures as a net loss, so the shipped build
+keeps ANGLE's choice.
+
 ### Reproducing the comparison
 
 The recording used for this is `webgl/harness/perp2.aarec`: a single-player

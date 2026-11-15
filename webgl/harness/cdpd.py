@@ -97,6 +97,16 @@ class Page:
                 "Page.addScriptToEvaluateOnNewDocument",
                 {"source": "window.arma_parity_stamp = true;"},
             )
+        # A capture-side JS prelude (a draw censor, a state probe) registered the
+        # same way the stamp flag is, so the build itself stays clean.
+        for f in os.environ.get("INITJS", "").split(";"):
+            if not f:
+                continue
+            with open(f, encoding="utf-8") as fh:
+                self.cmd(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": fh.read()},
+                )
         # The page reserves 56 px of chrome below the canvas, so the port
         # renders at innerHeight - 56: an 856 tall viewport lands the buffer on
         # exactly the 1280x800 the native capture uses.  Anything smaller makes
@@ -106,7 +116,8 @@ class Page:
         w, h = (int(v) for v in os.environ.get("VIEW", "1280x856").split("x"))
         self.cmd(
             "Emulation.setDeviceMetricsOverride",
-            {"width": w, "height": h, "deviceScaleFactor": 1, "mobile": False},
+            {"width": w, "height": h,
+             "deviceScaleFactor": float(os.environ.get("SCALE", "1")), "mobile": False},
         )
         self.cmd("Page.navigate", {"url": url})
 
