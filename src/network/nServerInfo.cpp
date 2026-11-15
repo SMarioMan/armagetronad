@@ -1967,6 +1967,15 @@ void nServerInfo::PumpBrowse()
         b.sweepActive = false;
     }
 }
+
+// Whether the master query or a LAN sweep is still in flight.  The browser
+// menu asks this once per frame and re-arms its per-server query round when the
+// answer flips to false: that is the first moment its list is complete.
+bool nServerInfo::BrowseRoundRunning()
+{
+    WasmBrowse const & b = wasmBrowse();
+    return b.masterPhase != 0 || b.sweepActive;
+}
 #endif // __EMSCRIPTEN__
 
 extern bool sn_supportRemoteLogins; // nAuthentication.cpp

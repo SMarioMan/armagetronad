@@ -1309,8 +1309,15 @@ nAddress & nAddress::SetHostname( const char * hostname )
     // initialize networking at OS level
     sn_InitOSNetworking();
 
-    // parse IP address if the passed name looks like one
-    if (hostname[0] >= '0' && hostname[0] <= '9')
+    // parse IP address if the passed name looks like one.  Under wasm a string
+    // containing a colon is an IPv6 literal, not a partial dotted quad: the
+    // game's own address type is 32 bit and cannot hold it, so it has to travel
+    // to the bridge as a name and be resolved there.
+    if (hostname[0] >= '0' && hostname[0] <= '9'
+#ifdef __EMSCRIPTEN__
+        && strchr( hostname, ':' ) == NULL
+#endif
+        )
     {
         PartialIPAddress (hostname, &addr_.addr, GetPort(), 0x7f000001 );
         return *this;

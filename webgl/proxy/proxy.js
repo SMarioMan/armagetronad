@@ -246,11 +246,27 @@ function accumulate(st) {
 function statusJson() {
   const list = [];
   for (const st of sessions) {
-    list.push({
+    const e = {
       kind: st.kind, target: st.target,
       tx: st.tx, txBytes: st.txBytes, rx: st.rx, rxBytes: st.rxBytes,
       delayed: st.slow, dropped: st.dropped, ageS: Math.round((Date.now() - st.t0) / 1000),
-    });
+    };
+    // A multiplexed session keeps one counter set per destination, which hides
+    // the one thing an operator needs when a server will not answer: was its
+    // name resolved at all, and is traffic sitting in front of it?
+    if (st.peers && st.peers.size) {
+      e.peers = [];
+      let shown = 0;
+      for (const p of st.peers.values()) {
+        if (shown >= 12) { e.peersMore = st.peers.size - shown; break; }
+        e.peers.push({
+          key: p.key, ip: p.ip || '-', held: p.queue.q.length,
+          failed: !!p.deadAt, looking: !!p.looking,
+        });
+        shown++;
+      }
+    }
+    list.push(e);
   }
   const totals = list.reduce((a, s) => {
     a.tx += s.tx; a.txBytes += s.txBytes; a.rx += s.rx; a.rxBytes += s.rxBytes;
@@ -423,6 +439,13 @@ function muxDecode(buf) {
   return null;
 }
 
+// A v6 address contains colons, so an "address:port" map key is ambiguous for
+// it: "::1:4534" is a valid address in its own right.  The send side and the
+// reply demux both build this key, so they cannot drift apart.
+function sockKey(address, port) {
+  return address + '|' + port;
+}
+
 function bridgeMux(ws, ip) {
   const st = newStats('mux ' + ip);
   st.kind = 'mux';
@@ -433,8 +456,23 @@ function bridgeMux(ws, ip) {
   // destination key -> {ip, port, name, queue}.  The key is what the client
   // put in the header, so answers can be labelled with the same key.
   const peers = new Map();
+  st.peers = peers;            // the status page answers "did the name resolve?" from this
   const bySocket = new Map();      // resolved ip:port -> key
   const sock = dgram.createSocket('udp4');
+  // A named destination can turn out to be v6.  The v6 socket is only created
+  // once something actually needs one, so an IPv4-only host never tries to bind
+  // it and never reports a spurious failure.
+  let sock6 = null;
+  function sockFor(v6) {
+    if (!v6) return sock;
+    if (!sock6) {
+      sock6 = dgram.createSocket('udp6');
+      sock6.on('message', onUdp);
+      sock6.on('error', (e) => { log('mux udp6 error', ip, e.message); close('error'); });
+      try { sock6.bind(0, '::'); } catch (e) { log('mux udp6 bind failed', e.message); }
+    }
+    return sock6;
+  }
   let closed = false;
   let lastSeen = Date.now();
   const close = (why) => {
@@ -446,6 +484,7 @@ function bridgeMux(ws, ip) {
     for (const p of peers.values()) p.queue.clear();
     peers.clear();
     try { sock.close(); } catch (e) {}
+    if (sock6) { try { sock6.close(); } catch (e) {} }
     log('mux closed', ip, why || '', 'tx', st.tx + '/' + st.txBytes + 'B',
       'rx', st.rx + '/' + st.rxBytes + 'B', 'delayed', st.slow, 'dropped', st.dropped);
     try { if (ws.readyState === WebSocket.OPEN) ws.close(); } catch (e) {}
@@ -464,6 +503,29 @@ function bridgeMux(ws, ip) {
 
   const keyOf = (peer) => (peer.name ? peer.name + ':' + peer.port : peer.ip + ':' + peer.port);
 
+  // A name has to be looked up here: the browser has no resolver and the game's
+  // address type is 32 bit, so the client sends the name itself (fam 2) and this
+  // process turns it into an address.  A failed lookup is not final - names fail
+  // transiently and the client's own retries are seconds apart - so a dead entry
+  // is re-resolved as soon as traffic for it shows up again.
+  function resolve(e) {
+    e.looking = true;
+    dns.lookup(e.name, { family: 0 }, (err, address, family) => {
+      e.looking = false;
+      if (closed) return;
+      if (err) {
+        log('mux lookup failed', e.name, err.message);
+        e.deadAt = Date.now();
+        e.queue.clear();          // nothing can reach it: do not let it pile up
+        return;
+      }
+      e.ip = address;
+      e.v6 = family === 'IPv6';
+      e.deadAt = 0;
+      bySocket.set(sockKey(address, e.port), e.key);
+    });
+  }
+
   function entryFor(peer) {
     const key = keyOf(peer);
     let e = peers.get(key);
@@ -477,32 +539,35 @@ function bridgeMux(ws, ip) {
       queue: new PacedQueue(st, TARGET_RATE, TARGET_BURST),
     };
     peers.set(key, e);
-    if (e.ip) bySocket.set(e.ip + ':' + e.port, key);
-    if (e.name) {
-      dns.lookup(e.name, { family: 4 }, (err, address) => {
-        if (err) { log('mux lookup failed', e.name, err.message); return; }
-        e.ip = address;
-        bySocket.set(address + ':' + e.port, key);
-      });
-    }
+    if (e.ip) bySocket.set(sockKey(e.ip, e.port), key);
+    if (e.name) resolve(e);
     return e;
   }
 
-  sock.on('message', (msg, rinfo) => {
+  function onUdp(msg, rinfo) {
     st.rx++; st.rxBytes += msg.length;
     lastSeen = Date.now();
     if (ws.readyState !== WebSocket.OPEN) return;
     // Label the reply with the key the client used for this server, so a
     // server reached through a name is still recognised as that name.
-    const key = bySocket.get(rinfo.address + ':' + rinfo.port);
+    const key = bySocket.get(sockKey(rinfo.address, rinfo.port));
     const peer = (key && peers.get(key)) || null;
+    if (!peer && !isV4(rinfo.address)) {
+      // The client's address type is 32 bit, so an unsolicited v6 sender cannot
+      // be named back to it at all.  Replies from servers the client addressed
+      // by name are unaffected: they carry the name, not the address.
+      st.dropped++;
+      log('mux unlabelled v6 reply dropped', rinfo.address + ':' + rinfo.port);
+      return;
+    }
     const out = muxEncode(
       peer && peer.name ? { name: peer.name, port: rinfo.port }
         : { ip: rinfo.address, port: rinfo.port },
       msg
     );
     ws.send(out, { binary: true }, (e) => { if (e) log('ws send err', e.message); });
-  });
+  }
+  sock.on('message', onUdp);
   sock.on('error', (e) => { log('mux udp error', ip, e.message); close('error'); });
 
   ws.on('message', (d) => {
@@ -515,9 +580,24 @@ function bridgeMux(ws, ip) {
     const e = entryFor(f);
     if (!e) return;
     const sendNow = (datagram) => {
-      if (!e.ip) { log('mux unresolved', e.key); return; }
+      if (!e.ip) {
+        // Still resolving, or the lookup failed.  The old behaviour dropped the
+        // datagram here, which cost the client's very first query to every named
+        // server: opening the entry started the lookup, the query lost the race
+        // and was thrown away, and the poll then sat out its own timeout - which
+        // is why every hostname server in the browser read "Polling.." while the
+        // numeric ones filled in.  Hold it instead: the drain loop retries on its
+        // own schedule, and the address is usually there a few milliseconds later.
+        if (e.deadAt && !e.looking && Date.now() - e.deadAt > 10000) resolve(e);
+        if (e.deadAt && e.queue.q.length >= QUEUE_MAX) { st.dropped++; return; }
+        if (e.queue.q.length >= QUEUE_MAX) e.queue.q.shift();
+        e.queue.q.unshift(datagram);
+        if (!e.heldLogged) { e.heldLogged = true; log('mux holding', e.key, 'name not resolved yet'); }
+        e.queue.schedule(sendNow);
+        return;
+      }
       try {
-        sock.send(datagram, e.port, e.ip, (err) => { if (err) log('mux send error', e.key, err.message); });
+        sockFor(e.v6).send(datagram, e.port, e.ip, (err) => { if (err) log('mux send error', e.key, err.message); });
         st.tx++; st.txBytes += datagram.length;
       } catch (err) { log('mux send error', e.key, err.message); }
     };

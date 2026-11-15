@@ -929,6 +929,19 @@ void gBrowserMenuItem::RenderBackground()
     // the master query and the LAN sweep are stepped per frame, next to the
     // network pump of the browser menu
     nServerInfo::PumpBrowse();
+
+#ifndef DEDICATED
+    // The per-server query round is armed when the menu opens, which on this
+    // platform is before the asynchronously collected list exists: it walks an
+    // empty list, reports itself finished and every row then keeps reading
+    // "Polling.." until the player presses the refresh key.  Re-arm it the way
+    // that key does, once for every completed browse round.
+    static bool browseRoundWasRunning = false;
+    bool browseRoundIsRunning = nServerInfo::BrowseRoundRunning();
+    if (browseRoundWasRunning && !browseRoundIsRunning)
+        Refresh();
+    browseRoundWasRunning = browseRoundIsRunning;
+#endif
 #endif
 
     menu->GenericBackground();

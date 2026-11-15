@@ -286,6 +286,10 @@ public:
     // A browser cannot block waiting for answers: GetFromMaster() and
     // GetFromLAN() only start the round, and this steps it once per frame.
     static void PumpBrowse();
+    // Whether a browse round (the master query or a LAN sweep) is still in
+    // flight.  The browser menu uses this to re-arm its per-server query round
+    // when a round ends, which is the first moment a full list exists.
+    static bool BrowseRoundRunning();
 #endif
 
     // enum describing the query type logic ( all non-queried servers are queried once indirectly over the master server )

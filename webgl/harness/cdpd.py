@@ -24,6 +24,8 @@ KEYS = {
     "u": ("ArrowUp", "ArrowUp", 38),
     "l": ("ArrowLeft", "ArrowLeft", 37),
     "r": ("ArrowRight", "ArrowRight", 39),
+    # the server browser's refresh key, a plain letter
+    "R": ("r", "KeyR", 82),
     "b": ("Backspace", "Backspace", 8),
     "t": ("Tab", "Tab", 9),
     "g": ("Backquote", "Backquote", 192),

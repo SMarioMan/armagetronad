@@ -1053,6 +1053,17 @@ server list, a login and three full rounds over one multiplexed session,
 with the server's flood protection left at its shipped setting and zero bans
 (the same run in the per-destination shape needed 13 sessions).
 
+`node webgl/proxy/selftest.js` runs the bridge's own regression test: it starts
+a bridge and a one-socket UDP server on spare ports and plays the part of the
+wasm client. It checks that the very first datagram to a named destination
+actually arrives, that the answer comes back labelled with the name the client
+used rather than with the address the bridge resolved, that a name which does
+not resolve is reported instead of killing the bridge, and that `/status` lists
+the peers. The first check is the one that used to fail: the destination entry
+is created by an asynchronous lookup, so the datagram that created it always
+beats it to the socket, and a bridge that discards what it cannot send yet loses
+the first query to every named server.
+
 
 Join from the menu: Play Game → Multiplayer → Custom Connect (or a Server
 Bookmark) and give the address and the port of the server. The login
@@ -1073,6 +1084,16 @@ from the browser menu's redraw).
   are resolved by the bridge. The connect, the list request and the answer
   collection all run on the frame clock; a master that does not answer is
   retried, then the list is sorted and shown.
+  The detailed information (ping, user count, game name) comes from a second
+  round, one direct query per listed server (`DoQueryAll`, bounded by
+  `BROWSER_QUERIES_SIMULTANEOUS` and by the game's own per-server query budget).
+  The menu arms that round when it opens, which on this platform is before the
+  master answer has been collected, so the round walks an empty list and marks
+  itself finished; the menu's redraw (`RenderBackground`, which already calls
+  `PumpBrowse`) therefore re-arms it every time a browse round finishes, the same
+  call its refresh key makes. Measured over one master round on the live master:
+  before the re-arm, zero direct queries and one bridge peer; after, 40 queries
+  and 12 peers with 153 datagrams back, every row showing ping and users.
 - *LAN Multiplayer* sends a `RequestSmallServerInfo` broadcast to ports
   4534-4540, one port per 0.25 s. Over the multiplexed session the whole
   sweep runs on that one socket: the bridge turns each sweep datagram into a
