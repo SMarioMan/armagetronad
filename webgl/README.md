@@ -941,6 +941,35 @@ resolve to nothing -- while an analytic-derivative `texture2DLodEXT` variant
 changes nothing at this pose and is not applied.  See the note in
 `webgl/build.sh` where that patch used to hang out.
 
+The frame number, not the game clock, is the tightest pair available. The
+harness drives the port by game-time gate, reads the frame numbers out of the
+port's own shot manifest, and then drives the desktop to those numbers with the
+`N:` step, iterating once because a gate can only fire on a stamp boundary:
+asked for `N:258 / N:298 / N:313` the desktop stamped n264 / n304 / n318 against
+the port's n264 / n305 / n319. On frame n264 the two stamps sit 0.024 world
+units apart along the travel axis and 0.0015 apart in camera height, so a pixel
+census of that pair is dominated by the renderer rather than by the world. Max
+channel absolute difference over the whole 1280x800 frame: 8 or more in
+14.28 % of the pixels, 16 or more in 6.05 %, 32 or more in 0.65 %, 64 or more in
+0.15 %, mean 3.58, maximum 253. Shifting either image by +-1 px or +-0.5 px in
+either axis only makes that census worse ((0,0) 14.28 %, (+1,+1) 17.3 %), so
+neither build carries a raster offset, and the difference image amplified 8x
+contains nothing but a thin dipole along every floor grid line -- an edge phase
+of a fraction of a pixel, not missing or thinner geometry.
+
+That same frame answers "what does a wall look like when you are facing it"
+with the same ruler on both sides (`harness/walloprobe.py`, full frame): 15 wall
+strips on each build, the widest at x 636-644 on both (8 columns each), strip
+thickness mean 38.88 against 38.12 px, top edge mean 484.00 on both with a
+spread of 14 on both, and the core row colour (0, 175-179, 0) on both. That
+closes the far wall finding recorded earlier against this same recording, where
+the port qualified in only 73 of 460 probed columns against the desktop's 460,
+painted a strip 4-10 px thick against the desktop's 11 px with a top edge spread
+of 8 px, and threw a row of bright dashes with diagonal streaks next to the
+bike: `webgl/patch_line_eyeclip.py` is what moved it. The published pairs, the
+8x difference image, the side-by-side and the exact ruler commands are in
+`shots/parity-2026-11-15` on the capture machine.
+
 ### Cycle geometry the emulation mis-sizes
 
 The chat pyramid painted a wedge of the player's colour across the view.  Its
@@ -1008,6 +1037,35 @@ the projective call is demonstrably not what thins the distant grid.  Run it on 
 machine where the grid does thin out; if there A sits below D, the level
 computation is the mechanism and the port has to pin the level instead of
 delegating it to the driver.
+
+### Grinding sparks
+
+`gSpark` draws one line segment per grinding contact, from the contact point
+along the drive direction, `ago * 0.8 * |xDot|` long, where `ago` is the
+difference between the current time and the moment the shower was created
+(`tron/gSparks.cpp`). On the port that difference was taken against the render
+clock while the shower is created on the simulation clock, and the port steps
+the simulation in several fixed steps per animation frame, so the render clock
+lags and the segment came out long: the streaks read as stretched along one
+axis. The port now uses the simulation clock for the difference and clamps the
+span (`d7e543c8`), which brings both builds into the same range -- measured over
+the sparks alive in a frame, the segment-span histogram tops out at 0.474 world
+units on both and both show the same pile-up at the clamp.
+
+Two facts matter for anyone trying to reproduce the symptom. A shower is only
+created while the cycle is *turning* in wall contact: both spawn sites sit
+inside `if (fabs(skew) < fabs(lr*.8))` and `.9` gates (`tron/gCycle.cpp:3123`,
+`3146`) together with `crash_sparks && sparkts > 0`, so a cycle sliding straight
+along a wall -- which is what a straight-line perimeter replay does -- creates
+none at all; the earlier grinding replays that reported zero showers were
+measuring that, not the renderer. And with the world standing still (a harness
+build that can skip the spark layer, and separately freeze the simulation while
+the render loop keeps running, both working-tree only in `gGame.cpp` and
+`gSparks.cpp`), suppressing the layer on the desktop changed no pixel by 12 or
+more in the region the stream projects into; the differences that did appear sat
+in the on-screen message band far from it, and a second frozen pair differing by
+3.7 ms of game clock differed by zero pixels across the whole frame. On the
+current builds there is no stretched-spark signature left to chase.
 
 ## Gamepad support
 
