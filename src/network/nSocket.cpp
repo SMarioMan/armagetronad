@@ -2056,13 +2056,25 @@ static tSettingItem<REAL> sn_sumulateReceivePacketLossConfig( "SIMULATE_RECEIVE_
 
 //=============================================================================
 // emscripten (WebAssembly) transport: the browser has no UDP sockets, so the
-// Armagetron datagram protocol is carried over WebSockets. Every (host:port)
-// destination the game talks to becomes one binary WebSocket session:
-//   * proxy mode  : <Module.ARM_PROXY_BASE>?target=<ip>:<port>
-//   * direct mode : ws(s)://<ip>:<port>   (the modified server listens here)
-// A WS binary message is exactly one Armagetron datagram (1:1, never split or
-// coalesced) -- the protocol framing carries no destination field, so each
-// destination must be a fixed session, identified by its (IP,port).
+// Armagetron datagram protocol is carried over WebSockets.
+//
+//   * proxy mode, multiplexed (default)
+//         <Module.ARM_PROXY_BASE>?mux=1 -- one WebSocket for the whole client.
+//         Each message carries a 9 byte header naming its peer: outbound the
+//         destination, inbound the sender.  The discovery broadcast is then a
+//         single session instead of one per port, and the answers are still
+//         attributable.  The bridge announces support with a 6 byte banner
+//         before any datagram; if it never arrives the client falls back to
+//         the shape below, so a new page still works against an old bridge.
+//   * proxy mode, per destination
+//         <Module.ARM_PROXY_BASE>?target=<ip>:<port> -- one session per
+//         (host:port).  A broadcast session has no single peer, so the bridge
+//         prefixes each reply with 4 byte IPv4 + 2 byte port.
+//   * direct mode
+//         ws(s)://<ip>:<port> -- the modified server listens for WS itself.
+//
+// A WS message is always exactly one Armagetron datagram (never split, never
+// coalesced): the protocol carries no framing of its own.
 //=============================================================================
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -2087,6 +2099,16 @@ EM_JS( char * , arm_ws_proxy_base , ( ) , {
 EM_JS( int , arm_ws_secure , ( ) , {
     try { return ( typeof location !== "undefined" && location.protocol === "https:" ) ? 1 : 0; }
     catch ( e ) { return 0; }
+} );
+
+// Module.ARM_MUX turns the multiplexed proxy session off (0); on by default
+// when a proxy base is configured.  A direct connection cannot be multiplexed:
+// the server's own WebSocket listener speaks one session per client.
+EM_JS( int , arm_ws_mux , ( ) , {
+    try {
+        if ( typeof Module === "undefined" || Module.ARM_MUX === undefined ) return 1;
+        return Module.ARM_MUX ? 1 : 0;
+    } catch ( e ) { return 1; }
 } );
 
 namespace
@@ -2153,6 +2175,304 @@ std::string ws_url_for( uint32_t ip, uint16_t port )
     return scheme + target;
 }
 
+//--------------------------- multiplexed proxy session ------------------------
+//
+// One WebSocket carries every datagram the client sends, in both directions.
+// Each message is prefixed with a small header naming the peer it concerns:
+// outbound that is where to deliver it, inbound who delivered it.  The peer may
+// be given as a name: the game's address type is 32 bit and host names live in
+// the reserved 233/8 block, so the name itself has to travel with the datagram
+// for the bridge to resolve it -- the browser cannot.
+//
+// Negotiation is one way: the bridge sends AGMUX1 as its first message.  A
+// bridge that does not know mux sends game bytes (or nothing) instead, and the
+// client then abandons this path and falls back to one session per destination,
+// replaying whatever it had buffered.  Nothing is ever sent unframed over a mux
+// socket, so a new client cannot corrupt an old bridge's stream.
+
+const uint8_t kMuxVer = 1;
+const uint8_t kMuxFamV4 = 1;
+const uint8_t kMuxFamName = 2;
+const int kMuxHdr = 9;
+const char kMuxBanner[ 6 ] = { 'A', 'G', 'M', 'U', 'X', '1' };
+const double kMuxFallbackMs = 1500;
+const size_t kMuxMaxPending = 256;
+
+struct MuxRx
+{
+    std::vector< uint8_t > d;
+    uint32_t   ip;
+    uint16_t   port;
+    std::string name;
+};
+
+struct MuxTx
+{
+    uint32_t   ip;
+    uint16_t   port;
+    std::vector< uint8_t > d;
+};
+
+struct WsMux
+{
+    int    handle;      // emscripten websocket handle, -1 if none
+    int    state;       // 0 none, 1 connecting, 2 waiting for banner, 3 ready, 4 abandoned
+    double started;     // emscripten_get_now() when the attempt began
+    std::deque< MuxRx > rx;
+    std::deque< MuxTx > pending;    // datagrams held until the banner decides
+    unsigned long sent, dropped;
+    WsMux() : handle( -1 ), state( 0 ), started( 0 ), sent( 0 ), dropped( 0 ) { }
+};
+
+WsMux & ws_mux()
+{
+    static WsMux m;
+    return m;
+}
+
+// Multiplexing only exists between a client and a bridge: the game server's own
+// WebSocket listener speaks to one client per socket and has no framing.
+bool ws_mux_wanted()
+{
+    static int want = -1;
+    if ( want < 0 )
+        want = ( !ws_proxy_base().empty() && arm_ws_mux() ) ? 1 : 0;
+    return want == 1;
+}
+
+std::string ws_mux_url()
+{
+    std::string url = ws_proxy_base();
+    if ( url.rfind( "https://", 0 ) == 0 )       url.replace( 0, 8, "wss://" );
+    else if ( url.rfind( "http://", 0 ) == 0 )   url.replace( 0, 7, "ws://" );
+    while ( !url.empty() && url.back() == '/' )  url.pop_back();
+    return url + ( url.find( '?' ) == std::string::npos ? "?mux=1" : "&mux=1" );
+}
+
+void ws_mux_frame( std::vector< uint8_t > & out, uint32_t ip, uint16_t port,
+                   uint8_t const * data, int len )
+{
+    char const * name = ws_name_for( ip );
+    if ( name != NULL )
+    {
+        size_t n = strlen( name );
+        out.resize( 3 + n + 2 + ( size_t ) len );
+        out[ 0 ] = kMuxVer;
+        out[ 1 ] = kMuxFamName;
+        out[ 2 ] = ( uint8_t ) n;
+        memcpy( &out[ 3 ], name, n );
+        out[ 3 + n ]     = ( uint8_t )( port >> 8 );
+        out[ 3 + n + 1 ] = ( uint8_t )( port & 0xff );
+        memcpy( &out[ 3 + n + 2 ], data, ( size_t ) len );
+    }
+    else
+    {
+        out.resize( ( size_t ) kMuxHdr + ( size_t ) len );
+        out[ 0 ] = kMuxVer;
+        out[ 1 ] = kMuxFamV4;
+        out[ 2 ] = ( uint8_t )( ip >> 24 );
+        out[ 3 ] = ( uint8_t )( ip >> 16 );
+        out[ 4 ] = ( uint8_t )( ip >> 8 );
+        out[ 5 ] = ( uint8_t )  ip;
+        out[ 6 ] = ( uint8_t )( port >> 8 );
+        out[ 7 ] = ( uint8_t )( port & 0xff );
+        memcpy( &out[ kMuxHdr ], data, ( size_t ) len );
+    }
+}
+
+bool ws_mux_unframe( std::vector< uint8_t > const & b, MuxRx & out )
+{
+    if ( b.size() < ( size_t ) kMuxHdr || b[ 0 ] != kMuxVer ) return false;
+    if ( b[ 1 ] == kMuxFamV4 )
+    {
+        out.ip = ( ( uint32_t ) b[ 2 ] << 24 ) | ( ( uint32_t ) b[ 3 ] << 16 ) |
+                 ( ( uint32_t ) b[ 4 ] << 8 ) | b[ 5 ];
+        out.port = ( uint16_t )( ( b[ 6 ] << 8 ) | b[ 7 ] );
+        out.name.clear();
+        out.d.assign( b.begin() + kMuxHdr, b.end() );
+        return true;
+    }
+    if ( b[ 1 ] == kMuxFamName )
+    {
+        size_t n = b[ 2 ];
+        if ( b.size() < 3 + n + 2 ) return false;
+        out.name.assign( ( char const * ) &b[ 3 ], n );
+        out.ip = 0;
+        out.port = ( uint16_t )( ( b[ 3 + n ] << 8 ) | b[ 3 + n + 1 ] );
+        out.d.assign( b.begin() + 3 + n + 2, b.end() );
+        return true;
+    }
+    return false;
+}
+
+// Gives up on mux and hands everything still buffered back to the caller, which
+// is about to send it through the per-destination shape.
+void ws_mux_abandon( char const * why )
+{
+    WsMux & m = ws_mux();
+    if ( m.state == 4 ) return;
+    if ( m.handle >= 0 )
+    {
+        emscripten_websocket_close( m.handle, 1000, NULL );
+        m.handle = -1;
+    }
+    m.state = 4;
+    printf( "ws: no multiplexed bridge (%s), using one session per destination\n", why );
+    fflush( stdout );
+}
+
+bool WsMuxOnOpen( int, const EmscriptenWebSocketOpenEvent *, void * )
+{
+    WsMux & m = ws_mux();
+    if ( m.state == 1 ) m.state = 2;      // the banner decides from here on
+    return true;
+}
+
+bool WsMuxOnMessage( int, const EmscriptenWebSocketMessageEvent * e, void * )
+{
+    WsMux & m = ws_mux();
+    if ( m.state == 2 )
+    {
+        if ( e->numBytes == 6 && memcmp( e->data, kMuxBanner, 6 ) == 0 )
+        {
+            m.state = 3;
+            printf( "ws: multiplexed bridge session (one socket for all servers)\n" );
+            fflush( stdout );
+            for ( size_t i = 0; i < m.pending.size(); ++i )
+            {
+                std::vector< uint8_t > f;
+                ws_mux_frame( f, m.pending[ i ].ip, m.pending[ i ].port,
+                              m.pending[ i ].d.data(), ( int ) m.pending[ i ].d.size() );
+                emscripten_websocket_send_binary( m.handle, f.data(), ( uint32_t ) f.size() );
+                m.sent++;
+            }
+            m.pending.clear();
+        }
+        else
+        {
+            // Something else arrived: this bridge speaks the old shape, or has
+            // already started relaying game bytes we cannot attribute.  Either
+            // way mux is not available.
+            ws_mux_abandon( "bridge sent no banner" );
+        }
+        return true;
+    }
+    if ( m.state != 3 ) return true;
+    std::vector< uint8_t > b( e->data, e->data + e->numBytes );
+    MuxRx item;
+    if ( !ws_mux_unframe( b, item ) )
+    {
+        printf( "ws: bad mux frame (%d bytes)\n", ( int ) e->numBytes );
+        fflush( stdout );
+        return true;
+    }
+    m.rx.push_back( item );
+    return true;
+}
+
+bool WsMuxOnClose( int, const EmscriptenWebSocketCloseEvent *, void * )
+{
+    WsMux & m = ws_mux();
+    m.handle = -1;
+    if ( m.state != 4 ) m.state = 4;
+    return true;
+}
+
+bool WsMuxOnError( int, const EmscriptenWebSocketErrorEvent *, void * )
+{
+    ws_mux_abandon( "socket error" );
+    return true;
+}
+
+// < 0 means "mux is not usable, send it the old way".
+int ws_mux_send( uint32_t ip, uint16_t port, uint8_t const * data, int len )
+{
+    WsMux & m = ws_mux();
+    if ( m.state == 0 )
+    {
+        std::string url = ws_mux_url();
+        EmscriptenWebSocketCreateAttributes attrs;
+        emscripten_websocket_init_create_attributes( &attrs );
+        attrs.url = url.c_str();
+        attrs.createOnMainThread = true;
+        int h = emscripten_websocket_new( &attrs );
+        if ( h < 0 )
+        {
+            ws_mux_abandon( "cannot open socket" );
+            return -1;
+        }
+        m.handle = h;
+        m.state = 1;
+        m.started = emscripten_get_now();
+        emscripten_websocket_set_onopen_callback( h, NULL, WsMuxOnOpen );
+        emscripten_websocket_set_onmessage_callback( h, NULL, WsMuxOnMessage );
+        emscripten_websocket_set_onclose_callback( h, NULL, WsMuxOnClose );
+        emscripten_websocket_set_onerror_callback( h, NULL, WsMuxOnError );
+    }
+    else if ( m.state == 1 || m.state == 2 )
+    {
+        // A bridge that accepts the socket but never sends the banner does not
+        // speak mux; waiting longer would just stall the game.
+        if ( emscripten_get_now() - m.started > kMuxFallbackMs )
+        {
+            ws_mux_abandon( "no banner in time" );
+            return -1;
+        }
+    }
+
+    if ( m.state == 3 )
+    {
+        std::vector< uint8_t > f;
+        ws_mux_frame( f, ip, port, data, len );
+        if ( emscripten_websocket_send_binary( m.handle, f.data(), ( uint32_t ) f.size() ) < 0 )
+            return len;
+        m.sent++;
+        return len;
+    }
+    if ( m.state == 4 ) return -1;
+
+    // Still connecting or waiting for the banner: hold the datagram, framed
+    // only once the choice is final so it can be replayed either way.
+    MuxTx t;
+    t.ip = ip;
+    t.port = port;
+    t.d.assign( data, data + len );
+    if ( m.pending.size() >= kMuxMaxPending )
+    {
+        m.pending.pop_front();
+        m.dropped++;
+    }
+    m.pending.push_back( t );
+    return len;
+}
+
+// Drains the multiplexed inbound queue; -1 when it holds nothing.
+int ws_mux_recv( uint8_t * buf, int maxlen, nAddress & src )
+{
+    WsMux & m = ws_mux();
+    if ( m.rx.empty() ) return -1;
+    MuxRx & it = m.rx.front();
+    nAddress from;
+    if ( !it.name.empty() )
+    {
+        from.SetHostname( it.name.c_str() );
+    }
+    else
+    {
+        char ip[ 32 ];
+        snprintf( ip, sizeof( ip ), "%u.%u.%u.%u",
+            ( it.ip >> 24 ) & 0xff, ( it.ip >> 16 ) & 0xff, ( it.ip >> 8 ) & 0xff, it.ip & 0xff );
+        from.SetAddress( ip );
+    }
+    from.SetPort( it.port );
+    int len = ( int ) it.d.size();
+    if ( len > maxlen ) len = maxlen;
+    memcpy( buf, it.d.data(), ( size_t ) len );
+    m.rx.pop_front();
+    src = from;
+    return len;
+}
+
 bool WsOnOpen( int, const EmscriptenWebSocketOpenEvent *, void * ud )
 {
     WsConn & c = ws_g().conns[ ( int )( intptr_t ) ud ];
@@ -2207,16 +2527,9 @@ void ws_ensure_open( int idx )
     emscripten_websocket_set_onerror_callback( h, ( void * )( intptr_t ) idx, WsOnError );
 }
 
-int ws_send( const sockaddr * addr, const uint8_t * data, int len )
+// The per-destination shape: one WebSocket per (host:port).
+int ws_send_target( uint32_t ip, uint16_t port, uint8_t const * data, int len )
 {
-    sockaddr_in * sin = reinterpret_cast< sockaddr_in * >( const_cast< sockaddr * >( addr ) );
-    uint32_t ip = ntohl( sin->sin_addr.s_addr );
-    uint16_t port = ntohs( sin->sin_port );
-
-    // An unconfigured nAddress sends to 0.0.0.0:0.  There is nothing to
-    // bridge there; the native build just fails the send and moves on.
-    if ( ip == 0 && port == 0 ) return len;
-
     int idx = -1;
     for ( size_t i = 0; i < ws_g().conns.size(); ++i )
         if ( ws_g().conns[ i ].key_ip == ip && ws_g().conns[ i ].key_port == port )
@@ -2255,8 +2568,36 @@ int ws_send( const sockaddr * addr, const uint8_t * data, int len )
     return len;
 }
 
+int ws_send( const sockaddr * addr, const uint8_t * data, int len )
+{
+    sockaddr_in * sin = reinterpret_cast< sockaddr_in * >( const_cast< sockaddr * >( addr ) );
+    uint32_t ip = ntohl( sin->sin_addr.s_addr );
+    uint16_t port = ntohs( sin->sin_port );
+
+    // An unconfigured nAddress sends to 0.0.0.0:0.  There is nothing to
+    // bridge there; the native build just fails the send and moves on.
+    if ( ip == 0 && port == 0 ) return len;
+
+    if ( ws_mux_wanted() )
+    {
+        int r = ws_mux_send( ip, port, data, len );
+        if ( r >= 0 ) return r;
+        // mux was tried and is not available: replay everything it had
+        // buffered, then carry on through the per-destination shape.
+        WsMux & m = ws_mux();
+        std::deque< MuxTx > old;
+        old.swap( m.pending );
+        for ( size_t i = 0; i < old.size(); ++i )
+            ws_send_target( old[ i ].ip, old[ i ].port, old[ i ].d.data(), ( int ) old[ i ].d.size() );
+    }
+    return ws_send_target( ip, port, data, len );
+}
+
 int ws_recv( uint8_t * buf, int maxlen, nAddress & src )
 {
+    int muxLen = ws_mux_recv( buf, maxlen, src );
+    if ( muxLen >= 0 ) return muxLen;
+
     WsGlobal & g = ws_g();
     int n = ( int ) g.conns.size();
     if ( n <= 0 ) return -1;
@@ -2291,6 +2632,7 @@ int ws_recv( uint8_t * buf, int maxlen, nAddress & src )
             c.rx.pop_front();
             src = from;
             g.rr = ( i + 1 ) % n;
+
             return len;
         }
     }
@@ -2300,6 +2642,7 @@ int ws_recv( uint8_t * buf, int maxlen, nAddress & src )
 // true when any session has already buffered an incoming datagram
 bool ws_any_data()
 {
+    if ( !ws_mux().rx.empty() ) return true;
     WsGlobal & g = ws_g();
     for ( size_t i = 0; i < g.conns.size(); ++i )
         if ( !g.conns[ i ].rx.empty() )

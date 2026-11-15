@@ -77,7 +77,7 @@ so native builds compile and behave exactly as before.
 | area | change |
 |---|---|
 | `src/tools/tWasmLoop.{h,cpp}` | The blocking frame loops (`while (OnFrame()) {}`) are driven from the JS event loop via `emscripten_set_main_loop`. Nested loops, exit actions and continuations are supported; `main()` hands over to the event loop at the first loop and never returns, so the startup chain (language menu → first setup → main menu) is re-entered as steps (see `src/tron/gArmagetron.cpp`). Asyncify was deliberately not used: re-entering `main()` re-runs initialization and desyncs input. |
-| `src/network/nSocket.cpp` | The browser has no UDP sockets, so each `(ip,port)` destination becomes one binary WebSocket session: proxy mode `<Module.ARM_PROXY_BASE>?target=<ip>:<port>`, direct mode `ws(s)://<ip>:<port>`. One WebSocket message is exactly one Armagetron datagram; datagrams sent while a session is still opening are queued and flushed on open. |
+| `src/network/nSocket.cpp` | The browser has no UDP sockets, so Armagetron datagrams ride WebSockets. Proxy mode opens **one multiplexed session** (`<Module.ARM_PROXY_BASE>?mux=1`): each message carries a 9 byte header naming the peer it concerns, the destination outbound and the sender inbound, so the discovery broadcast costs one socket instead of one per port and its answers stay attributable. A bridge that does not speak mux is recognised by its missing `AGMUX1` banner (or 1.5 s of silence), and the client falls back to the per-destination shape `?target=<ip>:<port>`, replaying what it had buffered; `?mux=0` asks for that shape directly. Direct mode `ws(s)://<ip>:<port>` remains one socket per connection: the server's own listener has no framing. One WebSocket message is exactly one Armagetron datagram; datagrams sent while a session is still opening are queued and flushed on open. |
 | `src/render/rScreen.cpp` | Display init for a canvas that follows the window: `sr_WasmWindowResized(w,h)` (exported) re-inits the display for the "desktop" screen mode; GL context/attribute handling for WebGL. |
 | `src/render/rEmscriptenGLU.h` | GLU is not available in the emscripten GL stack: `gluPerspective`, `gluLookAt`, quadric/mipmap helpers reimplemented on plain GL. |
 | `src/render/rSysdep.cpp`, `rGL.*`, `rDisplayList.cpp`, `rViewport.cpp` | Single-buffered WebGL swap (skip the color-buffer clear that would wipe the frame), `GL_QUAD_STRIP` handling, display-list limits, texture unit state. |
@@ -259,7 +259,9 @@ silently lost a fix.
 - `?proxy=wss://host/` — WebSocket bridge base for network play, remembered in
   `localStorage` (`arma_proxy_base`). Without a proxy the client tries direct
   `ws(s)://ip:port`, which the stock server does not speak, so the hosted page
-  is singleplayer by default.
+  is singleplayer by default. `&mux=0` (also remembered, under `arma_mux`)
+  asks the bridge for the older one-session-per-server shape instead of the
+  multiplexed one; see Multiplayer below.
 - User data (settings, scores, recordings) persists in IndexedDB: the page
   mounts IDBFS over `/home/web_user`. Clearing site data resets the game.
 - Floor detail: the port runs the compiled-in `rFLOOR_TEXTURE`, because
@@ -952,13 +954,32 @@ TLS_CERT=... TLS_KEY=... PROXY_PORT=8443 node proxy.js   # wss://
 ```
 
 Then open the game page with `?proxy=ws://host:8091/` (or
-`?proxy=wss://host:8443/`). The https deployment requires `wss://`, otherwise
-the browser blocks the connection as mixed content. The bridge maps each
-WebSocket session to the UDP socket of one server; the target can be an
-address or a host name (`?target=host:port`), names are resolved by the
-bridge, not by the client. This path is not covered by CI — it was verified
-against a native dedicated server of the same version running next to the
-dev site.
+`?proxy=wss://host:8443/`); an https deployment requires `wss://`, or the
+browser blocks the connection as mixed content. **One** bridge session then
+carries every server the client talks to: each datagram travels with a 9
+byte header naming the peer it belongs to -- an address or a host name, and
+names are resolved by the bridge because the browser cannot resolve them --
+and answers come back with the same header naming the sender. A bridge that
+predates that format gets the old shape instead, one WebSocket per
+`(server,port)`; `?mux=0` asks for the old shape explicitly.
+
+Many players share one bridge address, and an Armagetron server counts
+queries per source address (measured: "Flood protection bans 127.0.0.1 after
+10 pings in 0.81 seconds"), so the bridge meters what it relays. A
+destination starts on a discovery budget (default 6 datagrams/s, burst 8)
+and is lifted to a game budget (60/s) once the volume coming back from it
+proves a live session rather than a poll. `GET /status` on the same port
+reports the open sessions, their counters, and lifetime totals including
+what had to be delayed or dropped. `ALLOW=host[,host:port]` restricts which
+servers the bridge will talk to; unset means any host, which makes the
+bridge an open UDP relay, so set it before exposing it to the Internet.
+
+This path is not covered by CI. It was verified against a native dedicated
+server of the same version running next to the dev site: a LAN sweep, the
+server list, a login and three full rounds over one multiplexed session,
+with the server's flood protection left at its shipped setting and zero bans
+(the same run in the per-destination shape needed 13 sessions).
+
 
 Join from the menu: Play Game → Multiplayer → Custom Connect (or a Server
 Bookmark) and give the address and the port of the server. The login
@@ -980,12 +1001,15 @@ from the browser menu's redraw).
   collection all run on the frame clock; a master that does not answer is
   retried, then the list is sorted and shown.
 - *LAN Multiplayer* sends a `RequestSmallServerInfo` broadcast to ports
-  4534-4540, one port per 0.25 s. The bridge turns each sweep session into a
-  real UDP broadcast and prefixes every answer with the answering
-  server's address, which is what lets the client query and join the servers
-  it just discovered. Hosts a broadcast cannot reach (separate machine,
-  loopback) are added with `LAN_EXTRA=host[:port][,host[:port]]` on the
-  bridge: every sweep datagram is replayed to them as a unicast.
+  4534-4540, one port per 0.25 s. Over the multiplexed session the whole
+  sweep runs on that one socket: the bridge turns each sweep datagram into a
+  real UDP broadcast and labels every answer with the answering server,
+  which is what lets the client query and join the servers it just
+  discovered. In the per-destination fallback each port is its own session
+  and the bridge prefixes answers with 4 byte address plus 2 byte port
+  instead. Hosts a broadcast cannot reach (separate machine, loopback) are
+  added with `LAN_EXTRA=host[:port][,host[:port]]` on the bridge: every
+  sweep datagram is replayed to them as a unicast.
 
 ## Debug hooks
 
@@ -1001,8 +1025,9 @@ from the browser menu's redraw).
   `-s LEGACY_GL_EMULATION=1`, which newer emscripten releases are phasing out.
 - Single-threaded: no pthreads/SharedArrayBuffer, so no COOP/COEP requirement.
 - Network play needs the bridge, as above.
-- LAN server browse stays empty: it probes the local network with a broadcast,
-  and the bridge maps one WebSocket to one server address.
+- LAN server browse only sees what the bridge's own network can reach: the
+  broadcast leaves from the bridge host, not from the browser's network.
+  `LAN_EXTRA` on the bridge covers hosts that broadcast cannot reach.
 - Frame rate is bounded by the fixed function emulation (every immediate mode
   call is re-tessellated in JS) and by the browser's software renderer when no
   GPU is available. Measured in headless Chrome with SwiftShader: menus run at

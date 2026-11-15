@@ -360,14 +360,19 @@
     };
   </script>
   <script>
-  // Network transport (src/network/nSocket.cpp reads Module.ARM_PROXY_BASE):
-  //   proxy mode  : <ARM_PROXY_BASE>?target=<ip>:<port>  -- run webgl/proxy/proxy.js
-  //   direct mode : ws(s)://<ip>:<port>                  -- default, needs a
-  //                 server that speaks WebSockets; the stock Armagetron
-  //                 server does not, so multiplayer needs the proxy.
+  // Network transport (src/network/nSocket.cpp reads Module.ARM_PROXY_BASE
+  // and Module.ARM_MUX):
+  //   proxy mode  : <ARM_PROXY_BASE>?mux=1 -- one multiplexed WebSocket for
+  //               every server the game talks to (run webgl/proxy/proxy.js).
+  //               If the bridge does not know mux the client falls back by
+  //               itself to ?target=<ip>:<port>, one session per server.
+  //   direct mode : ws(s)://<ip>:<port>   -- default, needs a server that
+  //               speaks WebSockets; the stock Armagetron server does not, so
+  //               multiplayer needs the proxy.
   // On an https page (GitHub Pages) the proxy must be wss://, or the browser
-  // blocks it as mixed content.  Override per session with ?proxy=wss://host/,
-  // or permanently in localStorage (key arma_proxy_base).
+  // blocks it as mixed content.  Override per session with ?proxy=wss://host/
+  // (append &mux=0 to force the per-server shape), or permanently through
+  // localStorage (keys arma_proxy_base, arma_mux).
   var Module = window.Module || {};
   (function () {
     var m = /[?&]proxy=([^&]*)/.exec(location.search);
@@ -377,7 +382,17 @@
                       : (localStorage.getItem('arma_proxy_base') || ''));
     Module.ARM_PROXY_BASE = base;
     if (base) { try { localStorage.setItem('arma_proxy_base', base); } catch (e) {} }
-    console.log('network: ' + (base ? 'proxy ' + base : 'direct (no WebSocket server support => singleplayer only)'));
+    var mm = /[?&]mux=([^&]*)/.exec(location.search);
+    if (mm) {
+      Module.ARM_MUX = (/^(0|false|off|no)$/i.test(mm[1]) ? 0 : 1);
+      try { localStorage.setItem('arma_mux', String(Module.ARM_MUX)); } catch (e) {}
+    } else {
+      var saved = localStorage.getItem('arma_mux');
+      if (saved !== null) Module.ARM_MUX = (saved === '1' ? 1 : 0);
+    }
+    console.log('network: ' + (base
+        ? 'proxy ' + base + (Module.ARM_MUX === 0 ? ', one session per server' : ', multiplexed')
+        : 'direct (no WebSocket server support => singleplayer only)'));
   })();
   </script>
   <script src="armagetronad_main.js"></script>
