@@ -948,7 +948,45 @@ bool sr_InitDisplay(){
 
     cycleprograminited = false;
 #ifdef __EMSCRIPTEN__
+    // Several of the desktop display switches have no state to act on under
+    // WebGL, and of the ones that do have a state here, exactly one value
+    // matches what the desktop reference draws.  Pin them all after the
+    // config has been read, and leave their menu entries unbuilt
+    // (src/tron/gMenus.cpp):
+    //   truecolor textures - WebGL has no paletted or colour-index upload.
+    //   smooth shading     - glShadeModel is a stub in the fixed-function
+    //                        emulation, which always interpolates.
+    //   dither             - WebGL has no dither state; the emulation records
+    //                        the GL_DITHER cap but never reads it.
+    //   keep window active - sr_Activate() forces the app active on this
+    //                        platform, so the branch is never taken.
+    //   display lists      - rDisplayList.cpp compiles no list here.
+    //   vsync            - the two SDL_GL_SWAP_CONTROL calls that could honour
+    //                      it are excluded for this platform, and the browser
+    //                      paces buffer swaps itself.
+    //   depths           - SDL_GL_SetAttribute(RED/GREEN/BLUE/DEPTH_SIZE) does
+    //                      run, but the page created the WebGL context first
+    //                      and a canvas keeps the attributes of the context
+    //                      created first (webgl/site/index.html).
+    //   fullscreen         - the page owns the window (fullscreen button and
+    //                        canvas double-click).
+    // Texture filters follow the group order used by TEXTURE_MODE_0..3: floor,
+    // wall, object, font.  Trilinear mip-mapping for the three world groups is
+    // the only setting that measures against the desktop reference; every other
+    // combination was measured and rejected in webgl/README.md.
     sr_texturesTruecolor = true;
+    sr_smoothShading = true;
+    sr_dither = false;
+    sr_keepWindowActive = false;
+    sr_useDisplayLists = rDisplayList_Off;
+    currentScreensetting.vSync = ArmageTron_VSync_Default;
+    currentScreensetting.colorDepth = ArmageTron_ColorDepth_Desktop;
+    currentScreensetting.zDepth = ArmageTron_ColorDepth_Desktop;
+    currentScreensetting.fullscreen = false;
+    rTextureGroups::TextureMode[0] = GL_LINEAR_MIPMAP_LINEAR;
+    rTextureGroups::TextureMode[1] = GL_LINEAR_MIPMAP_LINEAR;
+    rTextureGroups::TextureMode[2] = GL_LINEAR_MIPMAP_LINEAR;
+    rTextureGroups::TextureMode[3] = GL_LINEAR;
 #endif
     while (failed_attempts <= MAXEMERGENCY+1)
     {

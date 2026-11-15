@@ -307,11 +307,16 @@ static void sg_ScreenModeMenu()
      "$screen_apply_changes_help",
      &sr_ReinitDisplay);
 
+#ifndef __EMSCRIPTEN__
+    // sr_Activate() pins the app to active on this platform (rScreen.cpp), so
+    // the branch this switch selects can never be taken: keep the item on the
+    // desktop build only.
     uMenuItemToggle * kwa_t = new uMenuItemToggle(
         screen_menu_mode,
         "$screen_keep_window_active_text",
         "$screen_keep_window_active_help",
         sr_keepWindowActive);
+#endif
 
     uMenuItemToggle * ie_t = new uMenuItemToggle
     (screen_menu_mode,
@@ -366,6 +371,12 @@ static void sg_ScreenModeMenu()
      currentScreensetting.useSDL);
 #endif // dirty
 
+#ifndef __EMSCRIPTEN__
+    // Both code paths that could honour a vsync setting here are already off
+    // on this platform: sr_InitDisplay's two SDL_GL_SetAttribute
+    // (SDL_GL_SWAP_CONTROL, ...) calls are excluded for __EMSCRIPTEN__
+    // (rScreen.cpp:468,474), and the browser paces buffer swaps itself.
+    // Frame pacing on the port is the FPS Limit entry below.
 #if SDL_VERSION_ATLEAST(1, 2, 10)
     uMenuItemSelection<rVSync> * zvs_t = new uMenuItemSelection<rVSync>
     (screen_menu_mode,
@@ -380,6 +391,8 @@ static void sg_ScreenModeMenu()
     uSelectEntry<rVSync> zvs_blur(*zvs_t,"$screen_vsync_motionblur_text","$screen_vsync_motionblur_help",ArmageTron_VSync_MotionBlur);
 #endif // HAVE_GLEW
 #endif // SDL_GL_SWAP_CONTROL
+#endif // __EMSCRIPTEN__
+
 #endif // SDL_OPENGL
 
     uMenuItemToggle * gm = new uMenuItemToggle(
@@ -388,6 +401,13 @@ static void sg_ScreenModeMenu()
         "$screen_grab_mouse_help",
         su_mouseGrab);
 
+#ifndef __EMSCRIPTEN__
+    // Both selections reach SDL_GL_SetAttribute( ..., RED/GREEN/BLUE/
+    // DEPTH_SIZE) at rScreen.cpp:456-461, but the page has already created the
+    // WebGL context by the time the game asks for one -- a canvas keeps the
+    // attributes of the context created first (see webgl/site/index.html) --
+    // so the request cannot change the drawing-buffer format.  WebGL also has
+    // no 16-bit or colour-index framebuffer to ask for.
     uMenuItemSelection<rColorDepth> * zd_t = new uMenuItemSelection<rColorDepth>
     (screen_menu_mode,
      "$screen_zdepth_text",
@@ -407,22 +427,25 @@ static void sg_ScreenModeMenu()
     uSelectEntry<rColorDepth> cd_16(*cd_t,"$screen_colordepth_16_text","$screen_colordepth_16_help",ArmageTron_ColorDepth_16);
     uSelectEntry<rColorDepth> cd_d(*cd_t,"$screen_colordepth_desk_text","$screen_colordepth_desk_help",ArmageTron_ColorDepth_Desktop);
     uSelectEntry<rColorDepth> cd_32(*cd_t,"$screen_colordepth_32_text","$screen_colordepth_32_help",ArmageTron_ColorDepth_32);
+#endif
 
+#ifndef __EMSCRIPTEN__
+    // A browser window is owned by the page: its fullscreen button and the
+    // canvas double-click drive the real fullscreen state, and the render size
+    // is taken from the live window either way (rScreen.cpp:496-499).
     uMenuItemToggle * fs_t = new uMenuItemToggle
     (screen_menu_mode,
      "$screen_fullscreen_text",
      "$screen_fullscreen_help",
      currentScreensetting.fullscreen);
+#endif
 
 
-#ifdef __EMSCRIPTEN__
-    // the wrappers own menu items that the tree frees on loop end;
-    // leaking the small wrappers avoids removing items from the live menu
-    gResMenEntry * res = new gResMenEntry( *screen_menu_mode, currentScreensetting.res, "$screen_resolution_text", "$screen_resolution_help", false );
-    gResMenEntry * winsize = new gResMenEntry( *screen_menu_mode, currentScreensetting.windowSize, "$window_size_text", "$window_size_help", true );
-    (void) res;
-    (void) winsize;
-#else
+#ifndef __EMSCRIPTEN__
+    // Both entries pick a fixed render size, and lowlevel_sr_InitDisplay
+    // rewrites both to "desktop" on this platform before either can be used
+    // (rScreen.cpp:496-499): the canvas draws 1:1 into whatever the page gives
+    // it.  Only the desktop build can act on a chosen size.
     gResMenEntry res( *screen_menu_mode, currentScreensetting.res, "$screen_resolution_text", "$screen_resolution_help", false );
     gResMenEntry winsize( *screen_menu_mode, currentScreensetting.windowSize, "$window_size_text", "$window_size_help", true );
 #endif
@@ -473,10 +496,15 @@ static uSelectEntry<int> mfmc(mfm,"$detail_floor_mirror_ow_text",
 
 static uSelectEntry<int> mfme(mfm,"$detail_floor_mirror_ev_text","$detail_floor_mirror_ev_help",rMIRROR_ALL);
 
+#ifndef __EMSCRIPTEN__
+    // glEnable/glDisable(GL_DITHER) is all this drives (rScreen.cpp:1169-1172);
+    // WebGL has no dither state and the emulation's cap table never reads
+    // 0xBD0, so nothing on this platform dithers either way.
 static uMenuItemToggle fs_dither
 (&screen_menu_detail,"$detail_dither_text",
  "$detail_dither_help",
  sr_dither);
+#endif
 
 #ifndef DEDICATED
 // from gWall.cpp
@@ -512,10 +540,15 @@ static uMenuItemToggle  abm
  "$detail_alpha_help",
  sr_alphaBlend);
 
+#ifndef __EMSCRIPTEN__
+    // glShadeModel is a stub in the fixed-function emulation ("TODO:
+    // glShadeModel"), which always interpolates vertex colours: only smooth
+    // shading exists here.
 static uMenuItemToggle  ssm
 (&screen_menu_detail,"$detail_smooth_text",
  "$detail_smooth_help",
  sr_smoothShading);
+#endif
 
 extern bool crash_sparks;		// from gCycle.cpp
 extern bool white_sparks;		// from gSparks.cpp
@@ -529,12 +562,21 @@ static tConfItem<bool> crexp("EXPLOSION",sg_crashExplosion);
 //extern bool png_screenshot;		// from rSysdep.cpp
 //static tConfItem<bool> pns("PNG_SCREENSHOT",png_screenshot);
 
+#ifndef __EMSCRIPTEN__
+    // sr_texturesTruecolor is forced on at display init (rScreen.cpp:950):
+    // WebGL has no paletted or colour-index upload path to select.
 static uMenuItemToggle  t32b
 (&screen_menu_detail,"$detail_text_truecolor_text",
  "$detail_text_truecolor_help"
  ,sr_texturesTruecolor);
+#endif
 
 
+#ifndef __EMSCRIPTEN__
+    // The filter selection is pinned on the port (rScreen.cpp) to the one
+    // combination that measures against the desktop reference: trilinear
+    // mip-mapped world textures, bilinear fonts.  Every other choice has been
+    // measured and rejected (webgl/README.md, far-grid section).
 static ArmageTron_texmode_menuitem tmm0(&screen_menu_detail,
                                         rTextureGroups::TextureGroupDescription[0],
                                         rTextureGroups::TextureMode[0]);
@@ -550,6 +592,7 @@ static ArmageTron_texmode_menuitem tmm2(&screen_menu_detail,
 static ArmageTron_texmode_menuitem tmm3(&screen_menu_detail,
                                         rTextureGroups::TextureGroupDescription[3],
                                         rTextureGroups::TextureMode[3],true);
+#endif
 
 
 uMenuItemToggle bpt2
@@ -595,12 +638,17 @@ static uMenuItemToggle cs
  "$pref_sparks_help",
  crash_sparks);
 
+#ifndef __EMSCRIPTEN__
+    // rDisplayList.cpp compiles no list at all on this platform
+    // (#ifdef __EMSCRIPTEN__ useList = false), so all three choices behave
+    // identically here.
 static uMenuItemSelection<rDisplayListUsage> dl
 (&screen_menu_tweaks,"$tweaks_displaylists_text",
  "$tweaks_displaylists_help", sr_useDisplayLists);
 static uSelectEntry<rDisplayListUsage> dl_off(dl,"$tweaks_displaylists_off_text","$tweaks_displaylists_off_help",rDisplayList_Off);
 static uSelectEntry<rDisplayListUsage> dl_cac(dl,"$tweaks_displaylists_cac_text","$tweaks_displaylists_cac_help",rDisplayList_CAC);
 static uSelectEntry<rDisplayListUsage> dl_cae(dl,"$tweaks_displaylists_cae_text","$tweaks_displaylists_cae_help",rDisplayList_CAE);
+#endif
 
 static uMenuItemToggle infp
 (&screen_menu_tweaks,"$tweaks_infinity_text",

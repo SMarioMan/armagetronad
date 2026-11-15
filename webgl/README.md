@@ -91,6 +91,7 @@ so native builds compile and behave exactly as before.
 | `src/tron/*` | Startup sequence, splash/logo handling, server browser/favorites for the transport change. |
 | `src/tron/gCycle.cpp` | Two cycle primitives the fixed-function emulation draws wrong are routed around on the port only: the chat pyramid's triangle pair goes through client arrays (the emulation counts that primitive's vertices from one uniform stride, gets 5.2 for six and drops the last), and the headlight fan is compiled out (its radial falloff needs a `GL_ARB_fragment_program`, which the emulation cannot express). Both are `#ifdef __EMSCRIPTEN__`; see "Cycle geometry the emulation mis-sizes" below. |
 | `src/render/rSDL.h`, `src/render/rSDL12KeySyms.h`, `src/ui/uInputQueue.*` | The port's SDL layer numbers non-ASCII keys `0x400 \| SDL2 scancode` while the game, its configuration defaults and its `.aarec` archives are all SDL 1.2 numbering.  A generated header redefines the 56 SDLK_* constants whose numbers differ and `su_GetSDLInput()` runs incoming browser events (numbers in `0x400..0x4FF`) through the same pair table, while numbers that already came out of an archive pass through untouched, so bindings, replayed input and HUD key labels match the desktop. |
+| `src/tron/gMenus.cpp`, `src/render/rScreen.cpp` | Display settings that cannot act in a browser are not offered in the port's menus, and the values behind them are pinned at display init: truecolor textures (WebGL has no paletted or colour-index upload), smooth shading (`glShadeModel` is a stub in the fixed-function emulation, which interpolates vertex colours unconditionally), dither (WebGL has no dither state; the emulation records the `GL_DITHER` cap in its enable table and never reads it), keep-window-active (`sr_Activate()` forces the app active on this platform, so the branch the switch selects is never taken), display lists (`rDisplayList.cpp` compiles no list under `__EMSCRIPTEN__`), vsync (its only two consumers, the `SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, ...)` calls in `sr_InitDisplay`, are excluded for this platform and the browser paces swaps itself), colour-depth and Z-buffer-depth (they reach `SDL_GL_SetAttribute`, but the page has created the WebGL context before the game asks for one and a canvas keeps the attributes of the context created first), fullscreen and both size selections (`lowlevel_sr_InitDisplay` rewrites the chosen size to "desktop", which tracks the live window, and the page owns the real fullscreen state through its button and the canvas double-click), and the texture filters: trilinear mip-mapped for floor, wall and object, bilinear for fonts, the combination the far-grid measurements settled on. Each item is a `#ifndef __EMSCRIPTEN__` guard around its menu entry, so the desktop build's menus are byte-for-byte what they were. |
 | `src/tools/wdbg.h` | Console logging that compiles to nothing unless the build adds `-DWASM_DBG`. |
 
 ## Post-build JavaScript patches
@@ -247,6 +248,18 @@ silently lost a fix.
   the replay, 0.17 s of play apart, and the geometry being sampled is the static
   stage grid.  At `devicePixelRatio 1` nothing is reported differently, so every
   other number in this file still holds -- they were all taken at scale factor 1.
+- The in-game Display Settings menus do not offer switches a browser cannot act on.
+  Screen Mode keeps Apply Changes, Check Errors, FPS Limit and Grab Mouse; Detail
+  Settings keeps Floor Detail, Alpha Blending, Simple Trails and Floor Mirror;
+  Performance Tweaks keeps Infinity and Swap Mode.  Removed on this platform
+  (fullscreen, screen resolution, window size, colour depth, Z-buffer depth,
+  vsync, dither, smooth shading, truecolor textures, the four texture filter
+  groups, display lists, keep-window-active) is instead pinned in
+  `sr_InitDisplay`, after the configuration has been read, to the value the
+  parity measurements were taken with -- so a stale or hand-edited `user.cfg`
+  cannot move the port off it, and the same is true of a player picking "Load
+  Defaults" and then reloading the page.  The desktop build's menus are
+  unchanged: the entries are guarded by `#ifndef __EMSCRIPTEN__`.
 - `?args=--playback,/path.rec` — command-line arguments; files named by
   `--playback`/`--record`/`--playback-bench` are fetched from the web root and
   written into the virtual FS before `main()`.
