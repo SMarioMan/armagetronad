@@ -487,6 +487,46 @@ What is still open, with today's numbers from a game-time-matched pair at 2.46
 (port pose 107.8338, 69.6826, camera height 16.3236; native 107.8338, 69.6817,
 16.3234 -- 0.00 world units apart, so what follows is not a pose difference):
 
+- A three-way check of the floor grid at one gate, on the builds as they now
+  stand.  One game-time gate on `webgl/harness/perp2.aarec`, replayed on all
+  three: the desktop at rendered frame 364, game time 2.8651, pose (107.8338,
+  69.5124), camera height 16.4589; the port at 359, 2.7822, (107.8338, 69.5436),
+  16.4340; and the port again with the browser told its pixel ratio is 2, at
+  365, 2.8822, (107.8338, 69.5063), 16.4639.  The three cameras sit 0.03 world
+  units apart, so what follows is not a pose difference.  Saturated green pixels
+  (green above 200, red and blue below 60) per band of rows:
+
+  | rows | desktop | port | port at 2x |
+  |------|---------|------|------------|
+  | 380-460 | 4188 | 5513 | 28 |
+  | 460-540 | 4357 | 4004 | 110 |
+  | 540-620 | 1882 | 1063 | 0 |
+  | 620-700 | 1142 | 725 | 0 |
+
+  The band below the horizon crossover near row 450 is the one that still
+  disagrees; above it the port runs hot rather than dim.  Sampling state was
+  read back from inside both builds at that frame and matches completely: the
+  engine's own software mip chain reaches GL on the port (levels 0..8 uploaded
+  for every 256x256 texture, not just level 0), `GL_LINEAR_MIPMAP_LINEAR` over
+  `GL_LINEAR`, `GL_CLAMP_TO_EDGE` on both axes, anisotropy available with a
+  maximum of 16 and left at 1.0 on both sides, the additive `SRC_ALPHA / ONE`
+  floor pass present in the port's command stream, `SAMPLES = 0` and an aliased
+  line-width range of 1..1 on both sides.  Nor is it a transfer curve: the two
+  frames' sorted luminance agrees at 15 evenly spaced points of the distribution
+  (1.6 against 1.6, 2.2 against 2.2, 3.8 against 3.2, 6.9 against 6.8, 15.2
+  against 14.9, 34.3 against 34.3, 62.0 against 61.0, 88.0 against 89.0, 255
+  against 255).  What is left is the browser's sampler choosing a coarser level
+  of the same chain for the grazing floor quad than the reference sampler does.
+  Resolution is not a lever for this reference pair either: rendering the port at
+  2x and averaging back down to 1280x800 moves mean absolute luminance
+  difference against that desktop frame from 5.43 to 5.04, while pixels
+  differing by more than 12 go from 41598 to 56385 -- supersampling dilutes the
+  desktop's hot single-pixel line rather than reproducing it, and its saturated
+  green count falls to a handful.  The pixel-ratio scaling described above still
+  pays for itself on a display that has one; it simply does not answer this band.
+  Comparison sheets: `shots/pp2-n363-anaglyph.png`, `-crops.png`, `-missing.png`,
+  `-rows.png`, `-stretch.png`, and `shots/pp2-grid-3way.png` (desktop, port at 1x,
+  port at 2x, rows 520-640, columns 240-1040).
 - Near-field brightness, not near-field geometry.  The near-plane line cut
   described above restored the geometry: saturated green pixels below the
   horizon go 1687 with the cut off to 7324 with it on, against the desktop's
