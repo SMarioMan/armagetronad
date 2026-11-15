@@ -877,9 +877,24 @@ computer players.  Measured on the reference recording before the change: the
 builds agreed on the camera to 0.04 world units at gt 2.6 but were 4.3 and 5.6
 units apart by gt 4.6 and 6.5, the camera having switched to a computer player
 running its own random path.  Every replay generator is now seeded from its own
-archive section and numbered by position inside that section, so a pair stays
-world-matched for the whole run and a run with many computer players is usable
-for measuring, not just for looking at.
+archive section and numbered by position inside that section, so both builds start a
+replay world from the same numbers -- but they do not stay in it.  Measured on
+`perp2.aarec` with ten computer players and `MAX_FPS 60` on both sides, 1363 paired
+stamped frames: every cycle agrees to 0.04 world units or less right up to gt 1.86,
+then the first computer player's cycle leaves the other build by 0.72 units at gt 1.88
+and by 44, 63, 97 and 131 units (cycles 3, 5, 7, 9) at gt 8.40, while cycle 13 exists
+only in the desktop run and cycle 17 only in the port's.  The cause is the math
+library, not the seed: the desktop links glibc's libm, the browser build musl's, and a
+probe printing 288 function values as hex doubles disagrees on 6 of them -- 1 ulp on
+`atan2` twice and on `cos` once, 2 ulp on `tanf` three times (0x1.6e3d06p+1 against
+0x1.6e3d04p+1).  AI steering is float arithmetic through exactly those functions, so a
+comparison threshold flips and the two worlds part company a second and a half into the
+round.  Nothing port-side can undo a different libm, so the protocol is to gate a pair
+while the world is still provably shared (gt < 1.9 on this recording), or to restrict
+the comparison to geometry that does not depend on where the computer players have
+wandered.  A pair's `gt` fields are not comparable either: the two game clocks sit
+about 0.09 s apart on this recording whatever the gate asks for, which is why the
+harness drives the port by pose.
 
 A matched pair is still not bit-identical in pose.  Measured on the current
 builds at frame 323 (desktop gt 2.1486, port gt 2.1495): all four live cycles
@@ -903,10 +918,21 @@ At that gate, both builds free of page-side GL hooks (native `hpbR0-00`, port
 
 The grid metric (peaks per scan row, mean lit run width, contrast in row sigmas)
 agrees to within about 0.8 px of line width at every row from 410 to 760, and the
-line counts agree within a quarter at five of the seven rows -- the outlier is row
-620, where a wall crosses the band.  The cycle box is the one region still
-measurably apart (13 % brighter, 33 % more lit pixels on the port), and most of
-that box is floor around the model.
+line counts agree within a quarter at five of the seven rows -- the outlier is row 620,
+where a wall crosses the band.  A later pose-locked pair (desktop `hpb2-01`, camera at
+69.0987 86.2389; port `porG-01`, camera at 69.0952 86.2056, 0.033 world units apart)
+repeats it: row 560 counts 45 lines on both builds with mean lit-run width 3.10 against
+3.17 px and contrast 1.83 against 1.79 row sigmas, row 700 20 lines both at 2.40/2.63,
+row 760 18/16 at 2.69/2.88.  Rows 470 to 620 of that frame report widths of 58 to 226
+px, which is the scan failing to separate lines rather than a rendering result.  The
+cycle box is *not* a divergence: at that gate the computer players live in different
+places, so a fixed box around where a body was holds a different body.  Profiling each
+image's own lit body mask in five bands along and across it gives (130.3, 130.3, 26.2)
+to (129.3, 129.3, 25.8) along the desktop body and (131.5, 131.5, 26.4) to
+(130.9, 130.9, 26.2) along the port's, with a red/green ratio of exactly 1.000 on both:
+the lit surface agrees to about 1 %, and what differs is the mask, 1375 px in a
+220x90 box against 1547 px in 220x111 -- a different bike at a different attitude, not
+different lighting.
 
 The form of the projective divide is the lever that moves the floor.  Shipped
 `texture2DProj` against a hand-written divide changes the bottom row's counted
