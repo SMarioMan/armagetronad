@@ -270,5 +270,11 @@ cp webgl/harness/perp2.aarec webgl/dist/perp2.aarec
 # index.html?args=--playback,perpA.aarec.
 cp webgl/harness/perpA.aarec webgl/dist/perpA.aarec
 
+# The shortest of the shipped recordings: 105 KB, made by the native build of
+# this tree with two computer players, an uncapped frame rate and the stage's
+# own wall settings.  Aim the published page at it with
+# index.html?args=--playback,myrec2.aarec.  Harness artefact, not game data.
+cp webgl/harness/myrec2.aarec webgl/dist/myrec2.aarec
+
 echo "=== Build complete: webgl/dist ==="
 ls -la webgl/dist

@@ -268,6 +268,15 @@ silently lost a fix.
   by `MAX_FPS`); `build.sh` copies it into the deployed site, so the published
   build can be replayed in the browser at
   `https://smarioman.github.io/armagetronad/?args=--playback,perp2.aarec`.
+  Two more recordings ship the same way: `webgl/harness/perpA.aarec`, the
+  no-computer-player replay behind the drift-free pair, and
+  `webgl/harness/myrec2.aarec` (105 KB, two computer players, the shortest of
+  the three and the quickest one to aim a browser at when checking that replay
+  playback works at all).  Every recording starts with a `VERSION` section
+  holding the version of the build that made it; a mismatch does not refuse the
+  file, it only calls `tRecorder::ActivateProbablyDesyncedPlayback()`
+  (`gArmagetron.cpp:939-950`), so a recording made by the native build of this
+  tree plays in the browser build without further ceremony.
   Viewer-side settings still come from the player's own configuration; the
   published numbers were taken with `webgl/harness/autoexec.cfg`.
 - `?ss=<factor>` — lift the render-target scale above the display's own pixel
