@@ -133,7 +133,7 @@ def main():
     for a in it:
         if a.startswith("--"):
             k, sep, v = a[2:].partition("=")
-            opts[k] = v if sep else next(it, "")
+            opts[k] = v if sep else "1"
         else:
             args.append(a)
     nat_p, port_p, pre = args[0], args[1], args[2]
@@ -211,8 +211,21 @@ def main():
     r0 = int(opts.get("rows", "380"))
     r1 = int(opts.get("rows2", "720"))
     step = int(opts.get("rowstep", "40"))
-    mn = row_metrics(ln, r0, r1, step)
-    mp = row_metrics(lp, r0, r1, step)
+    # The HUD draws thin magenta debris rays that cross every floor band, and
+    # they land a couple of pixels apart between builds; they are not the floor
+    # grid the row metric is about, so --floormask takes them out of the scan.
+    def deglare(a):
+        m = lum(a)
+        hot = ((a[..., 0].astype(int) > a[..., 1].astype(int) + 20) &
+               (a[..., 2].astype(int) > a[..., 1].astype(int) + 20))
+        m[hot] = 0
+        return m
+    if "floormask" in opts:
+        fnp, fpp = deglare(nat), deglare(port)
+    else:
+        fnp, fpp = ln, lp
+    mn = row_metrics(fnp, r0, r1, step)
+    mp = row_metrics(fpp, r0, r1, step)
     txt = [f"row   native lines/peak/width      port lines/peak/width"]
     for (y, n1, p1, w1), (_, n2, p2, w2) in zip(mn, mp):
         txt.append(f"{y:5d}   {n1:4d} / {p1:5.1f} / {w1:4.2f}"
@@ -228,14 +241,22 @@ def main():
 
     # 6) region measurements: light cycle body + rim band difference
     if "cycle" in opts:
-        cx0, cx1, cy0, cy1 = (int(v) for v in opts["cycle"].split(","))
+        cp_ = opts["cycle"].split(",")
+        cx0, cx1, cy0, cy1 = (int(v) for v in cp_[:4])
+        # "green" is the player colour the published pairs were taken with; any
+        # other replay may light the cycle in another hue, so the alternative
+        # key is plain luminance.
+        hue = cp_[4] if len(cp_) > 4 else "green"
         def cyc(a):
             r = a[cy0:cy1, cx0:cx1]
-            g = r[..., 1].astype(int)
-            lit = (g > 90) & (g > r[..., 0].astype(int) + 30) & (g > r[..., 2].astype(int) + 30)
+            if hue == "green":
+                g = r[..., 1].astype(int)
+                lit = (g > 90) & (g > r[..., 0].astype(int) + 30) & (g > r[..., 2].astype(int) + 30)
+            else:
+                lit = lum(r) > 90
             n = int(lit.sum())
             mean = r[lit].mean(axis=0) if n else (0, 0, 0)
-            return n, mean, int(r[..., 1].max())
+            return n, mean, float(lum(r).max())
         n1, m1, mx1 = cyc(nat)
         n2, m2, mx2 = cyc(port)
         cn = np.repeat(np.repeat(nat[cy0:cy1, cx0:cx1], 2, 0), 2, 1)
@@ -244,14 +265,14 @@ def main():
                         lum(port[cy0:cy1, cx0:cx1]).astype(np.uint8),
                         np.zeros((cy1 - cy0, cx1 - cx0), np.uint8)])
         rows = [label(cn, [f"light cycle  native: {n1} lit px, mean RGB "
-                           f"({m1[0]:.0f},{m1[1]:.0f},{m1[2]:.0f}), max G {mx1}"]),
+                           f"({m1[0]:.0f},{m1[1]:.0f},{m1[2]:.0f}), peak {mx1:.0f}"]),
                 label(cp, [f"light cycle  port:   {n2} lit px, mean RGB "
-                           f"({m2[0]:.0f},{m2[1]:.0f},{m2[2]:.0f}), max G {mx2}"]),
+                           f"({m2[0]:.0f},{m2[1]:.0f},{m2[2]:.0f}), peak {mx2:.0f}"]),
                 label(an, ["anaglyph of the same region"])]
         Image.fromarray(stack_raw(rows, gap=12)).save(pre + "-cycle.png")
         print(f"  cycle region ({cx0},{cy0})-({cx1},{cy1}): native {n1} lit px mean "
-              f"({m1[0]:.0f},{m1[1]:.0f},{m1[2]:.0f}) max G {mx1} | port {n2} lit px mean "
-              f"({m2[0]:.0f},{m2[1]:.0f},{m2[2]:.0f}) max G {mx2}")
+              f"({m1[0]:.0f},{m1[1]:.0f},{m1[2]:.0f}) peak {mx1:.0f} | port {n2} lit px mean "
+              f"({m2[0]:.0f},{m2[1]:.0f},{m2[2]:.0f}) peak {mx2:.0f}")
 
     rim = slice(int(opts.get("rim0", 60)), int(opts.get("rim1", 340)))
     dmean = float(np.abs(ln[rim] - lp[rim]).mean())

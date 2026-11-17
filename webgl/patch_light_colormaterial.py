@@ -33,10 +33,13 @@ src/tron/gCycle.cpp (PF LIGHT / PF BODY) reads material ambient (0.2, 0.2,
 0.2, 1), material diffuse (1, 1, 1, 1), emission 0, shininess 0, material
 specular (1, 1, 1, 1), light ambient 0, light diffuse (1, .7, .7) and
 (.7, .7, 1), light model ambient (0.2, 0.2, 0.2) and both light positions with
-w = 0, which is directional and is also what webgl/patch_light_positional.py
-computes for w < 0.5.  Same inputs, same formula, so the un-substituted terms
-are the reference behaviour for those draws and the conditional below restores
-them.
+w = 0.  src/tron/gCycle.cpp:4333-4334 specifies lposa {320, 240, 200, 0} and
+lposb {-240, -100, 200, 0}, so both lights really are directional there: the
+emulation's normalize(u_lightPosition) rule is the same one the fixed-function
+desktop applies to a w = 0 position, and nothing about those draws needs a
+positional reinterpretation.  Same inputs, same formula, so the un-substituted
+terms are the reference behaviour for those draws and the conditional below
+restores them.
 
 What the vertex-colour half is still doing, and why it stays.  Measured on the
 perp2 replay with the two builds at the same gate (desktop gt 2.6912, port
@@ -73,8 +76,9 @@ unrelated pass left behind.  Conditional variant, same pose-matched pair:
 meanAbs 3.40, frac>12 3.73 %, bright neutral body-like pixels 2714 against the
 desktop's 2939, whole-frame magenta-signature pixels 118 against the desktop 138.
 
-SPECULAR stays on u_materialSpecular for every draw, and
-webgl/patch_light_specular.py already handles shininess zero.
+SPECULAR stays on u_materialSpecular for every draw; the measured shininess at
+the cycle body draw is 0, where the emulation's exponent term collapses to the
+material specular exactly as the desktop's does.
 """
 import sys
 
