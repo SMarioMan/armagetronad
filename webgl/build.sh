@@ -254,27 +254,11 @@ cp src/armagetronad_main.js src/armagetronad_main.wasm src/armagetronad_main.dat
 # The browser always asks for a favicon; without one every page load logs a
 # 404.  Ship the game's own 32x32 icon.
 cp textures/icon.png webgl/dist/favicon.png
-# The reference replay every parity measurement in webgl/README.md is taken
-# from.  It ships so the published page can be aimed at it
-# (index.html?args=--playback,perp2.aarec): the same recording the native build
-# recorded and both builds are measured against.  It is a harness artefact, not
-# part of the game.
-cp webgl/harness/perp2.aarec webgl/dist/perp2.aarec
-
-# The no-opponent replay behind the "pair without simulation drift" section of
-# webgl/README.md.  Computer players recompute their decisions per rendered
-# frame, so the two builds diverge a few seconds into perp2 and the far-field
-# scores there measure the drift, not the renderer.  With none of them, gated
-# frames land inside a world unit of each other and a whole-frame diff of 0.45
-# per channel is a measurement of the GL stack.  Aim the page at it with
-# index.html?args=--playback,perpA.aarec.
-cp webgl/harness/perpA.aarec webgl/dist/perpA.aarec
-
-# The shortest of the shipped recordings: 105 KB, made by the native build of
-# this tree with two computer players, an uncapped frame rate and the stage's
-# own wall settings.  Aim the published page at it with
-# index.html?args=--playback,myrec2.aarec.  Harness artefact, not game data.
-cp webgl/harness/myrec2.aarec webgl/dist/myrec2.aarec
+# No replay is shipped with the page.  webgl/harness/*.aarec are capture inputs
+# for the measurements written up in webgl/notes/, not game data: perp2.aarec
+# (the perimeter replay both builds are gated on), perpA.aarec (the drift-free
+# no-opponent pair) and myrec2.aarec.  A local run that wants the page to play
+# one copies it into dist/ next to the hook: webgl/harness/inject_hook.sh.
 
 echo "=== Build complete: webgl/dist ==="
 ls -la webgl/dist
