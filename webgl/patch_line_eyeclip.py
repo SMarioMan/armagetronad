@@ -44,13 +44,15 @@ out as clipped GL_LINES segment pairs, because a strip with a piece removed
 would otherwise connect across the gap; every other primitive is left exactly
 as it was.  Triangles need nothing, they clip correctly in this renderer.
 
-Two diagnostics, both read from the page rather than the build, so a measurement
-can toggle the patch without rebuilding it (same convention as the projection
-switch in patch_texture_projective_coords):
-  window.arma_lineclip_debug  print the vertex layout found at the first draws
-                              plus a keep/drop/split tally per draw
+One diagnostic, read from the page rather than the build, so a measurement can
+toggle the patch without rebuilding it - the only page-side switch in the GL
+patches:
   window.arma_lineclip_off    run without the cut, for the A/B; a live page
   can ask for the same thing with &nolineclip=1 in its URL
+The keep/drop/split census that used to sit behind window.arma_lineclip_debug
+measured the patch once and is gone: its result is written up in
+webgl/notes/README-nearplane.md, and the numbers cannot be reproduced from the
+shipped page anyway.
 """
 import sys
 
@@ -143,16 +145,6 @@ GLImmediate.atglClipLinePrimitives=function(){
   // rasterizer, and re-emitting the same edges as separate GL_LINES pairs
   // paints extra blended pixels at every join, so the conversion to pairs
   // happens only where a segment really was cut or dropped.
-  // A/B census: how much line geometry the cut actually rescues.  This runs
-  // before the early out so unclipped draws are counted too; the game issues
-  // well over a thousand line-family draws per frame, hence the coarse period.
-  if(window.arma_lineclip_debug||(window.location&&/[?&]lineclipdbg/.test(window.location.href))){
-    var S=GLImmediate.atglCensus=GLImmediate.atglCensus||{draws:0,seg:0,drop:0,split:0,keep:0};
-    S.draws++;S.seg+=segs;S.drop+=drop;S.split+=split;S.keep+=on;
-    if(S.draws%128===0)
-      console.log('LINECLIP CENSUS draws '+S.draws+' seg '+S.seg+' drop '+S.drop+
-                  ' split '+S.split+' kept '+S.keep+' first col '+firstColour());
-  }
   if(!split&&!drop)return;
   if(on<2){                                  // nothing drawable survived
     GLImmediate.vertexCounter=0;GLImmediate.lastVertex=0;return;
@@ -161,16 +153,6 @@ GLImmediate.atglClipLinePrimitives=function(){
   GLImmediate.vertexCounter=on*fl;
   GLImmediate.lastVertex=on;
   GLImmediate.mode=1;                        // pairs: GL_LINES
-  if(window.arma_lineclip_debug||(window.location&&/[?&]lineclipdbg/.test(window.location.href))){
-    GLImmediate.atglClipLogged=(GLImmediate.atglClipLogged|0)+1;
-    if(GLImmediate.atglClipLogged<=400)
-      console.log('LINECLIP mode '+mode+' n '+n+' -> '+on+' drop '+drop+
-                  ' split '+split+' stride '+stride+' posoff '+po+
-                  ' attrs '+attrs.map(function(q){return q.o+':'+q.c;}).join(',')+
-                  ' col '+firstColour()+
-                  ' v0 '+src[po]+','+src[po+1]+','+src[po+2]+
-                  ' v1 '+src[fl+po]+','+src[fl+po+1]+','+src[fl+po+2]);
-  }
 };
 """
 
