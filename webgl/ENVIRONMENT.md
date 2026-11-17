@@ -62,9 +62,15 @@ EMSDK_DIR=$A/emsdk LIBXML2_PREFIX=$A/libxml2-wasm sh webgl/build.sh
 `build.sh` configures with a cache file (`webgl/emscripten.cache`), links with
 `-s USE_SDL=1 -s STB_IMAGE=1 -s USE_ZLIB=1 -s USE_LIBPNG=1 -s FILESYSTEM=1
 -s LEGACY_GL_EMULATION=1 -s GL_UNSAFE_OPTS=0 -s ALLOW_MEMORY_GROWTH=1`, and then
-applies the three sanctioned post-link patches - `patch_sdl_convert.py`,
-`patch_gl_emulation.py`, `patch_light_colormaterial.py`, `patch_line_eyeclip.py`,
-`patch_texture_projective_coords.py`. **It wipes `webgl/dist/` on every run**, so
+applies six sanctioned post-link patches, in this order: `patch_sdl_convert.py`,
+`patch_gl_emulation.py`, `patch_line_eyeclip.py`, `patch_emulation_fixes.py`,
+`patch_texture_projective_coords.py`, `patch_light_colormaterial.py`. Two more
+were tried and removed, and must not come back: `patch_light_positional.py`
+treated the cycle's lights as positional, but `gCycle.cpp` passes `w = 0`
+(directional), which is exactly what the emulation already computes; and
+`patch_light_specular.py` switched the specular term off whenever shininess was
+0, which is not the desktop rule (see `probe/bodylightprobe.c`).
+**It wipes `webgl/dist/` on every run**, so
 anything you put there (the `glhook.js` injection of §2.5, a replay you want the
 page to be able to open) has to be put back afterwards:
 
