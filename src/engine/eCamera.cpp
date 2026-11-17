@@ -47,6 +47,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tMath.h"
 #include "eNetGameObject.h"
 #include "nObserver.h"
+#include "eWideView.h"
 
 // camera visibility settings
 static REAL se_hitCacheSpeed = 1; // the speed the hit cache for external visibility targets recovers from hits
@@ -1389,6 +1390,15 @@ void eCamera::Render(){
 #ifdef DEBUG
     //  eEdge::UpdateVisAll(id);
 #endif
+
+    // 360 degree projection view: capture the scene per globe plate and
+    // project it onto the viewport with the configured lens
+    if ( eWideView::Active() )
+    {
+        eWideView::Render( this, pos_diff, glancedir );
+        displaying=false;
+        return;
+    }
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();

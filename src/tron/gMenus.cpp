@@ -35,6 +35,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "eTimer.h"
 #include "eFloor.h"
 #include "rRender.h"
+#include "eWideView.h"
 #include "rModel.h"
 #include "gGame.h"
 #include "gCycle.h"
@@ -637,6 +638,37 @@ static uMenuItemToggle cs
 (&screen_menu_prefs,"$pref_sparks_text",
  "$pref_sparks_help",
  crash_sparks);
+
+// ---------------------------------------------------------- 360 view (globe+lens)
+static uMenuItemSelection<int> wvlens
+(&screen_menu_prefs,"$pref_wideview_lens_text",
+ "$pref_wideview_lens_help", eWideView::se_wideViewLens);
+static uSelectEntry<int> wvlens_standard(wvlens,"$pref_wideview_lens_standard_text","$pref_wideview_lens_standard_help",eWideView::LENS_STANDARD);
+static uSelectEntry<int> wvlens_panini(wvlens,"$pref_wideview_lens_panini_text","$pref_wideview_lens_panini_help",eWideView::LENS_PANINI);
+static uSelectEntry<int> wvlens_mercator(wvlens,"$pref_wideview_lens_mercator_text","$pref_wideview_lens_mercator_help",eWideView::LENS_MERCATOR);
+static uSelectEntry<int> wvlens_equirect(wvlens,"$pref_wideview_lens_equirect_text","$pref_wideview_lens_equirect_help",eWideView::LENS_EQUIRECT);
+static uSelectEntry<int> wvlens_stereographic(wvlens,"$pref_wideview_lens_stereographic_text","$pref_wideview_lens_stereographic_help",eWideView::LENS_STEREOGRAPHIC);
+static uSelectEntry<int> wvlens_winkeltripel(wvlens,"$pref_wideview_lens_winkeltripel_text","$pref_wideview_lens_winkeltripel_help",eWideView::LENS_WINKELTRIPEL);
+static uSelectEntry<int> wvlens_fisheye(wvlens,"$pref_wideview_lens_fisheye_text","$pref_wideview_lens_fisheye_help",eWideView::LENS_FISHEYE);
+static uSelectEntry<int> wvlens_cylinder(wvlens,"$pref_wideview_lens_cylinder_text","$pref_wideview_lens_cylinder_help",eWideView::LENS_CYLINDER);
+
+static uMenuItemReal wvfov
+(&screen_menu_prefs,"$pref_wideview_fov_text",
+ "$pref_wideview_fov_help", eWideView::se_wideViewFOV, 10, 360, 5);
+
+static uMenuItemSelection<int> wvglobe
+(&screen_menu_prefs,"$pref_wideview_globe_text",
+ "$pref_wideview_globe_help", eWideView::se_wideViewGlobe);
+static uSelectEntry<int> wvglobe_cube(wvglobe,"$pref_wideview_globe_cube_text","$pref_wideview_globe_cube_help",eWideView::GLOBE_CUBE);
+static uSelectEntry<int> wvglobe_trism(wvglobe,"$pref_wideview_globe_trism_text","$pref_wideview_globe_trism_help",eWideView::GLOBE_TRISM);
+
+static uMenuItemReal wvplateres
+(&screen_menu_prefs,"$pref_wideview_plateres_text",
+ "$pref_wideview_plateres_help", eWideView::se_wideViewPlateRes, .25, 1, .25);
+
+static uMenuItemReal wvlensres
+(&screen_menu_prefs,"$pref_wideview_lensres_text",
+ "$pref_wideview_lensres_help", eWideView::se_wideViewLensRes, .25, 1, .25);
 
 #ifndef __EMSCRIPTEN__
     // rDisplayList.cpp compiles no list at all on this platform

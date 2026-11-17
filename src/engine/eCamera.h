@@ -43,6 +43,7 @@ class eGameObject;
 class eNetGameObject;
 class eCamera;
 class eGrid;
+class eWideView;
 class uActionCamera;
 class uActionTooltip;
 
@@ -52,6 +53,7 @@ class uActionTooltip;
 // extern List<eCamera> se_cameras;
 
 class eCamera{
+    friend class eWideView;
 protected:
     static uActionCamera se_lookUp,se_lookDown,se_lookLeft,se_lookRight,
     se_moveLeft,se_moveRight,se_moveUp,se_moveDown,se_moveForward,se_moveBack,

@@ -45,6 +45,7 @@ class eCamera;
 class eGameObject{
     friend class eFace;
     friend class eCamera;
+    friend class eWideView;
     friend class eSensor;
     friend class eGrid;
     friend class ePlayerNetID;

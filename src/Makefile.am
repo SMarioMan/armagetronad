@@ -84,7 +84,8 @@ libengine_a_SOURCES=engine/eAdvWall.cpp engine/eAdvWall.h engine/eAuthentication
 	engine/eKrawall.cpp engine/eKrawall.h engine/eNetGameObject.cpp engine/eNetGameObject.h\
 	engine/ePath.cpp engine/ePath.h engine/ePlayer.cpp engine/ePlayer.h engine/eSensor.cpp\
 	engine/eSensor.h engine/eSound.cpp engine/eSound.h engine/eTeam.cpp engine/eTeam.h engine/eTess2.h\
-	engine/eTimer.cpp engine/eTimer.h engine/eVoter.cpp engine/eVoter.h engine/eWall.cpp engine/eWall.h\
+	engine/eTimer.cpp engine/eTimer.h engine/eVoter.cpp engine/eVoter.h engine/eWideView.cpp\
+	engine/eWideView.h engine/eWall.cpp engine/eWall.h\
 	engine/eRectangle.cpp engine/eRectangle.h\
 	engine/eLagCompensation.cpp engine/eLagCompensation.h\
 	engine/eChat.cpp engine/eChat.h

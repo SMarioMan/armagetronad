@@ -2120,6 +2120,41 @@ detail_text_truecolor_help	Stores the textures with 32 bit colour depth instead 
 pref_sparks_text		Sparks:
 pref_sparks_help		Glowing sparks fly from your vehicle whenever you nearly crash.
 
+pref_wideview_lens_text		360 View Lens:
+pref_wideview_lens_help		Projects everything around the camera through this lens. Off keeps the normal view; the other lenses differ in how the panorama is flattened into the window.
+pref_wideview_lens_standard_text	Off
+pref_wideview_lens_standard_help	Draws the normal camera view.
+pref_wideview_lens_panini_text	Panini
+pref_wideview_lens_panini_help	A wide view with straight vertical lines.
+pref_wideview_lens_mercator_text	Mercator
+pref_wideview_lens_mercator_help	A wide view that keeps local angles, stretching the poles.
+pref_wideview_lens_equirect_text	Equirectangular
+pref_wideview_lens_equirect_help	The full panorama laid out as a plain latitude/longitude grid.
+pref_wideview_lens_stereographic_text	Stereographic
+pref_wideview_lens_stereographic_help	A wide view that keeps local angles, stretching the edges.
+pref_wideview_lens_winkeltripel_text	Winkel Tripel
+pref_wideview_lens_winkeltripel_help	A compromise between the equirectangular and the stereographic layout.
+pref_wideview_lens_fisheye_text	Fisheye
+pref_wideview_lens_fisheye_help	An equidistant fisheye disc reaching straight behind the camera.
+pref_wideview_lens_cylinder_text	Cylinder
+pref_wideview_lens_cylinder_help	The panorama wrapped around a cylinder, keeping vertical lines straight.
+
+pref_wideview_fov_text		360 View Width:
+pref_wideview_fov_help		How much of the surroundings is projected into the window, in degrees. 360 shows everything around the camera.
+
+pref_wideview_globe_text		360 View Globe:
+pref_wideview_globe_help		How the surroundings are captured. Every plate is one rendered view, so fewer plates are cheaper.
+pref_wideview_globe_cube_text	Cube
+pref_wideview_globe_cube_help	Six plates looking forward, back, left, right, up and down, 90 degrees each.
+pref_wideview_globe_trism_text	Trism
+pref_wideview_globe_trism_help	Five plates, 120 degrees around and 128 degrees up and down.
+
+pref_wideview_plateres_text	360 Plate Resolution:
+pref_wideview_plateres_help	Size of each captured plate as a fraction of the window. Higher is sharper but costs one more full scene render per plate.
+
+pref_wideview_lensres_text	360 Lens Resolution:
+pref_wideview_lensres_help	Size of the composited lens image as a fraction of the window. Higher is sharper but slower.
+
 pref_explosion_text		Explosion:
 pref_explosion_help		Toggles the explosion animation when a cycle crashes.
 

@@ -44,6 +44,11 @@ public:
             width(top.width*sub.width),
     height(top.height*sub.height){}
 
+    REAL GetLeft() const { return left; }
+    REAL GetBottom() const { return bottom; }
+    REAL GetWidth() const { return width; }
+    REAL GetHeight() const { return height; }
+
     ~rViewport(){tCHECK_DEST;}
 
 #ifndef DEDICATED
