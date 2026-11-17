@@ -876,6 +876,48 @@ reports the eye position and its height above the target.  Gates parse `gt` by
 name and are unaffected, but pose deltas taken across the two variants mean
 nothing.
 
+#### Rebuilding the deployed build from source, and measuring that it is the same build
+
+A clean container -- no autoconf/automake, no X11, no native build -- rebuilt the
+tree with `./webgl/setup_toolchain.sh` and `./webgl/build.sh` at commit
+`0c0a3a56`, the one the published page serves. Because `configure` is not checked
+in and no autotools exist on that machine, the generated files were taken from
+the `armagetronad-0.2.9.3.0` release tarball (`configure`, `config.h.in`, every
+`Makefile.in`, the aux scripts) and their timestamps ordered behind their
+prerequisites, which stops make's regeneration rules from calling `aclocal`.
+That is safe here because `src/**/Makefile.am` is identical between the tarball
+and this branch -- `diff -rq --include=Makefile.am src/` is empty -- so the
+copied rules compile the same file list; the doc subdirectory additionally needs
+`COPYING` to exist. CI installs autoconf/automake and needs none of this.
+
+Three binaries then replayed `webgl/harness/perp2.aarec` in one Chromium and were
+captured with the `P:<recSec>` gate, which lands every run on the same frame
+boundary (measured: recSec 18.305126, 18.323399 and 18.520989 in all three runs):
+the deployed build served over http, the fresh build, and the fresh build with
+`webgl/harness/parity-stamp.patch` applied. Deployed against fresh: **zero pixels
+differ** at 18.323399 out of 1 024 000, and at 18.520989 only 11 px -- the
+minimap's player markers, which also move between two runs of one binary. Fresh
+against fresh-with-probe: identical, so the capture probe costs nothing visible.
+`gridprofile.py` reads the pair the same band by band (lines 6.0/8.0/20.5/22.3,
+widths 1.50/2.04/2.74/2.40 px, peaks 96.9/137.9/199.3/154.7). Both builds
+reported a version string different from the archive's, so both were in
+"probably desynced" playback and the comparison stays apples to apples. Sheets:
+`shots/48-*.png` with the census in `shots/48-rebuild-vs-deployed.md`.
+
+Two harness facts those runs settled. `P:<recSec>` needs no stamp and no log
+traffic: the wasm loop (`src/tools/tWasmLoop.cpp`, `adSetPauseAt`) stops itself on
+the frame that crosses the recording position, so even the published page -- which
+carries no probe -- can be captured at a reproducible state. `N:<frame>` cannot
+be used across builds, because the number of rendered frames per unit of game time
+tracks render speed.  And browser playback of `perp2.aarec` on that machine
+advanced at roughly 0.4 recording-seconds per wall second under SwiftShader and
+stopped advancing altogether at recSec ~ 18.65 in every run, deployed and
+rebuilt alike -- while still rendering at 58 fps and with the HUD clock four
+seconds behind the recording position (recSec 18.323 shows T:14.323) -- so gates
+had to sit below that.  The published captures of the same archive on the
+previous capture machine reach recSec ~ 25, so the wall belongs to the run on
+this machine, not to the build.
+
 ### What a matched pair does and does not pin down
 
 Computer players used not to be reproducible.  The AI draws its randomness from
