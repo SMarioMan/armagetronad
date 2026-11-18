@@ -105,6 +105,24 @@ void rViewport::Perspective(REAL fov,REAL nnear,REAL ffar){
 #endif
 }
 
+// Perspective for a viewport whose own shape is the frustum shape: fov
+// applies to both axes.  Perspective() above folds the screen's logical
+// aspect into the frustum so that a wide screen keeps its vertical field of
+// view; a square sub-viewport of a wide window is not wide in that sense and
+// would get a much narrower frustum in y than in x.  The 360 view renders
+// such square plates and needs the full field of view on both axes, or the
+// plates do not tile the sphere and the gaps between them come out black.
+void rViewport::PerspectiveSquare(REAL fov,REAL nnear,REAL ffar){
+#ifndef DEDICATED
+    if (!sr_glOut)
+        return;
+
+    REAL mul = tan((M_PI / 360.0) * fov);
+    ProjMatrix();
+    glFrustum(-nnear * mul, nnear * mul, -nnear * mul, nnear * mul, nnear, ffar);
+#endif
+}
+
 rViewport rViewport::s_viewportFullscreen(0,0,1,1);
 
 rViewport rViewport::s_viewportTop(0,.5,1,.5);

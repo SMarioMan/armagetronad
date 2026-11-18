@@ -56,6 +56,10 @@ public:
 #endif
 
     void Perspective(REAL fov,REAL zNear=1,REAL zFar=10000000);
+    // Perspective with the frustum aspect forced to 1: fov applies to both
+    // axes.  Used by the 360 view, whose square plate sub-viewports must not
+    // inherit the screen's logical aspect.
+    void PerspectiveSquare(REAL fov,REAL zNear=1,REAL zFar=10000000);
 
     REAL UpDownFOV(REAL fov);
 

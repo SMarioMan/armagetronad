@@ -402,35 +402,39 @@ void wv_buildLensmap( int lens, int globe, double fov, int w, int h )
         wv_trismPlates : wv_cubePlates;
     const int plateCount = globe == eWideView::GLOBE_TRISM ? 5 : 6;
 
-    // lens scale: lens units per lens pixel (blinky's calc_zoom: the
-    // forward map's x at longitude fov/2 spans half the lens image width).
-    // lenses whose forward map diverges at the antipode (panini,
-    // stereographic) are evaluated at a capped longitude below it, which
-    // sets how much of the sphere the window covers: at 2.6 rad the view
-    // reaches about +-149 deg and everything straight behind stays outside
-    // the picture.  Evaluating them at the antipode instead would put the
-    // whole scene into a few pixels at the centre.  The fisheye is capped
-    // just below pi to avoid the sin(pi) ~ 0 floating point artifact;
-    // equirectangular, mercator and cylinder map x = lon and reach the
-    // full antipode.
+    // lens scale: lens units per lens pixel.  As in blinky's calc_zoom, the
+    // forward map's x at half the requested width spans half the lens image.
+    // blinky bounds that per lens with the max_fov/max_vfov each lens script
+    // declares and refuses a wider setting; his panini and stereographic
+    // scripts both load at "f_fov 180", because both projections run off to
+    // infinity at the point straight behind the camera.  flex-fov never
+    // carries those two that far either: its shader crossfades
+    // standard -> panini/stereographic -> mercator and uses mercator alone
+    // from fovx 300 up.  The port follows flex-fov's handoff and stops
+    // scaling panini and stereographic at 300 degrees of width, the widest
+    // setting at which they still fill the window; a wider request then
+    // shows about +-150 deg instead of collapsing the scene into a few
+    // pixels at the centre.  The fisheye stops just below 360 to dodge the
+    // sin(pi) ~ 0 artifact in its forward map; equirectangular, mercator,
+    // cylinder and winkel tripel reach the full antipode.
     double fovr = fov * WV_PI / 180;
-    double lonEval = fovr * .5;
-    double lonCap;
+    double fovCap;
     switch ( lens )
     {
     case eWideView::LENS_PANINI:
     case eWideView::LENS_STEREOGRAPHIC:
-        lonCap = 2.6;
+        fovCap = 300 * WV_PI / 180;
         break;
     case eWideView::LENS_FISHEYE:
-        lonCap = 3.10;
+        fovCap = 2 * 3.10;
         break;
     default:
-        lonCap = WV_PI;
+        fovCap = 2 * WV_PI;
         break;
     }
-    if ( lonEval > lonCap )
-        lonEval = lonCap;
+    if ( fovr > fovCap )
+        fovr = fovCap;
+    double lonEval = fovr * .5;
     double x_edge = std::fabs( wv_forwardX( lens, 0, lonEval ) );
     if ( x_edge <= 0 || !std::isfinite( x_edge ) )
         x_edge = 1;
@@ -457,17 +461,13 @@ void wv_buildLensmap( int lens, int globe, double fov, int w, int h )
         plateRight[i][0] = u[1]*f[2] - u[2]*f[1];
         plateRight[i][1] = u[2]*f[0] - u[0]*f[2];
         plateRight[i][2] = u[0]*f[1] - u[1]*f[0];
-        // effective frustum half widths, exactly as
-        // rViewport::Perspective computes them for the square plate
-        // viewport (pixel aspect correction included)
-        double r_aspect = (double) currentScreensetting.aspect;
-        if ( r_aspect <= 0 )
-            r_aspect = 1;
-        double a = r_aspect / 1.5;
-        if ( a < 1.0 )
-            a = 1.0;
-        plateTan[i] = a * tan( plates[i].fov * WV_PI / 360 );
-        plateTanY[i] = plateTan[i] / r_aspect;
+        // frustum half widths: the plates are rendered through
+        // rViewport::PerspectiveSquare, so the plate field of view applies
+        // to both axes and the plates tile the sphere at any window aspect,
+        // like blinky's square globe plates and flex-fov's six 90 degree
+        // textures.
+        plateTan[i] = tan( plates[i].fov * WV_PI / 360 );
+        plateTanY[i] = plateTan[i];
     }
 
     bool (*inverse)( double, double, double* ) = 0;
@@ -712,8 +712,9 @@ void eWideView::Render( eCamera * cam, eCoord const & pos_diff,
             else
                 cam->dir = oldDir;
 
-            // plate viewport and perspective: the same code path
-            // (rViewport::Select/Perspective) as the normal view
+            // plate viewport: the same viewport machinery as the normal
+            // view, but with the square frustum PerspectiveSquare() so that
+            // a square plate keeps its full field of view vertically too.
             rViewport plateSub( (REAL) ( ( vpW - plateSize ) / (double) vpW ),
                                 (REAL) ( ( vpH - plateSize ) / (double) vpH ),
                                 (REAL) ( plateSize / (double) vpW ),
@@ -722,7 +723,7 @@ void eWideView::Render( eCamera * cam, eCoord const & pos_diff,
             plateVP.Select();
             glMatrixMode( GL_PROJECTION );
             glLoadIdentity();
-            plateVP.Perspective( plates[i].fov, cam->zNear, 1e20 );
+            plateVP.PerspectiveSquare( plates[i].fov, cam->zNear, 1e20 );
 
             glMatrixMode( GL_MODELVIEW );
             glLoadIdentity();

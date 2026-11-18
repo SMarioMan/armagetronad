@@ -35,15 +35,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //    for every lens pixel, the plate whose frustum contains the pixel's ray
 //    and where inside that plate image to sample.  The check rebuilds the
 //    same information from the plate tables using gluLookAt semantics
-//    (right = up x -forward, up = -forward x right) with only the plate field
-//    of view and the pixel aspect.  The two models share no cross products:
+// (right = up x -forward, up = -forward x right) with only the plate field of
+// view.  The two models share no cross products:
 //    the map works in the lens basis, the model never leaves world space.
 //    This is what catches a mirrored plate axis (forward x up instead of
 //    up x forward, the lens basis being left handed with respect to the world
 //    because a camera basis is right handed as (right, up, -forward)) and a
-//    single shared x/y sample bound (rViewport::Perspective builds
-//    ymul = xmul/aspect, so a square plate viewport with non square pixels
-//    samples v outside the plate frustum).  The mirrored hypothesis
+//    single shared x/y sample bound (the plates render through
+//    rViewport::PerspectiveSquare, so the plate field of view applies to both
+//    axes and the plates tile the sphere).  The mirrored hypothesis
 //    u' = 1 - u is measured as well and must stay away from zero.
 //
 // 2. Lens algebra.  The module only has inverse lens maps (plus the x
@@ -96,22 +96,20 @@ static double magnitude ( Vec a ) { return sqrt(dot(a,a)); }
 struct PlateCam
 {
     Vec fwd, right, up;   // world axes of the rendered plate image
-    double tan;           // frustum half width in x (aspect 1 pixels)
-    double tanY;          // and in y: xmul/aspect, as rViewport::Perspective does it
+    double tan;           // frustum half width in x
+    double tanY;          // and in y: the same, PerspectiveSquare is square
 };
 
-static PlateCam makeCam (Vec fwdW, Vec upW, double fovDeg, double aspect)
+static PlateCam makeCam (Vec fwdW, Vec upW, double fovDeg)
 {
     PlateCam c;
     c.fwd = norm(fwdW);
     Vec z = c.fwd * -1.0;
     c.right = norm(cross(upW, z));      // gluLookAt: s = up x z
     c.up = cross(z, c.right);           // gluLookAt: u = z x s
-    double a = aspect / 1.5;            // the engine widens a square viewport by aspect/1.5
-    if (a < 1.0) a = 1.0;
-    double xmul = a * tan(fovDeg * WV_PI / 360.0);
+    double xmul = tan(fovDeg * WV_PI / 360.0);
     c.tan = xmul;
-    c.tanY = xmul / aspect;
+    c.tanY = xmul;
     return c;
 }
 
@@ -298,7 +296,7 @@ static void CheckMapAgainstWorld ( const LensCase & lc, int globe,
                 // lens vector -> world
                 Vec fwdW = sW * fw.x + uW * fw.y + fW * fw.z;
                 Vec upW  = sW * uw.x + uW * uw.y + fW * uw.z;
-                PlateCam pc = makeCam(fwdW, upW, plates[i].fov, aspect);
+                PlateCam pc = makeCam(fwdW, upW, plates[i].fov);
                 double pz = dot(rayW, pc.fwd);
                 if (pz <= 1e-6) continue;
                 double px = dot(rayW, pc.right);
