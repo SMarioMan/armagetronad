@@ -2125,13 +2125,13 @@ pref_wideview_lens_help		Projects everything around the camera through this lens
 pref_wideview_lens_standard_text	Off
 pref_wideview_lens_standard_help	Draws the normal camera view.
 pref_wideview_lens_panini_text	Panini
-pref_wideview_lens_panini_help	A wide view with straight vertical lines.
+pref_wideview_lens_panini_help	A wide view with straight vertical lines; it stops short of showing straight behind the camera.
 pref_wideview_lens_mercator_text	Mercator
 pref_wideview_lens_mercator_help	A wide view that keeps local angles, stretching the poles.
 pref_wideview_lens_equirect_text	Equirectangular
 pref_wideview_lens_equirect_help	The full panorama laid out as a plain latitude/longitude grid.
 pref_wideview_lens_stereographic_text	Stereographic
-pref_wideview_lens_stereographic_help	A wide view that keeps local angles, stretching the edges.
+pref_wideview_lens_stereographic_help	A wide view that keeps local angles, stretching the edges; it stops short of showing straight behind the camera.
 pref_wideview_lens_winkeltripel_text	Winkel Tripel
 pref_wideview_lens_winkeltripel_help	A compromise between the equirectangular and the stereographic layout.
 pref_wideview_lens_fisheye_text	Fisheye

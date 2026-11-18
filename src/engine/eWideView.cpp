@@ -405,19 +405,23 @@ void wv_buildLensmap( int lens, int globe, double fov, int w, int h )
     // lens scale: lens units per lens pixel (blinky's calc_zoom: the
     // forward map's x at longitude fov/2 spans half the lens image width).
     // lenses whose forward map diverges at the antipode (panini,
-    // stereographic) are evaluated at a capped longitude below it; the
-    // fisheye is capped just below pi to avoid the sin(pi) ~ 0 floating
-    // point artifact; equirectangular, mercator and cylinder map x = lon
-    // and reach the full antipode.
+    // stereographic) are evaluated at a capped longitude below it, which
+    // sets how much of the sphere the window covers: at 2.6 rad the view
+    // reaches about +-149 deg and everything straight behind stays outside
+    // the picture.  Evaluating them at the antipode instead would put the
+    // whole scene into a few pixels at the centre.  The fisheye is capped
+    // just below pi to avoid the sin(pi) ~ 0 floating point artifact;
+    // equirectangular, mercator and cylinder map x = lon and reach the
+    // full antipode.
     double fovr = fov * WV_PI / 180;
     double lonEval = fovr * .5;
     double lonCap;
     switch ( lens )
     {
     case eWideView::LENS_PANINI:
+    case eWideView::LENS_STEREOGRAPHIC:
         lonCap = 2.6;
         break;
-    case eWideView::LENS_STEREOGRAPHIC:
     case eWideView::LENS_FISHEYE:
         lonCap = 3.10;
         break;
