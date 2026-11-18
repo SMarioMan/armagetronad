@@ -52,7 +52,15 @@ EXTRA_DIST=\
 	make/releasetag\
 	make/sortresources.py\
 	make/sortresources\
-	make/regenerate_fingerprint
+	make/regenerate_fingerprint\
+	make/container/README.md\
+	make/container/fetchpkgs.py\
+	make/container/getpkg.py\
+	make/container/native_build.sh\
+	make/container/runbootstrap.py\
+	make/container/runxephyr.py\
+	make/container/runxvfb.py\
+	make/container/x11/xorg.conf
 
 # The command for building scripts
 buildscript = sed -f ${top_builddir}/universal_variable_values_sed\

@@ -176,6 +176,16 @@ armagetronad_main_LDADD=libtron.a libenginecore.a libengine.a libnetwork.a libui
 armagetronad_main_master_SOURCES = network/master.cpp
 armagetronad_main_master_CXXFLAGS =$(libtron_a_CXXFLAGS)
 armagetronad_main_master_LDADD=libnetwork.a libtools.a
+
+if BUILDMAIN
+# The 360 view lens map check.  It includes engine/eWideView.cpp directly
+# because the map it verifies is file local to that module.
+check_PROGRAMS = wvLensMapTest
+TESTS = wvLensMapTest
+wvLensMapTest_SOURCES = engine/wvLensMapTest.cpp
+wvLensMapTest_CXXFLAGS = $(libengine_a_CXXFLAGS)
+wvLensMapTest_LDADD = libenginecore.a libengine.a librender.a libui.a libtron.a libnetwork.a libtools.a
+endif
 endif
 
 ## Note: tron/gFloor.cpp is not referenced from the outside, but required anyway. So it can't be put into
